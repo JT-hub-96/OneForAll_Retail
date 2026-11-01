@@ -298,6 +298,8 @@ SlashCmdList.ONEFORALL = function(cmd)
     msg("Tab selection reset to the defaults for this character.")
   elseif cmd == "share test" then
     if FLT.QuestShareTest then FLT:QuestShareTest() end
+  elseif cmd == "questmarks test" then
+    if FLT.QuestMarks then FLT.QuestMarks.Test() end
   elseif cmd == "chathistory" then
     if FLT.QoL and FLT.QoL.ChatHistoryInfo then FLT.QoL.ChatHistoryInfo() end
   elseif cmd == "share" then

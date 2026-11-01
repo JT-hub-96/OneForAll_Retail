@@ -796,11 +796,11 @@ local function createDungeonPanel(parent)
   do local font,_,flags=dtitle:GetFont(); if font then dtitle:SetFont(font,21,flags) end end
   local dcrest=dband:CreateTexture(nil,"ARTWORK"); dcrest:SetSize(16,16); dcrest:SetPoint("TOPLEFT",194,-35); FLT.SetTex(dcrest, ASSET_ROOT.."faction_crests")
   local dmeta=FLT.NewFS(dband, nil,"OVERLAY","GameFontHighlightSmall"); dmeta:SetPoint("LEFT",dcrest,"RIGHT",5,0); dmeta:SetTextColor(FLT.SkinC(0.78,0.75,0.68))
-  local bossesBtn=UI.GoldButton(brow,"Bosses & Loot",126,26,nil,13); bossesBtn:SetPoint("RIGHT",-144,0)
+  local bossesBtn=UI.GoldButton(brow,"Bosses & Loot",126,26,nil,13); bossesBtn:SetPoint("RIGHT",-142,0)
   local questsBtn=UI.GoldButton(brow,"Quests",120,26,nil,13); questsBtn:SetPoint("RIGHT",-14,0)
   local keyBtn=UI.GoldButton(brow,"Key",110,26,nil,13); keyBtn:SetPoint("RIGHT",-14,0); keyBtn:Hide()
   local mapBtn=UI.GoldButton(brow,"Map",84,26,ASSET_ROOT.."icon_map",13,true); -- a real button here (user 31.10.)
-  mapBtn:SetPoint("RIGHT",bossesBtn,"LEFT",-6,0); mapBtn:Hide()
+  mapBtn:SetPoint("RIGHT",bossesBtn,"LEFT",-8,0); mapBtn:Hide() -- 8 px between all head buttons (user 31.10.)
 
   -- Rounded card background with an automatic border colour (lighter than
   -- the fill); keeps the SetColorTexture() calls of the list code working.
@@ -1278,6 +1278,26 @@ local function createDungeonPanel(parent)
     framedPanel(left,7)
     listBand(left)
     local lh=dynText(left,"GameFontNormalLarge"); lh:SetPoint("TOPLEFT",16,-14); lh:SetText("Quests  |  "..#quests); lh:SetTextColor(FLT.SkinC(1,0.82,0.20))
+    -- "Share all Quests" right of the count (6.0.2, user 31.10.: own bent arrow, works anywhere in a group)
+    do
+      -- a button plate like the title bar buttons (bug, chat, close) with the share arrow (user 31.10.)
+      local sh=UI.GoldButton(left,"",30,24,ASSET_ROOT.."icon_share",11); sh:SetPoint("LEFT",lh,"RIGHT",12,0)
+      if sh.icon then sh.icon:ClearAllPoints(); sh.icon:SetSize(16,16); sh.icon:SetPoint("CENTER",0,0) end
+      sh:SetScript("OnClick",function() if FLT.ShareAllQuests then FLT.ShareAllQuests(d) end end)
+      sh:SetScript("OnEnter",function(self)
+        GameTooltip:SetOwner(self,"ANCHOR_RIGHT"); GameTooltip:AddLine("Share all Quests",1,0.82,0)
+        local list,why
+        if FLT.ShareAllPreview then list,why=FLT.ShareAllPreview(d) end
+        if list then
+          for _,c in ipairs(list) do GameTooltip:AddDoubleLine(c.quest.name or "?",table.concat(c.missing,", "),1,1,1,0.65,0.65,0.65) end
+          GameTooltip:AddLine("Only quests your group members are missing and can take.",0.75,0.75,0.75,true)
+        else
+          GameTooltip:AddLine(why or "",1,1,1,true)
+        end
+        GameTooltip:Show()
+      end)
+      sh:SetScript("OnLeave",function() GameTooltip:Hide() end)
+    end
     local allianceBtn=UI.GoldButton(left,"Alliance",92,22,nil,12); allianceBtn:SetPoint("TOPRIGHT",-108,-10)
     local hordeBtn=UI.GoldButton(left,"Horde",92,22,nil,12); hordeBtn:SetPoint("TOPRIGHT",-12,-10)
     allianceBtn:SetActive(filter=="Alliance"); hordeBtn:SetActive(filter=="Horde")
@@ -1816,7 +1836,7 @@ local function createDungeonPanel(parent)
     if not hasKeys and mode=="key" then mode="bosses" end
     keyBtn:SetShown(hasKeys)
     questsBtn:ClearAllPoints(); bossesBtn:ClearAllPoints()
-    questsBtn:SetPoint("RIGHT",hasKeys and -134 or -14,0); bossesBtn:SetPoint("RIGHT",hasKeys and -264 or -144,0)
+    questsBtn:SetPoint("RIGHT",hasKeys and -132 or -14,0); bossesBtn:SetPoint("RIGHT",hasKeys and -260 or -142,0)
     local hasMap=FLT.DUNGEON_MAPS and FLT.DUNGEON_MAPS[d.name] and UI.CreateDungeonMap and true or false
     if not hasMap and mode=="map" then mode="bosses" end
     mapBtn:SetShown(hasMap)

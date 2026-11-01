@@ -1172,7 +1172,7 @@ function UI.ShowDiscord()
 end
 
 -- Shared drop-down list (one at a time); a click outside closes it.
--- options = { {key=, label=}, ... }; the current one gets a check mark.
+-- options = { {key=, label=[, checked=][, remove=]}, ... }; the current one (or every o.checked) gets a check mark.
 -- width: list width (default: the owner's width).
 local ddMenu, ddCatcher
 function UI.OpenDropDown(owner, options, current, onPick, width)
@@ -1205,7 +1205,8 @@ function UI.OpenDropDown(owner, options, current, onPick, width)
     end
     r:ClearAllPoints(); r:SetPoint("TOPLEFT", 4, -4 - (i - 1) * 22); r:SetWidth(w - 8)
     r.text:SetText(o.label)
-    local sel = (o.key == current)
+    local sel = o.key == current
+    if o.checked ~= nil then sel = o.checked end -- several picks at once (Gear Planner sources, user 31.10.)
     r.check:SetShown(sel); r.del:SetShown(o.remove and true or false)
     if sel then r.text:SetTextColor(FLT.SkinC(1, 0.82, 0.2)) else r.text:SetTextColor(0.92, 0.90, 0.84) end
     r:SetScript("OnClick", function() ddMenu:Hide(); onPick(o.key) end)

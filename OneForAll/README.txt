@@ -69,6 +69,50 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.0.2 - Quests on the world map
+=================================
+Quest icons, level ranges and zone transitions on the world map, quick quest
+sharing in dungeons and a smarter Gear Planner.
+World map
+- Quest icons (on by default, Quality of Life > World Map > Quests): a yellow !
+  at quest givers with quests for your level, a ? where you turn in finished
+  quests. The tooltip lists the quests with their level and the levels in which
+  they still give experience, e.g. "[8] Practical Prey (5-13)". Walking quest
+  givers show their route. Hidden while Questie is loaded.
+- The zone's level range at the top right of the map and behind the zone name
+  when you hover a zone on the continent map (on by default).
+- Map Landmarks: zone transitions - a signpost where a road leads into the next
+  zone; the tooltip names it, a click shows it (places from Carbonite, GPL).
+  Calmer icon sizes; dungeon and raid entrances always on top.
+- A OneForAll button at the top left of the map (below other addons' buttons
+  like RareScanner) with all World Map switches in a small list.
+- Remove Fog: a slider for how visible the unexplored parts are (0-100 %).
+Dungeons & quests
+- Dungeons & Raids > Quests: "Share all Quests" shares, one after the other,
+  the quests of that dungeon a group member is missing and can take - also
+  outside the dungeon.
+- Quality of Life > Quests: "Quest marks on nameplates" (off by default) - a
+  sword on mobs you must kill, a bag on mobs that drop a quest item, with your
+  progress (3/10); position left, top left, top, top right or right (default).
+  Works in every game language; not inside dungeons yet.
+Gear Planner
+- Source filter right of "All", several sources at once, new source "Crafted";
+  crafted Bind on Pickup items only for your own professions.
+- Crafted items show their profession; a click opens the recipe.
+- Quest rewards count from the level you can take the quest at; items without
+  a required level are listed again; the list title shows the sources on mouseover.
+Talent Trees
+- Import: buttons for talentsforever.com and wowforevertalents.com put the link
+  into the field, selected, so Ctrl+C copies it; the field empties afterwards.
+More
+- Tooltips: new option to hide the blue "You haven't collected this appearance"
+  line (off by default).
+- Quality of Life: the option rows are a little closer together.
+- Welcome setup: resize Blizzard windows, short green stats and quest marks
+  can be switched on there too.
+- Noteworthy changes updated (/ofa news or Settings > Window).
+- Resize Blizzard windows: the "%" display no longer stays on screen.
+
 6.0.1 - A new look, profiles and buff reminders
 ================================================
 A new look for the whole window and a set of new helpers.

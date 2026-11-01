@@ -273,7 +273,12 @@ local function buildIndex()
       if pick then
         req = tonumber(req)
         local e = add(tonumber(id), name, nil, "Quest: " .. pick.name, req > 0 and req or pick.req)
-        if e then e.qid, e.side, e.cls = pick.id, pick.side, pick.cls; if req > 0 then e.req = req end end
+        if e then
+          e.qid, e.side, e.cls = pick.id, pick.side, pick.cls; if req > 0 then e.req = req end
+          -- the level you can take the quest at: a reward without its own required level must not show earlier
+          -- (6.0.2, user 31.10.)
+          if (pick.req or 0) > 0 then e.qreq = pick.req end
+        end
       end
     end
   end
@@ -281,7 +286,10 @@ local function buildIndex()
     -- level ~ skill / 5 (300 skill ~ level 60), only used to skip items far above the level limit
     for _, r in ipairs(list) do
       local sk = r.req or r.y
-      if r.i then add(r.i, r.n, r.q, prof .. (sk and (" " .. sk) or ""), sk and math.floor(sk / 5) or nil) end
+      if r.i then
+        local e = add(r.i, r.n, r.q, prof .. (sk and (" " .. sk) or ""), sk and math.floor(sk / 5) or nil)
+        if e then e.prof, e.ps = prof, r.s end -- the profession button opens this recipe (6.0.2, user 31.10.)
+      end
     end
   end
 end
@@ -668,37 +676,72 @@ function UI.CreateGearPlanner(parent)
   end)
   warn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-  -- source filter (5.7.3, user 23.10.): all / BoE (to look for in the auction house) / quest / dungeon / raid.
-  -- prefs.gearSource nil = all. BoE comes from the client's item data (bind type 2), so an item counts once it is loaded.
-  local SOURCES = { { key = "all", label = "All sources" }, { key = "boe", label = "Bind on Equip only" },
-    { key = "quest", label = "Quest rewards only" }, { key = "dungeon", label = "Dungeon drops only" }, { key = "raid", label = "Raid drops only" } }
-  local SOURCE_SHORT = { boe = "BoE", quest = "Quests", dungeon = "Dungeons", raid = "Raids" }
-  local srcBtn = CreateFrame("Button", nil, right); srcBtn:SetSize(22, 22); srcBtn:SetPoint("LEFT", warn, "RIGHT", 6, 0)
+  -- source filter (5.7.3, user 23.10.; several at once + Crafted since 6.0.2, user 31.10.): prefs.gearSources =
+  -- { boe = true, quest = true, ... }, empty / nil = all sources. BoE comes from the client's item data (bind type 2),
+  -- so an item counts once it is loaded. The button sits right of "All" (placed below, after the level row).
+  local SOURCES = { { key = "boe", label = "Bind on Equip" }, { key = "quest", label = "Quest rewards" },
+    { key = "dungeon", label = "Dungeon drops" }, { key = "raid", label = "Raid drops" }, { key = "crafted", label = "Crafted" } }
+  local SOURCE_SHORT = { boe = "BoE", quest = "Quests", dungeon = "Dungeons", raid = "Raids", crafted = "Crafted" }
+  if prefs.gearSource then prefs.gearSources = { [prefs.gearSource] = true }; prefs.gearSource = nil end -- old single choice
+  local function picked() local t = prefs.gearSources; return t and next(t) and t or nil end
+  local srcBtn = CreateFrame("Button", nil, right); srcBtn:SetSize(22, 22)
   srcBtn.tex = srcBtn:CreateTexture(nil, "ARTWORK"); srcBtn.tex:SetAllPoints(); FLT.SetTex(srcBtn.tex, UI.ASSET_ROOT .. "icon_filter")
   local shl2 = UI.makeTexture(srcBtn, "HIGHLIGHT", 1, 0.82, 0.3, 0.12); shl2:SetAllPoints()
-  local function paintSource() srcBtn.tex:SetAlpha(prefs.gearSource and 1 or 0.5) end
+  local function paintSource() srcBtn.tex:SetAlpha(picked() and 1 or 0.5) end
+  local function shortNames()
+    local t = picked(); if not t then return nil end
+    local out = {}
+    for _, o in ipairs(SOURCES) do if t[o.key] then out[#out + 1] = SOURCE_SHORT[o.key] end end
+    return table.concat(out, ", ")
+  end
   srcBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Source filter", 1, 0.82, 0)
-    local cur = SOURCES[1].label
-    for _, o in ipairs(SOURCES) do if o.key == prefs.gearSource then cur = o.label end end
-    GameTooltip:AddLine(cur, 1, 1, 1)
-    GameTooltip:AddLine("Bind on Equip only: items you can buy in the auction house.", 0.8, 0.8, 0.8, true)
+    GameTooltip:AddLine(shortNames() or "All sources", 1, 1, 1)
+    GameTooltip:AddLine("Pick one or more. Bind on Equip: items you can buy in the auction house. Crafted: your own professions with everything, other professions only Bind on Equip.", 0.8, 0.8, 0.8, true)
     GameTooltip:Show()
   end)
   srcBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  srcBtn:SetScript("OnClick", function(self)
-    UI.OpenDropDown(self, SOURCES, prefs.gearSource or "all", function(k)
-      prefs.gearSource = k ~= "all" and k or nil; paintSource(); refreshList()
+  local function openSources(self)
+    local t = picked() or {}
+    local opts = { { key = "all", label = "All sources", checked = next(t) == nil } }
+    for _, o in ipairs(SOURCES) do opts[#opts + 1] = { key = o.key, label = o.label, checked = t[o.key] and true or false } end
+    UI.OpenDropDown(self, opts, nil, function(k)
+      if k == "all" then prefs.gearSources = nil
+      else prefs.gearSources = prefs.gearSources or {}; prefs.gearSources[k] = not prefs.gearSources[k] or nil end
+      paintSource(); refreshList()
+      openSources(self) -- stays open for more picks; a click outside closes it
     end, 180)
-  end)
+  end
+  srcBtn:SetScript("OnClick", openSources)
   paintSource()
+  -- your professions (crafted items: Bind on Pickup only from your own, user 31.10.)
+  local myProfs = {}
+  local function readProfessions()
+    wipe(myProfs)
+    local p = type(OneForAllCharDB) == "table" and OneForAllCharDB.professions
+    if type(p) == "table" then for name in pairs(p) do myProfs[name] = true end end
+    if GetNumSkillLines and GetSkillLineInfo then
+      for i = 1, tonumber(GetNumSkillLines()) or 0 do
+        local name = GetSkillLineInfo(i)
+        if name and FLT.PROFESSION_ICONS and FLT.PROFESSION_ICONS[name] then myProfs[name] = true end
+      end
+    end
+  end
+  -- a crafted item you could never get: Bind on Pickup from a profession you do not have
+  local function craftedReachable(e)
+    if not e.prof or myProfs[e.prof] then return true end
+    return select(14, GetItemInfo(e.id)) ~= 1
+  end
   local function sourceOK(e)
-    local src = prefs.gearSource
-    if not src then return true end
-    if src == "quest" then return e.qid ~= nil end
-    if src == "dungeon" then return e.d ~= nil and not e.qid and not e.d.raid end
-    if src == "raid" then return e.d ~= nil and not e.qid and e.d.raid and true or false end
-    return select(14, GetItemInfo(e.id)) == 2 -- boe
+    if not craftedReachable(e) then return false end
+    local t = picked()
+    if not t then return true end
+    if t.quest and e.qid ~= nil then return true end
+    if t.dungeon and e.d ~= nil and not e.qid and not e.d.raid then return true end
+    if t.raid and e.d ~= nil and not e.qid and e.d.raid then return true end
+    if t.crafted and e.prof and not e.d and not e.qid then return true end
+    if t.boe and select(14, GetItemInfo(e.id)) == 2 then return true end
+    return false
   end
 
   local box = FLT.SkinBlizz(CreateFrame("EditBox", nil, right, "InputBoxTemplate"))
@@ -717,6 +760,16 @@ function UI.CreateGearPlanner(parent)
   f.searchBox = box
 
   local title = newText(right, "GameFontNormal", 170, GOLD); title:SetPoint("TOPLEFT", 16, -48)
+  if title.SetWordWrap then title:SetWordWrap(false) end
+  -- mouseover: what the list shows and every chosen source (the line itself may be cut off)
+  local titleHover = CreateFrame("Frame", nil, right); titleHover:SetAllPoints(title); titleHover:EnableMouse(true)
+  titleHover:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
+    GameTooltip:AddLine(self.head or "", 1, 0.82, 0)
+    GameTooltip:AddLine("Sources: " .. (self.sources or "all"), 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  titleHover:SetScript("OnLeave", function() GameTooltip:Hide() end)
   -- level range (user 16.10.): two boxes plus "My lvl" (1 - own level, follows when you level up) and
   -- "All"; prefs.gearMax nil = own level
   prefs.gearLevel = nil -- the old dropdown (beta1-4)
@@ -727,6 +780,7 @@ function UI.CreateGearPlanner(parent)
   end
   local allBtn = UI.GoldButton(right, "All", 40, 22, nil, 11); allBtn:SetPoint("TOPRIGHT", -32, -44)
   local mineBtn = UI.GoldButton(right, "My lvl", 56, 22, nil, 11); mineBtn:SetPoint("RIGHT", allBtn, "LEFT", -4, 0)
+  srcBtn:SetPoint("LEFT", allBtn, "RIGHT", 6, 0) -- the source filter: right of "All" (user 31.10.)
   local function levelBox()
     local b = FLT.SkinBlizz(CreateFrame("EditBox", nil, right, "InputBoxTemplate"))
     b:SetSize(26, 20); b:SetAutoFocus(false); b:SetNumeric(true); b:SetMaxLetters(2); b:SetJustifyH("CENTER")
@@ -817,6 +871,23 @@ function UI.CreateGearPlanner(parent)
       GameTooltip:Show()
     end)
     r.go:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    -- crafted items: the profession's icon (star size, no frame like the dungeon swirl), opens the recipe in
+    -- Professions (6.0.2, user 31.10.)
+    r.pro = CreateFrame("Button", nil, r); r.pro:SetSize(24, 24); r.pro:SetPoint("RIGHT", r.star, "LEFT", -13, 0)
+    r.pro.tex = r.pro:CreateTexture(nil, "ARTWORK"); r.pro.tex:SetAllPoints(); r.pro.tex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    r.pro:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    r.pro:SetScript("OnClick", function()
+      local e = r.e; if not (e and e.prof) then return end
+      FLT:OpenPanel("professions")
+      if UI.EnsurePanel then UI.EnsurePanel("professions") end
+      if FLT.ShowRecipeInProfessions then FLT.ShowRecipeInProfessions(e.prof, e.ps) end
+    end)
+    r.pro:SetScript("OnEnter", function(self)
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(r.e and r.e.prof or "", 1, 0.82, 0)
+      GameTooltip:AddLine("Crafted item. Click to open the recipe in Professions (reagents, trainer, who can make it).", 1, 1, 1, true)
+      GameTooltip:Show()
+    end)
+    r.pro:SetScript("OnLeave", function() GameTooltip:Hide() end)
     r.chain = UI.GoldButton(r, "Chain", 56, 20, nil, 11); r.chain:SetPoint("RIGHT", r.star, "LEFT", -8, 0)
     r.chain:SetScript("OnClick", function() FLT.ShowQuestChain(r.e.qid) end)
     r.chain:SetScript("OnEnter", function(self)
@@ -987,6 +1058,7 @@ function UI.CreateGearPlanner(parent)
   local list = {} -- reused
   refreshList = function()
     if not f:IsShown() then return end
+    readProfessions()
     srcBtn:SetShown(not (enchMode and search == ""))
     if enchMode and search == "" then refreshEnchants(); return end
     for _, r in ipairs(erows) do r:Hide() end
@@ -1020,11 +1092,13 @@ function UI.CreateGearPlanner(parent)
       for _, e in ipairs(list) do reqLevel(e) end
       table.sort(list, function(a, b) return (a.req or a.lvl or 0) > (b.req or b.lvl or 0) end)
     else
-      title:SetText("Suggested: " .. slotName)
+      title:SetText(slotName) -- without "Suggested:" so the sources fit (user 31.10.); the full text is on mouseover
       for _, e in ipairs(idx) do
         if fits(e) and offhandOK(e) and usable(e, cls, plevel) and (e.lvl or 0) <= maxLevel and sourceOK(e) then
           local lv = reqLevel(e)
-          if lv <= maxLevel and lv >= minLevel then list[#list + 1] = e end
+          if e.qreq and e.qreq > lv then lv = e.qreq end -- quest rewards: not before the quest can be taken
+          -- no required level (0) counts as level 1, else the low items fell out of a "1 - x" range (6.0.2, user 31.10.)
+          if lv <= maxLevel and math.max(lv, 1) >= minLevel then list[#list + 1] = e end
         end
       end
       -- biggest Value gain first (items without data yet after them), then closest to the level limit,
@@ -1052,7 +1126,9 @@ function UI.CreateGearPlanner(parent)
       end)
       for i = #list, 61, -1 do list[i] = nil end
     end
-    local short = prefs.gearSource and SOURCE_SHORT[prefs.gearSource]
+    local short = shortNames()
+    titleHover.head = (search == "" and tab ~= "wish") and ("Suggested: " .. slotName) or title:GetText()
+    titleHover.sources = short
     if short then title:SetText(title:GetText() .. "  |cffb0b0b0" .. short .. "|r") end
     for _, r in ipairs(rows) do r:Hide() end
     local y = -2
@@ -1065,6 +1141,7 @@ function UI.CreateGearPlanner(parent)
       -- quest rewards: the yellow quest "!" right after the name
       r.name:SetText((e.name or ("Item " .. e.id)) .. (e.qid and " |TInterface\\GossipFrame\\AvailableQuestIcon:0|t" or "")); r.name:SetTextColor(qcolor(e.q))
       local lv = e.req or e.lvl
+      if e.qreq and (lv or 0) < e.qreq then lv = e.qreq end
       local parts = {}
       if lv and lv > 0 then parts[#parts + 1] = (e.req and "lvl " or "lvl ~") .. lv end
       if search ~= "" then parts[#parts + 1] = SLOT_NAME[(LOC_SLOTS[e.loc] or {})[1]] end
@@ -1083,6 +1160,9 @@ function UI.CreateGearPlanner(parent)
         for _, t in ipairs({ r.go.tex, r.go.hl }) do if t.SetAtlas then pcall(t.SetAtlas, t, atlas) end end
       end
       r.chain:SetShown(steps > 1); r.chain.steps = steps
+      local crafted = e.prof and not d and not e.qid
+      r.pro:SetShown(crafted and true or false)
+      if crafted then FLT.SetTex(r.pro.tex, FLT.PROFESSION_ICONS and FLT.PROFESSION_ICONS[e.prof] or "Interface\\Icons\\INV_Misc_QuestionMark") end
       local kind, pct
       if FLT.GearValue then kind, pct = FLT.GearValue.Change(e.id) end
       if kind == "up" then r.val:SetText(string.format("|cff40ff40+%d%%|r", math.floor(pct + 0.5)))
@@ -1094,7 +1174,9 @@ function UI.CreateGearPlanner(parent)
     end
     child:SetHeight(math.max(1, -y))
     if #list == 0 then
-      empty:SetText(short and "Nothing here with the source filter \"" .. short .. "\".\nThe filter button is next to the Wishlist tab." or search ~= "" and "No item found." or (tab == "wish" and "Your wishlist has no item for this slot yet.\nClick the star on an item to add it." or (FLT.GearValue and "No upgrade for this slot in your level range yet." or "No item from our data fits this slot and level yet.")))
+      empty:SetText(short and (tab ~= "wish" and search == "" and FLT.GearValue
+          and "No upgrade among the \"" .. short .. "\" items for this slot in your level range.\nOnly items better than what you wear (for your spec) are listed.\nThe filter button is next to the Wishlist tab."
+          or "Nothing here with the source filter \"" .. short .. "\".\nThe filter button is next to the Wishlist tab.") or search ~= "" and "No item found." or (tab == "wish" and "Your wishlist has no item for this slot yet.\nClick the star on an item to add it." or (FLT.GearValue and "No upgrade for this slot in your level range yet." or "No item from our data fits this slot and level yet.")))
       empty:Show()
     else empty:Hide() end
   end

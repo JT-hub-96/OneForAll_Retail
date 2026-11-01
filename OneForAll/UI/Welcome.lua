@@ -21,10 +21,12 @@ local PAGES = {
   { "Interface", {
     { "Farther camera zoom", "Lets you zoom the camera out further.", "cameraZoom", rec = true },
     { "Move Blizzard windows", "Drag windows like the character window anywhere.", "moveWindows", rec = true },
+    { "Resize Blizzard windows", "Drag a window with the right mouse button to change its size.", "resizeWindows" }, -- user 01.11.
     { "Chat font size", "The same font size for every chat window.", kind = "font" },
     { "Logo color", "The color of the OneForAll minimap button.", kind = "logo" },
     { "Collect minimap buttons", "Puts the minimap buttons of other addons into one bar.", "mmCollect", rec = true },
     { "Square minimap", "A square minimap with a thin black frame.", "mmSquare" },
+    { "Short green stats", "Long \"Equip:\" lines in tooltips as short stats, e.g. \"+1% Hit\".", "shortStats" }, -- user 01.11.
   } },
   { "Loot & Vendors", {
     { "Quicker loot", "Takes everything at once when the game auto loots.", "quickLoot", rec = true },
@@ -40,6 +42,7 @@ local PAGES = {
     { "Quest XP on the experience bar", "Shows the XP of your finished quests.", "questXP", rec = true },
     { "Quest loot sparkles", "Quest items in the world sparkle again.", "questSparkles", rec = true },
     { "Thank players who buff you", "Sends a /thank to players outside your group who buff you.", "thanksBuff", rec = true },
+    { "Quest marks on nameplates", "A sword or a bag with your progress on mobs you need for a quest.", "questMarks" }, -- 6.0.2 (user 01.11.)
   } },
   { "World Map", {
     { "Map Landmarks", "Dungeon entrances, flight masters, ships and more on the map.", "mapLandmarks", rec = true },
