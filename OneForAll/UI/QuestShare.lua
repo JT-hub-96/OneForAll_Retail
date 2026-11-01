@@ -424,6 +424,35 @@ refresh = function(keepOpen, auto)
   popup:Show()
 end
 
+-- "Share all Quests" in the dungeon quest list (6.0.2, user 31.10.): works anywhere (in town, at the entrance), for
+-- the dungeon open in OneForAll. Shares only quests that are in your log, can be shared and that at least one group
+-- member is missing and can take (same checks as the popup); one after the other, 1.5 s apart (the game handles one
+-- share at a time). The game's replies show in the chat as usual.
+local function candidatesFor(d)
+  local saved = currentDungeon
+  currentDungeon = d; scan(); currentDungeon = saved
+  local out = {}
+  for i, c in ipairs(candidates) do out[i] = c end
+  if saved and saved ~= d then scan() end -- the popup's own list back
+  return out
+end
+function FLT.ShareAllPreview(d)
+  if #groupUnits() == 0 then return nil, "You are not in a group." end
+  local list = candidatesFor(d)
+  if #list == 0 then return nil, "Nothing to share: your group has all quests of this dungeon you can share, or cannot take them." end
+  return list
+end
+function FLT.ShareAllQuests(d)
+  local list, why = FLT.ShareAllPreview(d)
+  if not list then FLT.Msg(why); return end
+  local names = {}
+  for i, c in ipairs(list) do
+    names[i] = c.quest.name or ("Quest " .. tostring(c.quest.id))
+    if C_Timer and C_Timer.After then C_Timer.After((i - 1) * 1.5, function() shareQuest(c) end) elseif i == 1 then shareQuest(c) end
+  end
+  FLT.Msg("Sharing " .. #list .. (#list == 1 and " quest: " or " quests: ") .. table.concat(names, ", "))
+end
+
 function FLT:OpenQuestShare()
   currentDungeon = findCurrentDungeon()
   if not currentDungeon then

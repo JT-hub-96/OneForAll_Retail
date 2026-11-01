@@ -1,7 +1,7 @@
 local ADDON, FLT = ...
 
 -- Map Landmarks (Quality of Life, on by default with all parts, user 16.10.): icons on the world map for dungeon and raid
--- entrances, flight masters, zeppelin towers, ship docks and the Deeprun Tram. Entrances come from DungeonData.lua,
+-- entrances, flight masters, zeppelin towers, ship docks, the Deeprun Tram and zone transitions (6.0.2). Entrances come from DungeonData.lua,
 -- the rest from Data/MapLandmarks.lua. Click an entrance to open that dungeon in OneForAll; the other icons only
 -- have a tooltip (user 16.10.; the Shift-click map pin went in 5.7.3, user 23.10.: no use). Flight masters: own
 -- faction + neutral; ships and zeppelins: all, the other faction's marked "(Alliance only)" / "(Horde only)".
@@ -16,19 +16,22 @@ FLT.MapLandmarks = LM
 local ASSET = FLT.ASSET_ROOT or ("Interface\\AddOns\\" .. ADDON .. "\\Assets\\")
 -- icons: client atlases (dungeon/raid) and our assets made from client art (tools note in DESIGN.md)
 local KINDS = {
-  dungeon = { atlas = "dungeon", w = 28, h = 28, key = "lmDungeons" },
-  raid = { atlas = "raid", w = 30, h = 30, key = "lmDungeons" },
+  -- sizes user 01.11.: entrances larger (and on top, a book hid Wailing Caverns), ships / zeppelins / books smaller
+  dungeon = { atlas = "dungeon", w = 34, h = 34, key = "lmDungeons", top = true },
+  raid = { atlas = "raid", w = 36, h = 36, key = "lmDungeons", top = true },
   flight = { file = ASSET .. "landmark_flight", w = 20, h = 20, key = "lmFlight" },
   -- ship / zeppelin: the user's drawings (tools/art/landmarks.py, 24.10.), one ship for both factions
-  shipA = { file = ASSET .. "landmark_ship", w = 34, h = 34, key = "lmTransport" },
-  shipH = { file = ASSET .. "landmark_ship", w = 34, h = 34, key = "lmTransport" },
-  zeppelin = { file = ASSET .. "landmark_zeppelin", w = 38, h = 38, key = "lmTransport" },
-  tram = { file = ASSET .. "landmark_tram", w = 34, h = 34, key = "lmTransport" },
-  book = { file = ASSET .. "landmark_book", w = 26, h = 26, key = "mapBooks" }, -- own art, tools/art/landmark_book.py
+  shipA = { file = ASSET .. "landmark_ship", w = 28, h = 28, key = "lmTransport" },
+  shipH = { file = ASSET .. "landmark_ship", w = 28, h = 28, key = "lmTransport" },
+  zeppelin = { file = ASSET .. "landmark_zeppelin", w = 31, h = 31, key = "lmTransport" },
+  tram = { file = ASSET .. "landmark_tram", w = 28, h = 28, key = "lmTransport" },
+  book = { file = ASSET .. "landmark_book", w = 22, h = 22, key = "mapBooks" }, -- own art, tools/art/landmark_book.py
   -- Skyborne (6.0.1): the user's icons (tools/art/skyborne_pins.py); the switch is on by default for Skyborne, off
   -- for the other races (QoL.Get), who see them too when they switch it on (user 30.10.)
   leyline = { file = ASSET .. "landmark_leyline", w = 31, h = 31, key = "lmSkyborne" }, -- 24 -> 31 (user 30.10.)
   convergence = { file = ASSET .. "landmark_convergence", w = 31, h = 31, key = "lmSkyborne" },
+  -- zone transitions (6.0.2): the user's signpost (tools/art/zone_transition.py), places from Carbonite (GPL-3)
+  transition = { file = ASSET .. "landmark_transition", w = 21, h = 21, key = "lmTransitions" },
 }
 local SIDE_NAME = { A = "Alliance", H = "Horde" }
 
@@ -84,6 +87,11 @@ local function buildIndex()
     local kind = letter == "H" and "convergence" or "leyline"
     for _, p in ipairs(FLT.SKYBORNE_SPOTS[letter == "H" and "conv" or "ley"] or {}) do add(p[1], { kind = kind, x = p[2], y = p[3] }) end
   end
+  -- zone transitions (Data/ZoneTransitions.lua): a pin on each side, the other zone in the tooltip, a click shows it
+  for _, t in ipairs(FLT.ZONE_TRANSITIONS or {}) do
+    local info = C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(t[4])
+    add(t[1], { kind = "transition", x = t[2], y = t[3], to = t[4], dest = { info and info.name or "?" } })
+  end
   for _, b in ipairs(FLT.BOOKS or {}) do
     local mapID = b.x and b.y and ((FLT.MAP_IDS and FLT.MAP_IDS[b.zone]) or (FLT.FindMapID and FLT:FindMapID(b.zone)))
     if mapID then add(mapID, { kind = "book", x = b.x, y = b.y, book = b }) end
@@ -107,6 +115,10 @@ local function onClick(pin)
     if FLT.UI and FLT.UI.ShowBook then FLT.UI.ShowBook(e.book) end
     return
   end
+  if e and e.to then -- zone transition: show the other zone
+    if WorldMapFrame and WorldMapFrame.SetMapID then WorldMapFrame:SetMapID(e.to) end
+    return
+  end
   if not (e and e.list) then return end
   if #e.list == 1 then openDungeon(e.list[1]); return end
   local options = {}
@@ -115,7 +127,7 @@ local function onClick(pin)
 end
 
 local KIND_LABEL = { flight = "Flight master", zeppelin = "Zeppelin", shipA = "Ship", shipH = "Ship", tram = "Deeprun Tram",
-  leyline = "Ley Line", convergence = "Elemental Convergence" }
+  leyline = "Ley Line", convergence = "Elemental Convergence", transition = "Zone transition" }
 local KIND_HINT = { leyline = "Read Leyline here: Attuned for 1 hour (100% regeneration).",
   convergence = "Skysight here: Charged for 1 hour (30% movement speed)." }
 local function onEnter(pin)
@@ -143,6 +155,7 @@ local function onEnter(pin)
     if e.name then GameTooltip:AddLine(KIND_LABEL[e.kind], 0.8, 0.8, 0.8) end
     for _, d in ipairs(e.dest or {}) do GameTooltip:AddLine("To " .. d, 1, 1, 1) end
     if KIND_HINT[e.kind] then GameTooltip:AddLine(KIND_HINT[e.kind], 1, 1, 1, true) end
+    if e.to then GameTooltip:AddLine("Click: show that zone", 0.4, 0.8, 1) end
   end
   GameTooltip:Show()
 end
@@ -174,15 +187,8 @@ local function hideAll()
   used = 0
 end
 
-function LM.Refresh()
-  if not WorldMapFrame then return end
-  hideAll()
-  if not Q("mapLandmarks") or not WorldMapFrame:IsShown() then return end
-  local mapID = WorldMapFrame.GetMapID and WorldMapFrame:GetMapID()
-  if not mapID then return end
-  if not byMap then buildIndex() end
-  local list = byMap[mapID]
-  if not list then return end
+-- the map canvas for our pins (also used by MapQuests.lua): child, width, height, pin scale, frame level
+function LM.Canvas()
   local child = WorldMapFrame.ScrollContainer and WorldMapFrame.ScrollContainer.Child
   if not child then return end
   local w, h = child:GetWidth(), child:GetHeight()
@@ -198,6 +204,20 @@ function LM.Refresh()
     local ok, l = pcall(mgr.GetValidFrameLevel, mgr, "PIN_FRAME_LEVEL_TOPMOST")
     if ok and type(l) == "number" and l > level then level = l end
   end
+  return child, w, h, scale, level
+end
+
+function LM.Refresh()
+  if not WorldMapFrame then return end
+  hideAll()
+  if not Q("mapLandmarks") or not WorldMapFrame:IsShown() then return end
+  local mapID = WorldMapFrame.GetMapID and WorldMapFrame:GetMapID()
+  if not mapID then return end
+  if not byMap then buildIndex() end
+  local list = byMap[mapID]
+  if not list then return end
+  local child, w, h, scale, level = LM.Canvas()
+  if not child then return end
   for _, e in ipairs(list) do
     local k = KINDS[e.kind]
     if Q(k.key) ~= false and (not e.book or FLT:GetBookState(e.book) == "missing") then
@@ -205,7 +225,7 @@ function LM.Refresh()
       setIcon(pin, e.kind)
       pin.entry = e
       pin:SetSize(k.w, k.h); pin:SetScale(scale)
-      pin:SetFrameLevel(level)
+      pin:SetFrameLevel(k.top and level + 5 or level) -- entrances above books and the rest
       pin:ClearAllPoints()
       pin:SetPoint("CENTER", child, "TOPLEFT", (e.x / 100) * w / scale, -(e.y / 100) * h / scale)
       pin:Show()
@@ -243,7 +263,7 @@ ev:SetScript("OnEvent", function(self)
   local Qo = FLT.QoL
   if Qo and Qo.On then
     Qo.On("mapLandmarks", LM.Apply)
-    Qo.On("lmDungeons", LM.Refresh); Qo.On("lmFlight", LM.Refresh); Qo.On("lmTransport", LM.Refresh); Qo.On("mapBooks", LM.Refresh); Qo.On("lmSkyborne", LM.Refresh)
+    Qo.On("lmDungeons", LM.Refresh); Qo.On("lmFlight", LM.Refresh); Qo.On("lmTransport", LM.Refresh); Qo.On("mapBooks", LM.Refresh); Qo.On("lmSkyborne", LM.Refresh); Qo.On("lmTransitions", LM.Refresh)
   end
   if FLT.SafeCall then FLT.SafeCall("MapLandmarks", LM.Apply) else pcall(LM.Apply) end
 end)

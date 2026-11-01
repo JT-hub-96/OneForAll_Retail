@@ -15,12 +15,18 @@ local DEFAULTS = {
   inviteMode = "friendsguild", keywordMode = "friendsguild", keyword = "inv", duelMode = "friendsguild",
   durabilityPct = 20, mmDir = "auto", logoColor = "teal", -- logo color: turquoise by default (user 27.10.)
   lowRank = true, -- on by default (user 15.10.)
-  mapLandmarks = true, lmDungeons = true, lmFlight = true, lmTransport = true, -- Map Landmarks: on with all parts (user 16.10.)
+  mapLandmarks = true, lmDungeons = true, lmFlight = true, lmTransport = true, lmTransitions = true, -- transitions: on like all landmarks (user 01.11.) -- Map Landmarks: on with all parts (user 16.10.)
   gearValue = true, -- Gear Planner Value in item tooltips: on (user 16.10.)
   spellbookTrainer = true, -- trainer button in the spellbook: on (user 22.10.)
   classBright = true, -- brighter class colors: on (user 22.10.)
   mapFog = true, -- Remove Fog: on (user 22.10.)
+  hideAppearance = false, -- hide "You haven't collected this appearance" in item tooltips: off (user 01.11.)
+  mapZoneLevel = true, -- level range of the zone on the world map: on (user 01.11.)
+  mapQuests = true, -- quest icons on the world map: on (user 01.11., first off)
+  mapFogAlpha = 100, -- how visible the unexplored parts are, 0-100 %; 100 (user 01.11.)
   mapBooks = true, -- Library Books on the world map: on (user 23.10.)
+  mapButton = true, -- OneForAll button on the world map: on (user 01.11.)
+  questMarkPos = "right", -- quest marks on nameplates: the switch is off, the mark right of the bar (user 01.11.)
   chatHistory = true, -- last sent messages with arrow up / down: on (user 31.10.)
   chatHide = true, chatAutoHide = 0, -- hide chat button: on, "Hide chat after": Never (user 27.10., 6.0.0)
 }
@@ -963,9 +969,14 @@ local function applyScale(f, name)
 end
 local sizer -- the window being resized: { f =, name =, x =, y =, s =, pct = }
 local sizerFrame = CreateFrame("Frame")
+local sizeStop -- below
 local function sizeUpdate()
   local z = sizer
   if not z then return end
+  -- fail-safe (user 01.11.): the window closed or the button was let go somewhere else (the loot window went away
+  -- while dragging and the "100 %" stayed on screen): stop; and the % goes away after 3 s without a change
+  if not z.f:IsShown() or (IsMouseButtonDown and not IsMouseButtonDown("RightButton")) then sizeStop(); return end
+  if z.tip and GetTime() - z.t > 3 then z.tip = nil; if GameTooltip:GetOwner() == z.f then GameTooltip:Hide() end end
   local x, y = GetCursorPosition()
   local ui = UIParent:GetEffectiveScale()
   local d = ((x - z.x) - (y - z.y)) / ui -- right or down = larger
@@ -973,7 +984,7 @@ local function sizeUpdate()
   sc = math.floor(sc * 20 + 0.5) / 20 -- steps of 5 %
   local pct = math.floor(sc * 100 + 0.5)
   if pct == z.pct then return end
-  z.pct = pct
+  z.pct, z.t, z.tip = pct, GetTime(), true
   -- keep the top left corner where it is
   local f, old = z.f, z.f:GetScale()
   local left, top = f:GetLeft(), f:GetTop()
@@ -989,10 +1000,11 @@ local function sizeStart(f, name)
   sizer = { f = f, name = name, x = x, y = y, s = f:GetScale() or 1 }
   sizerFrame:SetScript("OnUpdate", sizeUpdate)
 end
-local function sizeStop()
+sizeStop = function()
   local z = sizer
   if not z then return end
-  sizer = nil; sizerFrame:SetScript("OnUpdate", nil); GameTooltip:Hide()
+  sizer = nil; sizerFrame:SetScript("OnUpdate", nil)
+  if GameTooltip:GetOwner() == z.f then GameTooltip:Hide() end
   if z.pct then -- it was dragged: remember the size (and the place, when windows are moved too)
     local sc = z.f:GetScale()
     scales()[z.name] = (math.abs(sc - 1) > 0.001) and sc or nil
@@ -1407,6 +1419,17 @@ local function setupTooltips()
     if not tt or not tt.GetItem then return end
     local _, link = tt:GetItem()
     addItemLines(tt, link)
+  end
+  -- the blue appearance lines in item tooltips (6.0.2, user 01.11.: switch hideAppearance): left out while the tooltip
+  -- is built (a line pre-call that returns true skips the line), matched with the client's own strings (any language)
+  local function appearanceLine(t)
+    return type(t) == "string" and not FLT.IsSecret(t) and (t == TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN
+      or t == TRANSMOGRIFY_TOOLTIP_ITEM_UNKNOWN_APPEARANCE_KNOWN)
+  end
+  if TooltipDataProcessor and TooltipDataProcessor.AddLinePreCall and TooltipDataProcessor.AllTypes then
+    TooltipDataProcessor.AddLinePreCall(TooltipDataProcessor.AllTypes, function(_, line)
+      if line and QoL.Get("hideAppearance") and appearanceLine(line.leftText) then return true end
+    end)
   end
   if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tt)
@@ -2234,6 +2257,7 @@ on("questXP", updateXP)
 on("classColors", refreshClassColors)
 on("classBright", refreshClassColors)
 on("mapFog", function() if FLT.RefreshMapFog then FLT.RefreshMapFog() end end)
+on("mapFogAlpha", function() if FLT.RefreshMapFog then FLT.RefreshMapFog() end end)
 on("durability", function() warnedDurability = false; checkDurability() end)
 
 -- Alt+right-click on an item in the bags: on / off the junk list (only while "Sell junk" is on). Bag buttons

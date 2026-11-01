@@ -423,7 +423,7 @@ local function codeWindow()
   if codeFrame then return codeFrame end
   local UI = FLT.UI
   local f = CreateFrame("Frame", "OneForAllTalentCode", UIParent)
-  f:SetSize(520, 150); f:SetPoint("CENTER", 0, 80); f:SetFrameStrata("FULLSCREEN_DIALOG"); f:EnableMouse(true)
+  f:SetSize(520, 160); f:SetPoint("CENTER", 0, 80); f:SetFrameStrata("FULLSCREEN_DIALOG"); f:EnableMouse(true)
   f:SetMovable(true); f:RegisterForDrag("LeftButton"); f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
   UI.FramedPanel(f)
   for _, t in ipairs(UI.OrnateFrame(f, f, 16, 3, "OVERLAY", 4)) do t:SetVertexColor(FLT.SkinC(1, 1, 1, 1)) end
@@ -434,11 +434,34 @@ local function codeWindow()
   f.eb = FLT.SkinBlizz(CreateFrame("EditBox", nil, f, "InputBoxTemplate")); f.eb:SetSize(470, 22); f.eb:SetPoint("TOPLEFT", 24, -72)
   f.eb:SetAutoFocus(false); f.eb:SetMaxLetters(400); f.eb:SetFontObject("GameFontHighlightSmall")
   f.eb:SetScript("OnEscapePressed", function() f:Hide() end)
-  f.eb:SetScript("OnTextChanged", function(b, user) if user and f.readOnly then b:SetText(f.value or ""); b:HighlightText() end end)
+  f.eb:SetScript("OnTextChanged", function(b, user)
+    if user and f.readOnly then b:SetText(f.value or ""); b:HighlightText() elseif user then f.copyLink = false end
+  end)
   f.eb:SetScript("OnEditFocusGained", function(b) if f.readOnly then b:HighlightText() end end)
   f.eb:SetScript("OnEnterPressed", function() if not f.readOnly and f.go:IsShown() then f.go:Click() end end)
-  f.msg = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); f.msg:SetPoint("BOTTOMLEFT", 20, 22); f.msg:SetWidth(330); f.msg:SetJustifyH("LEFT")
+  f.msg = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); f.msg:SetPoint("TOPLEFT", 24, -102); f.msg:SetWidth(470); f.msg:SetJustifyH("LEFT")
   f.go = UI.GoldButton(f, "Import", 120, 24, nil, 12); f.go:SetPoint("BOTTOMRIGHT", -18, 16)
+  -- the two planner sites (user 01.11.): left of Import; a click puts the link into the field, selected, so Ctrl+C
+  -- copies it (addons cannot write to the clipboard themselves)
+  f.sites = CreateFrame("Frame", nil, f); f.sites:SetSize(340, 24); f.sites:SetPoint("BOTTOMLEFT", 18, 16)
+  local prev
+  for _, site in ipairs({ { "talentsforever.com", "https://talentsforever.com/" }, { "wowforevertalents.com", "https://wowforevertalents.com/" } }) do
+    local b = UI.GoldButton(f.sites, site[1], 165, 24, nil, 11)
+    if prev then b:SetPoint("LEFT", prev, "RIGHT", 8, 0) else b:SetPoint("LEFT") end
+    prev = b
+    b:SetScript("OnClick", function()
+      f.eb:SetText(site[2]); f.eb:SetFocus(); f.eb:HighlightText(); f.copyLink = true
+      f.msg:SetText("|cff66ff66Selected: Ctrl+C copies the link.|r")
+    end)
+  end
+  -- after Ctrl+C on such a link: empty the field for the build link and say so (user 01.11.); a moment later, so the
+  -- edit box copies first
+  f.eb:HookScript("OnKeyDown", function(b, key)
+    if f.copyLink and key == "C" and IsControlKeyDown and IsControlKeyDown() then
+      f.copyLink = false
+      C_Timer.After(0.05, function() b:SetText(""); f.msg:SetText("|cff66ff66Link copied.|r Paste your build link here when it is done.") end)
+    end
+  end)
   if UISpecialFrames then table.insert(UISpecialFrames, "OneForAllTalentCode") end
   f:Hide()
   codeFrame = f
@@ -449,7 +472,7 @@ function TC.ShowExport(text)
   f.readOnly, f.value = true, text
   f.title:SetText("Export build")
   f.hint:SetText("Ctrl+C copies the build. Paste it into Import (Talent Trees) to load it again, or share it.")
-  f.eb:SetText(text); f.msg:SetText(""); f.go:Hide()
+  f.eb:SetText(text); f.msg:SetText(""); f.go:Hide(); f.sites:Hide(); f.copyLink = false
   f:Show(); f:Raise(); f.eb:SetFocus(); f.eb:HighlightText()
 end
 function TC.ShowImport(onImport)
@@ -457,7 +480,7 @@ function TC.ShowImport(onImport)
   f.readOnly, f.value = false, nil
   f.title:SetText("Import build")
   f.hint:SetText("Paste a build link of talentsforever.com or wowforevertalents.com, or an OneForAll build string (Ctrl+V).")
-  f.eb:SetText(""); f.msg:SetText(""); f.go:Show()
+  f.eb:SetText(""); f.msg:SetText(""); f.go:Show(); f.sites:Show(); f.copyLink = false
   f.go:SetScript("OnClick", function()
     local err = onImport(f.eb:GetText())
     if err then f.msg:SetText("|cffff6040" .. err .. "|r") else f:Hide() end

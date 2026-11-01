@@ -3,7 +3,7 @@ local _, FLT = ...
 -- Quality of Life > World Map > Remove Fog ("mapFog", user 22.10.): the world map also shows the parts of a
 -- zone you have not explored yet. The game draws the explored parts (MapExplorationPin); after it did, the
 -- missing ones are drawn on the same pin from Data/MapOverlays.lua (own data from the Forever client
--- database). Nothing runs while the option is off or the map is closed.
+-- database), as visible as the slider says (mapFogAlpha, 0-100 %). Nothing runs while the option is off or the map is closed.
 
 local pin, textures, used = nil, {}, 0
 local parsed = {} -- UiMapArtID -> overlays (the data string is read only when a map is opened)
@@ -43,6 +43,7 @@ local function draw()
   local artID = mapID and C_Map and C_Map.GetMapArtID and C_Map.GetMapArtID(mapID)
   local list = artID and overlaysOf(artID)
   if not list or #list == 0 then return end
+  local alpha = (tonumber(FLT.QoL.Get("mapFogAlpha")) or 100) / 100 -- slider 0-100 % (user 01.11.)
   local layers = C_Map.GetMapArtLayers and C_Map.GetMapArtLayers(mapID)
   local idx = map.GetCanvasContainer and map:GetCanvasContainer() and map:GetCanvasContainer():GetCurrentLayerIndex() or 1
   local layer = layers and (layers[idx] or layers[1])
@@ -66,7 +67,7 @@ local function draw()
             t:SetSize(pw, ph); t:SetTexCoord(0, pw / fw, 0, ph / fh)
             t:ClearAllPoints(); t:SetPoint("TOPLEFT", pin, "TOPLEFT", o.x + TW * (k - 1), -(o.y + TH * (j - 1)))
             t:SetTexture(id, nil, nil, "TRILINEAR")
-            t:Show()
+            t:SetAlpha(alpha); t:Show()
           end
         end
       end

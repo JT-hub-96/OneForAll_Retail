@@ -5,25 +5,33 @@ local makeTexture, makeButton = UI.makeTexture, UI.makeButton
 -- "Noteworthy changes" popup. Shown once per account after logging in with a
 -- new NEWS_ID (change it for the next release with news). /ofa news reopens it.
 -- 5.6.3 (user 16.10.): only the Gear Planner. 5.7.0 (user 22.10.): Quality of Life, enchants, set buttons.
+-- 6.0.2 (user 01.11.): World Map, dungeon quests, Gear Planner filters, talent import - not shown automatically.
 
 local NEWS_AUTO = false -- set true (and a new NEWS_ID) for the next release with news
-local NEWS_ID = "5.7.0" -- 5.7.0 (agreed with the user 22.10.): three short entries, no pictures
+-- 6.0.2 (agreed with the user 01.11.): four entries, filled but NOT shown automatically (the welcome setup opens for
+-- new players, both at once would be too much); /ofa news and Settings > Window show them
+local NEWS_ID = "6.0.2"
 
 -- images (optional): pictures in a row under the lines, each { tex, shown width, shown height, texcoord right,
 -- texcoord bottom } (made by tools/art/proc_news.py from the user's screenshots in source_images/news)
 local NEWS = {
-  { icon = "Interface\\Icons\\INV_Misc_Gear_01", title = "Quality of Life - new look", tab = "qol", button = "Open Quality of Life",
+  { icon = "Interface\\Icons\\INV_Misc_Map_01", title = "World Map", tab = "qol", button = "Open Quality of Life",
     lines = {
-      "Groups on the left, a short description for every option and a search.",
-      "A book button in the spellbook (P) shows what your trainer teaches next.",
+      "Quest icons: a yellow ! at quest givers with quests for your level, a ? where you turn in finished quests (hidden with Questie).",
+      "The zone's level range, zone transitions and a OneForAll button with all map switches.",
     } },
-  { icon = "Interface\\Icons\\Trade_Engraving", title = "Gear Planner - enchants", tab = "armory", button = "Open Armory",
+  { icon = "Interface\\Icons\\INV_Misc_Note_02", title = "Dungeons - quests", tab = "dungeons", button = "Open Dungeons & Raids",
     lines = {
-      "Click the small field next to an item: what fits, best for your spec, and who can make it.",
+      "Share all Quests: one click shares every dungeon quest your group still needs.",
+      "Quest marks on nameplates: a sword or bag with your progress on mobs you need (Quality of Life > Quests).",
     } },
-  { icon = "Interface\\Icons\\INV_Helmet_08", title = "Armory - set buttons", tab = "armory", button = "Open Armory",
+  { icon = "Interface\\Icons\\INV_Chest_Chain_05", title = "Gear Planner", tab = "armory", button = "Open Armory",
     lines = {
-      "Buttons for the main sets (Forever T1, Tier 1-3, Dungeon 1-2 ...) and \"Other Sets\" for the rest.",
+      "Filter by source (dungeon, raid, quest, crafted ...), crafted items only from your professions, and a button to the recipe.",
+    } },
+  { icon = "Interface\\Icons\\Ability_Marksmanship", title = "Talent Trees - import", tab = "talents", button = "Open Talent Trees",
+    lines = {
+      "Buttons for talentsforever.com and wowforevertalents.com: copy the link, plan your build there and paste it back.",
     } },
 }
 
