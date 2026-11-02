@@ -19,7 +19,8 @@ local KINDS = {
   -- sizes user 01.11.: entrances larger (and on top, a book hid Wailing Caverns), ships / zeppelins / books smaller
   dungeon = { atlas = "dungeon", w = 34, h = 34, key = "lmDungeons", top = true },
   raid = { atlas = "raid", w = 36, h = 36, key = "lmDungeons", top = true },
-  flight = { file = ASSET .. "landmark_flight", w = 20, h = 20, key = "lmFlight" },
+  -- the game's own flight master tracking icon (user 01.11.: our copy of the atlas kept a light halo)
+  flight = { file = "Interface\\Minimap\\Tracking\\FlightMaster", w = 20, h = 20, key = "lmFlight" },
   -- ship / zeppelin: the user's drawings (tools/art/landmarks.py, 24.10.), one ship for both factions
   shipA = { file = ASSET .. "landmark_ship", w = 28, h = 28, key = "lmTransport" },
   shipH = { file = ASSET .. "landmark_ship", w = 28, h = 28, key = "lmTransport" },
@@ -100,6 +101,7 @@ end
 
 -- Pins ------------------------------------------------------------------------
 local pool, used = {}, 0
+local tops = {} -- reused: x, y of the entrances on the shown map
 
 local function openDungeon(d)
   if WorldMapFrame and WorldMapFrame:IsShown() and HideUIPanel then pcall(HideUIPanel, WorldMapFrame) end
@@ -218,17 +220,29 @@ function LM.Refresh()
   if not list then return end
   local child, w, h, scale, level = LM.Canvas()
   if not child then return end
-  for _, e in ipairs(list) do
-    local k = KINDS[e.kind]
-    if Q(k.key) ~= false and (not e.book or FLT:GetBookState(e.book) == "missing") then
-      local pin = acquire(child)
-      setIcon(pin, e.kind)
-      pin.entry = e
-      pin:SetSize(k.w, k.h); pin:SetScale(scale)
-      pin:SetFrameLevel(k.top and level + 5 or level) -- entrances above books and the rest
-      pin:ClearAllPoints()
-      pin:SetPoint("CENTER", child, "TOPLEFT", (e.x / 100) * w / scale, -(e.y / 100) * h / scale)
-      pin:Show()
+  -- entrances first; an icon that would sit on an entrance (a Library Book right at Wailing Caverns, user 01.11.)
+  -- moves next to it, so both can be seen
+  wipe(tops)
+  for pass = 1, 2 do
+    for _, e in ipairs(list) do
+      local k = KINDS[e.kind]
+      if (pass == 1) == (k.top and true or false) and Q(k.key) ~= false and (not e.book or FLT:GetBookState(e.book) == "missing") then
+        local x, y = (e.x / 100) * w / scale, -(e.y / 100) * h / scale
+        if k.top then tops[#tops + 1] = x; tops[#tops + 1] = y
+        else
+          for i = 1, #tops, 2 do
+            if math.abs(tops[i] - x) < 22 and math.abs(tops[i + 1] - y) < 22 then x, y = tops[i] + 24, tops[i + 1] + 8; break end
+          end
+        end
+        local pin = acquire(child)
+        setIcon(pin, e.kind)
+        pin.entry = e
+        pin:SetSize(k.w, k.h); pin:SetScale(scale)
+        pin:SetFrameLevel(k.top and level + 5 or level) -- entrances above books and the rest
+        pin:ClearAllPoints()
+        pin:SetPoint("CENTER", child, "TOPLEFT", x, y)
+        pin:Show()
+      end
     end
   end
 end

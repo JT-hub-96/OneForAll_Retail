@@ -4,7 +4,8 @@ local _, FLT = ...
 -- - Loot roll window (Need / Greed): a gold star on the item when it is on the wishlist, a green arrow up when it
 --   is an upgrade (no % - the tooltip has it; one star / arrow only, so the window does not look crowded).
 -- - Bags: a green arrow up on items that are an upgrade you can wear now (the game's bags and Baganator).
--- - Quest rewards: a green arrow on upgrades among the rewards / choices (5.6.6).
+-- - Quest rewards: a green arrow on upgrades among the rewards / choices (5.6.6); a gold coin on the choice with the
+--   best sell price (6.0.3, switch questSellCoin).
 -- Both follow the Quality of Life switch "Gear Value" (on by default, user 16.10.).
 -- /ofa rolltest opens the real roll window with an example item (the roll functions are faked for that one
 -- window and restored when it closes; its buttons do not roll).
@@ -167,9 +168,54 @@ local function questButtons()
   end
   return list
 end
+-- Best sell price among the choices (6.0.3, user 02.11.; switch qol.questSellCoin): a gold coin at the top right of
+-- the choice whose vendor price (times the count) is the highest - the arrow stays top left, both can show at once.
+local retried
+local function sellValue(link, count)
+  if not link then return end
+  local info = C_Item and C_Item.GetItemInfo or GetItemInfo
+  local price = info and select(11, info(link))
+  if price == nil then return nil, true end -- not cached yet
+  return (tonumber(price) or 0) * math.max(1, tonumber(count) or 1)
+end
+local function markCoins(fromLog)
+  local list, best, missing = {}, 0, false
+  local want = FLT.QoL and FLT.QoL.Get("questSellCoin")
+  for _, b in ipairs(questButtons()) do
+    if want and b:IsShown() and b.type == "choice" then
+      local link, count
+      if fromLog then
+        link = GetQuestLogItemLink and GetQuestLogItemLink("choice", b:GetID())
+        count = GetQuestLogChoiceInfo and select(3, GetQuestLogChoiceInfo(b:GetID()))
+      else
+        link = GetQuestItemLink and GetQuestItemLink("choice", b:GetID())
+        count = GetQuestItemInfo and select(3, GetQuestItemInfo("choice", b:GetID()))
+      end
+      local v, wait = sellValue(link, count)
+      if wait then missing = true end
+      if v then list[#list + 1] = { b, v }; if v > best then best = v end end
+    elseif b.ofaCoin then b.ofaCoin:Hide() end
+  end
+  for _, e in ipairs(list) do
+    local b, top = e[1], #list >= 2 and best > 0 and e[2] == best
+    if top or b.ofaCoin then
+      local icon = b.Icon or (b:GetName() and _G[b:GetName() .. "IconTexture"]) or b
+      local t = b.ofaCoin
+      if not t then
+        t = b:CreateTexture(nil, "OVERLAY", nil, 7); t:SetSize(14, 14); FLT.SetTex(t, "Interface\\MoneyFrame\\UI-GoldIcon")
+        b.ofaCoin = t
+      end
+      t:ClearAllPoints(); t:SetPoint("TOPRIGHT", icon, "TOPRIGHT", -1, -1); t:SetShown(top and true or false)
+    end
+  end
+  -- item data that was not there yet: once more a moment later
+  if missing and not retried then retried = true; C_Timer.After(0.5, function() markCoins(fromLog) end) else retried = false end
+end
+
 local function markQuest()
   local active = on()
   local fromLog = QuestInfoFrame and QuestInfoFrame.questLog
+  pcall(markCoins, fromLog)
   for _, b in ipairs(questButtons()) do
     local up, lighter = false, false
     if active and b:IsShown() and b.type then

@@ -69,6 +69,32 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.0.3 - Buff reminder update and quest fixes
+==============================================
+A bigger buff reminder, quest marks for loot quests and many small fixes.
+Buff reminder
+- Size slider and a Test button (shows the reminder for 10 seconds to place it).
+- "Show icon only": the icon with the time left and a bar as wide as the icon.
+- No frame around the cards any more.
+- Works in combat too (the icon can only be clicked out of combat); a buff you
+  cast again in combat removes its card at once.
+- Weapon oils, sharpening stones and poisons: type the item's name and pick
+  "(main hand)" or "(off hand)"; time left and charges, a click uses the item.
+- Suggestions for items in your bags; flasks: use the buff's name.
+Quests
+- Quest marks on nameplates also show mobs that drop quest items (bag mark).
+- New option (on): a gold coin on the quest reward with the best sell price.
+- Gear Planner and class quests use quest data with all QuestieDB corrections
+  for WoW Forever (right faction for some druid quests, fixed pre-quests).
+World map
+- Icons that sit on a dungeon entrance (like a Library Book) move next to it.
+- Flight masters use the game's own icon.
+- The OneForAll map marker (e.g. from Library Books) can be removed by a click.
+Quality of Life
+- Preview pictures for 14 more options; tooltips in one fixed column.
+- Move Blizzard windows: also the AddOns, Options, Customer Support and Game
+  Menu windows.
+
 6.0.2 - Quests on the world map
 =================================
 Quest icons, level ranges and zone transitions on the world map, quick quest
