@@ -423,7 +423,7 @@ local marker
 local function ensureMarker()
   if marker or not WorldMapFrame then return marker end
   local parent = WorldMapFrame.ScrollContainer and WorldMapFrame.ScrollContainer.Child or WorldMapFrame
-  marker = CreateFrame("Frame", "OneForAllMapPin", parent)
+  marker = CreateFrame("Button", "OneForAllMapPin", parent)
   marker:SetSize(46, 46)
   marker:SetFrameStrata("TOOLTIP")
   marker:SetFrameLevel(1000)
@@ -436,16 +436,24 @@ local function ensureMarker()
   marker.icon = icon
 
   -- The pin lives on the map canvas, so it must only be visible while the map
-  -- that it was placed on is displayed. Without this check the pin stayed at
-  -- the same canvas position after browsing to another zone.
-  local throttle = 0
-  marker:SetScript("OnUpdate", function(self, elapsed)
-    throttle = throttle + elapsed
-    if throttle < 0.1 then return end
-    throttle = 0
+  -- that it was placed on is displayed (else it stayed at the same canvas spot in another zone). Checked when the
+  -- map changes (6.0.3: was an OnUpdate every 0.1 s).
+  local function sync()
     local current = WorldMapFrame.GetMapID and WorldMapFrame:GetMapID()
-    self:SetAlpha((current == self.mapID) and 1 or 0)
+    marker:SetAlpha((current == marker.mapID) and 1 or 0)
+    marker:EnableMouse(current == marker.mapID)
+  end
+  marker.sync = sync
+  if WorldMapFrame.OnMapChanged then hooksecurefunc(WorldMapFrame, "OnMapChanged", function() if marker:IsShown() then sync() end end) end
+  -- a click removes it again (user 01.11.: there was no way to get rid of it)
+  marker:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  marker:SetScript("OnClick", function(self) self:Hide(); GameTooltip:Hide() end)
+  marker:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("OneForAll marker", 1, 0.82, 0)
+    if self.label then GameTooltip:AddLine(self.label, 1, 1, 1, true) end
+    GameTooltip:AddLine("Click: remove the marker", 0.4, 0.8, 1); GameTooltip:Show()
   end)
+  marker:SetScript("OnLeave", function() GameTooltip:Hide() end)
   marker:Hide()
   return marker
 end
@@ -495,8 +503,8 @@ local function positionMarker(book, mapID)
     m:ClearAllPoints()
     m:SetPoint("BOTTOM", parent, "TOPLEFT", (book.x / 100) * w, -(book.y / 100) * h + 3)
     m.mapID = mapID
-    m:SetAlpha(1)
-    m:Show()
+    m.label = book.label or book.name
+    m:Show(); m.sync()
   end
 end
 

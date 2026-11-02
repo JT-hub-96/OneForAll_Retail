@@ -54,11 +54,42 @@ local function readLog()
   end
 end
 
+-- Loot quests (6.0.3, user 02.11.): the Forever mob tooltip lists kill objectives but not quest items (no mark on
+-- Plainstriders for "The Hunt Begins", Platynator neither). Data/QuestDrops.lua (QuestieDB) says which mob drops a
+-- quest item of which quest; the quest log gives the progress. Mob ID from the unit's GUID (readable outside instances).
+local function npcID(unit)
+  local g = UnitGUID and UnitGUID(unit)
+  if type(g) ~= "string" or FLT.IsSecret(g) then return end
+  local kind, id = g:match("^(%a+)%-%d+%-%d+%-%d+%-%d+%-(%d+)")
+  if kind == "Creature" then return tonumber(id) end
+end
+local function inLog(qid)
+  if C_QuestLog and C_QuestLog.GetLogIndexForQuestID then return (C_QuestLog.GetLogIndexForQuestID(qid) or 0) > 0 end
+  return GetQuestLogIndexByID and (GetQuestLogIndexByID(qid) or 0) > 0
+end
+local function lootObjective(unit)
+  local list = FLT.QUEST_DROPS and FLT.QUEST_DROPS[npcID(unit) or 0]
+  if not list or not (C_QuestLog and C_QuestLog.GetQuestObjectives) then return end
+  for qid, item in list:gmatch("(%d+):(%d+)") do
+    qid = tonumber(qid)
+    if inLog(qid) then
+      local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(tonumber(item))
+      for _, o in ipairs(C_QuestLog.GetQuestObjectives(qid) or {}) do
+        local text = o.text
+        if o.type == "item" and not o.finished and type(text) == "string" and not FLT.IsSecret(text)
+          and (not name or text:find(name, 1, true)) then
+          return false, (o.numFulfilled or 0) .. "/" .. (o.numRequired or 0)
+        end
+      end
+    end
+  end
+end
+
 -- the first objective of this unit that is not done yet: kill (true/false), "3/10"
 local function objective(unit)
-  if not (C_TooltipInfo and C_TooltipInfo.GetUnit and Enum and Enum.TooltipDataLineType) then return end
+  if not (C_TooltipInfo and C_TooltipInfo.GetUnit and Enum and Enum.TooltipDataLineType) then return lootObjective(unit) end
   local ok, data = pcall(C_TooltipInfo.GetUnit, unit)
-  if not ok or type(data) ~= "table" or type(data.lines) ~= "table" then return end
+  if not ok or type(data) ~= "table" or type(data.lines) ~= "table" then return lootObjective(unit) end
   local want = Enum.TooltipDataLineType.QuestObjective
   for _, line in ipairs(data.lines) do
     if TooltipUtil and TooltipUtil.SurfaceArgs and line.leftText == nil then pcall(TooltipUtil.SurfaceArgs, line) end
@@ -76,6 +107,7 @@ local function objective(unit)
       end
     end
   end
+  return lootObjective(unit)
 end
 
 local function markFor(plate)

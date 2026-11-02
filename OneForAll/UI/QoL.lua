@@ -30,8 +30,22 @@ local PREVIEWS = {
   questSparkles = { title = "Quest loot sparkles", tex = "preview_sparkles", w = 300, h = 300, t = 1 },
   bagsFull = { title = "Bags full helper", tex = "preview_bagsfull", w = 560, h = 183, t = 167 / 256 },
   questXP = { title = "Quest XP on the experience bar", tex = "preview_questxp", w = 640, h = 119, t = 190 / 256 },
-  mmCollect = { title = "Collect minimap buttons", tex = "preview_collector", w = 384, h = 164, t = 219 / 256 },
   nodeGlow = { title = "Sparkle on herbs & ore", tex = "preview_nodeglow", w = 300, h = 300, t = 1 }, -- user 26.10.
+  -- the user's screenshots of 01.11.2026 (tools/art/proc_qol_previews.py, source_images/qol_previews)
+  bossDrops = { title = "Boss drops", tex = "preview_bossdrops", w = 462, h = 285, r = 462/512, t = 285/512 },
+  buffIconOnly = { title = "Buff reminder - icon only", tex = "preview_bufficononly", w = 158, h = 178, r = 99/128, t = 111/128 },
+  buffReminder = { title = "Buff reminder", tex = "preview_buffreminder", w = 451, h = 124, r = 451/512, t = 124/128 },
+  classBright = { title = "Brighter colors", tex = "preview_classbright", w = 301, h = 78, r = 301/512, t = 78/128 },
+  classColors = { title = "Class colors", tex = "preview_classcolors", w = 301, h = 81, r = 301/512, t = 81/128 },
+  gearValue = { title = "Gear Value", tex = "preview_gearvalue", w = 352, h = 237, r = 352/512, t = 237/256 },
+  lowRank = { title = "Check low spell ranks", tex = "preview_lowrank", w = 600, h = 217, r = 823/1024, t = 297/512 },
+  mapButton = { title = "OneForAll button on the map", tex = "preview_mapbutton", w = 312, h = 322, r = 312/512, t = 322/512 },
+  mapZoneLevel = { title = "Zone level range", tex = "preview_mapzonelevel", w = 442, h = 82, r = 442/512, t = 82/128 },
+  mmCollect = { title = "Collect minimap buttons", tex = "preview_collector", w = 276, h = 97, r = 276/512, t = 97/128 },
+  mmSquare = { title = "Square minimap", tex = "preview_mmsquare", w = 418, h = 498, r = 418/512, t = 498/512 },
+  questMarks = { title = "Quest marks on nameplates", tex = "preview_questmarks", w = 462, h = 195, r = 462/512, t = 195/256 },
+  shortStats = { title = "Short green stats", tex = "preview_shortstats", w = 465, h = 402, r = 465/512, t = 402/512 },
+  spellbookTrainer = { title = "Trainer button in the spellbook", tex = "preview_spellbooktrainer", w = 600, h = 128, r = 1024/1024, t = 219/256 },
 }
 local previewFrame
 local function showPreview(key)
@@ -54,7 +68,7 @@ local function showPreview(key)
   end
   local f = previewFrame
   f.title:SetText(pv.title)
-  FLT.SetTex(f.pic, UI.ASSET_ROOT .. pv.tex); f.pic:SetTexCoord(0, 1, 0, pv.t)
+  FLT.SetTex(f.pic, UI.ASSET_ROOT .. pv.tex); f.pic:SetTexCoord(0, pv.r or 1, 0, pv.t)
   f.pic:SetSize(pv.w, pv.h)
   f:SetSize(math.max(pv.w + 32, 360), pv.h + 74)
   f:ClearAllPoints(); f:SetPoint("CENTER", UIParent, "CENTER", 0, 60)
@@ -199,13 +213,13 @@ local function createQoLPanel(parent)
   local refreshers, cats, current, search = {}, {}, nil, ""
   local layout, updateCounts -- below
 
-  -- at: a font string to show the tooltip next to (option rows: right of the option name instead of far right
-  -- at the window edge, user 24.10.)
+  -- at: the option name of a row: the tooltip then sits in a fixed column of that row (user 01.11.; was right of the
+  -- name, user 24.10.)
   local function hint(widget, title, text, at)
     widget:HookScript("OnEnter", function(self)
-      if at then
+      if at then -- a fixed column at the height of the row (user 01.11.: next to the name it jumped with every row)
         GameTooltip:SetOwner(self, "ANCHOR_NONE"); GameTooltip:ClearAllPoints()
-        GameTooltip:SetPoint("LEFT", at, "RIGHT", 34, -6)
+        GameTooltip:SetPoint("LEFT", at:GetParent() or at, "LEFT", 380, 0)
       else
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
       end
@@ -463,6 +477,7 @@ local function createQoLPanel(parent)
   g = group(c, "Experience")
   check(g, "Quest XP on the experience bar", "Shows the XP of your finished quests on the experience bar.", "Marks on the experience bar how much XP your finished quests give when you turn them in. The amount is also shown in the bar's tooltip.", "questXP")
   g = group(c, "In the world")
+  check(g, "Best sell price on rewards", "A gold coin on the quest reward choice that sells for the most.", "In the quest log and when you turn in a quest with two or more rewards to choose from: the one with the highest vendor price (times the count) gets a gold coin at its top right. The green upgrade arrow stays at the top left, so an item can have both.", "questSellCoin")
   check(g, "Quest loot sparkles", "Quest items in the world sparkle again.", "The game's loot glow. Changes graphics settings; after switching it off, restart the game.", "questSparkles")
   check(g, "Quest marks on nameplates", "A sword or a bag with your progress on mobs you need for a quest.", "Sword: you must kill it for a quest. Bag: it drops a quest item. With the progress (3/10); nothing once that part is done. Uses the quest lines the game shows in the mob's tooltip. Not inside dungeons yet.", "questMarks")
   choice(g, "Mark position", "Where the mark sits on the nameplate.", nil, "questMarkPos", FLT.QuestMarks and FLT.QuestMarks.POS_OPTIONS or { { key = "left", label = "Left" } }, nil, 24) -- no own switch (user 31.10.)
@@ -580,10 +595,24 @@ local function createQoLPanel(parent)
   -- POPUPS & ALERTS (moved from Settings, 5.6.8, user 22.10.)
   c = category("alerts", "Popups & Alerts", "Interface\\Icons\\INV_Misc_Bell_01", "Popups that come up on their own while you play.")
   g = group(c, "Buff reminder")
-  check(g, "Buff reminder", "A small popup when one of your buffs runs out.", "Add your own buffs below (e.g. Demon Skin) with the time in seconds. When the buff has less time left, or has run out, a small popup says so; click its icon to cast the buff again. It goes away by itself once you renew the buff. Drag the popup to move it.", "buffReminder")
+  check(g, "Buff reminder", "A small popup when one of your buffs runs out.", "Add your own buffs below (e.g. Demon Skin) with the time in seconds. When the buff has less time left, or has run out, a small popup says so; click its icon to cast the buff again (not in combat - there it only shows). It goes away by itself once you renew the buff. Drag the popup to move it.", "buffReminder")
   check(g, "Sleep in cities", "No buff reminder in the capitals.", "Stormwind, Ironforge, Darnassus, Orgrimmar, Thunder Bluff and Undercity. Buffs that ran out there are shown once you leave.", "buffSleepCities", 24)
+  check(g, "Show icon only", "Only the buff's icon with the time left on it, no name.", "The time bar under it is as wide as the icon. Several icons sit next to each other.", "buffIconOnly", 24)
+  do -- size slider and Test (user 01.11.): Test shows the reminder for 10 seconds to set its size and drag it
+    local r = row(g, "Size", "How large the reminder is. Test shows it for 10 seconds.", nil, 24)
+    button(r, "Test", 50, "Shows the reminder for 10 seconds, so you can see its size and drag it where you want it.", function() Q.BuffTest() end)
+    local val = FLT.NewFS(r, nil, "OVERLAY", "GameFontHighlight"); val:SetTextColor(FLT.SkinC(1, 0.82, 0.2))
+    val:SetWidth(40); val:SetJustifyH("RIGHT"); place(r, val, 10)
+    local sl = UI.Slider(r, 130, 50, 150, 5, function(v)
+      val:SetText(v .. " %")
+      if Q.Get("buffScale") ~= v then Q.Set("buffScale", v) end
+    end)
+    place(r, sl, 10)
+    hint(sl, "Size", "50 - 150 %. Mouse wheel or drag.")
+    refreshers[#refreshers + 1] = function() local v = Q.Get("buffScale") or 100; sl:SetValue(v); val:SetText(v .. " %") end
+  end
   do
-    local r = row(g, "Add a buff", "Spell name and seconds left when you want the reminder.", "The name as in your spellbook, e.g. \"Demon Skin\". Seconds: 5 - 3600.", 24)
+    local r = row(g, "Add a buff", "Spell name and seconds left when you want the reminder.", "The name as in your spellbook, e.g. \"Demon Skin\". Flasks and elixirs: the name of their buff (e.g. \"Supreme Power\"). Weapon oils, sharpening stones and poisons: type their name and pick \"(main hand)\" or \"(off hand)\" - the item must be in your bags for the suggestion; a click on the reminder uses it on that weapon. Seconds: 5 - 3600.", 24)
     local list -- the list button, below
     local nameBox, secBox
     local function add()
@@ -605,9 +634,9 @@ local function createQoLPanel(parent)
       if not self:HasFocus() then return end
       local opts = {}
       for _, e in ipairs(Q.BuffSuggestions(self:GetText())) do
-        opts[#opts + 1] = { key = e.name, label = "|T" .. Q.BuffIcon(e.name) .. ":14:14|t " .. e.name .. (e.preset and "  |cff9d9d9d(class buff)|r" or "") }
+        opts[#opts + 1] = { key = e.label or e.name, label = "|T" .. Q.BuffIcon(e.name) .. ":14:14|t " .. (e.label or e.name) .. (e.preset and "  |cff9d9d9d(class buff)|r" or "") }
       end
-      if #opts > 0 then openDropDown(self, opts, nil, function(k) nameBox:SetText(k); secBox:SetFocus(); secBox:HighlightText() end, 260) end
+      if #opts > 0 then openDropDown(self, opts, nil, function(k) nameBox:SetText(k); secBox:SetFocus(); secBox:HighlightText() end, 320) end -- 260 was too narrow for "... (main hand)" (user 01.11.)
     end
     nameBox:SetScript("OnTextChanged", function(self, user) if user then suggest(self) end end)
     nameBox:SetScript("OnEditFocusGained", function(self) if self:GetText() == "" then suggest(self) end end)
@@ -622,14 +651,14 @@ local function createQoLPanel(parent)
     b:SetScript("OnClick", function(self)
       local opts = {}
       for _, e in ipairs(Q.GetBuffReminders()) do
-        opts[#opts + 1] = { key = e.name, label = "|T" .. Q.BuffIcon(e.name) .. ":14:14|t " .. e.name .. "  |cff9d9d9d" .. e.sec .. " s|r", remove = true }
+        opts[#opts + 1] = { key = e.name, label = "|T" .. Q.BuffIcon(e.name) .. ":14:14|t " .. (e.label or e.name) .. "  |cff9d9d9d" .. e.sec .. " s|r", remove = true }
       end
       if #opts == 0 then opts = { { key = "__none", label = "|cff9d9d9dNo buffs yet|r" } }
       else opts[#opts + 1] = { key = "__all", label = FLT.SkinHex("ffd35a") .. "Remove all|r" } end
       openDropDown(self, opts, nil, function(k)
         if k == "__all" then Q.ClearBuffReminders() elseif k ~= "__none" then Q.RemoveBuffReminder(k) end
         show()
-      end, 260)
+      end, 340) -- room for "... (main hand)  60 s" (user 01.11.)
     end)
     b.show = show; list = b
     refreshers[#refreshers + 1] = show

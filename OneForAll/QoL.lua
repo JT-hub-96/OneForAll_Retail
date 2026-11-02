@@ -21,6 +21,8 @@ local DEFAULTS = {
   classBright = true, -- brighter class colors: on (user 22.10.)
   mapFog = true, -- Remove Fog: on (user 22.10.)
   hideAppearance = false, -- hide "You haven't collected this appearance" in item tooltips: off (user 01.11.)
+  questSellCoin = true, -- gold coin on the quest reward with the best sell price: on (user 02.11.)
+  buffScale = 100, buffIconOnly = false, -- buff reminder size in % and icon only (6.0.3, user 01.11.)
   mapZoneLevel = true, -- level range of the zone on the world map: on (user 01.11.)
   mapQuests = true, -- quest icons on the world map: on (user 01.11., first off)
   mapFogAlpha = 100, -- how visible the unexplored parts are, 0-100 %; 100 (user 01.11.)
@@ -512,20 +514,42 @@ QoL._thanks = { consider = considerAura, fire = fireThanks, settle = thanksSettl
 -- Checks: UNIT_AURA (player, short debounce) plus ONE timer to the next moment a buff reaches its time; the 1 s
 -- countdown only runs while the popup is shown. The list lives in qol.buffReminders = { [spell name] = seconds }.
 -- ---------------------------------------------------------------------------
-local checkBuffs, buffAura, syncBuffButton, inCapital -- set in the block below (keeps the file under 200 locals)
+local checkBuffs, buffAura, syncBuffButton, inCapital, layoutCard -- set in the block below (keeps the file under 200 locals)
 do
   local function buffList()
     local d = db(); if not d then return {} end
     d.buffReminders = d.buffReminders or {}
     return d.buffReminders
   end
+  -- weapon enchants (6.0.3, user 01.11.: oils, sharpening stones, poisons): key "<item name>@mh" / "@oh"
+  local SLOTS = { mh = 16, oh = 17 }
+  local SLOT_LABEL = { mh = "main hand", oh = "off hand" }
+  local function weapon(key) -- item name, slot id, "mh"/"oh" (nil for normal buffs)
+    local item, hand = tostring(key):match("^(.+)@(%a%a)$")
+    if item and SLOTS[hand] then return item, SLOTS[hand], hand end
+  end
+  QoL.BuffWeapon = weapon
+  local function label(key)
+    local item, _, hand = weapon(key)
+    return item and (item .. " (" .. SLOT_LABEL[hand] .. ")") or key
+  end
+  QoL.BuffLabel = label
   function QoL.GetBuffReminders()
     local out = {}
-    for name, sec in pairs(buffList()) do out[#out + 1] = { name = name, sec = sec } end
+    for name, sec in pairs(buffList()) do out[#out + 1] = { name = name, sec = sec, label = label(name) } end
     table.sort(out, function(a, b) return a.name < b.name end)
     return out
   end
   local function spellIcon(name)
+    local item, slot = weapon(name)
+    if item then
+      local ok, tex = pcall(function()
+        local id = C_Item and C_Item.GetItemInfoInstant and C_Item.GetItemInfoInstant(item) or (GetItemInfoInstant and GetItemInfoInstant(item))
+        local icon = id and (C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(id) or (GetItemIcon and GetItemIcon(id)))
+        return icon or (GetInventoryItemTexture and GetInventoryItemTexture("player", slot))
+      end)
+      return ok and tex or "Interface\\Icons\\INV_Misc_QuestionMark"
+    end
     local ok, tex = pcall(function()
       if C_Spell and C_Spell.GetSpellTexture then return C_Spell.GetSpellTexture(name) end
       return GetSpellTexture and GetSpellTexture(name)
@@ -533,24 +557,46 @@ do
     return ok and tex or "Interface\\Icons\\INV_Misc_QuestionMark"
   end
   QoL.BuffIcon = spellIcon
-  local function findBuff(name) -- expiration time (0 = no duration) and duration, nil when not on you
-    if AuraUtil and AuraUtil.FindAuraByName then
+  -- expiration time (0 = no duration) and duration; nil when not on you; false when the game does not tell (in combat
+  -- newer clients may keep aura data secret - then the card keeps its state, see checkBuffs)
+  local weaponDur = {} -- the longest time seen per weapon key = the full duration for the bar
+  local function findBuff(name)
+    local item, slot = weapon(name)
+    if item then -- expiration, duration, charges of the temporary enchant on that weapon
+      if not GetWeaponEnchantInfo then return end
+      local hasMH, mhMs, mhCharges, _, hasOH, ohMs, ohCharges = GetWeaponEnchantInfo()
+      local has, ms, charges
+      if slot == 16 then has, ms, charges = hasMH, mhMs, mhCharges else has, ms, charges = hasOH, ohMs, ohCharges end
+      if FLT.IsSecret(has, ms, charges) then return false end
+      if not has then return end
+      local left = (tonumber(ms) or 0) / 1000
+      if left > (weaponDur[name] or 0) then weaponDur[name] = left end
+      return now() + left, weaponDur[name], tonumber(charges) or 0
+    end
+    if type(AuraUtil) == "table" and AuraUtil.FindAuraByName then
       local ok, n, _, _, _, dur, exp = pcall(AuraUtil.FindAuraByName, name, "player", "HELPFUL")
-      if ok and n and not FLT.IsSecret(exp, dur) then return exp or 0, dur or 0 end
+      if not ok or FLT.IsSecret(n) then return false end
+      if n and FLT.IsSecret(exp, dur) then return false end
+      if n then return exp or 0, dur or 0 end
       return
     end
     for i = 1, 40 do
       local n, _, _, _, dur, exp = UnitBuff("player", i)
       if not n then return end
-      if n == name and not FLT.IsSecret(exp, dur) then return exp or 0, dur or 0 end
+      if FLT.IsSecret(n, exp, dur) then return false end
+      if n == name then return exp or 0, dur or 0 end
     end
   end
+  -- buffs you cast again in combat (user 01.11.: the card stayed after rebuffing in combat): the card goes away at once;
+  -- after combat the real check takes over again
+  local renewed, wasDue = {}, {}
 
   -- Cards (user 31.10. mock-up): gold frame, big icon, the buff's name in gold, a grey line, a thin time bar at the
   -- bottom. Up to 4 under each other (the most urgent on top). Left-click the icon: cast it (secure button, made /
   -- changed only out of combat); right-click a card: not now; drag a card: move all (place in qol.buffPopupPos).
   local MAXC, CARD_W, CARD_H, GAP, ICON = 4, 270, 64, 6, 46
   local holder, cards, secures, due = nil, {}, {}, {}
+  local testUntil = 0 -- "Test" in Quality of Life shows the cards for 10 s (user 01.11.)
   local buffSeen, buffDur = {}, {}
   local buffToken, buffDebounce, buffTicker = 0, false, nil
   local function scheduleBuffCheck(delay)
@@ -559,25 +605,36 @@ do
     C_Timer.After(math.max(0.1, delay), function() if my == buffToken then checkBuffs() end end)
   end
   local function barColor()
-    local c = RAID_CLASS_COLORS and UnitClass and RAID_CLASS_COLORS[select(2, UnitClass("player")) or ""]
+    local c = type(RAID_CLASS_COLORS) == "table" and UnitClass and RAID_CLASS_COLORS[select(2, UnitClass("player")) or ""]
     if c then return c.r, c.g, c.b end
     return 0.58, 0.51, 0.79
   end
   local function paintCard(c)
-    local exp, dur = findBuff(c.spell)
+    local exp, dur, charges = findBuff(c.spell)
+    if exp == false then exp, dur, charges = nil, nil, nil end
     local left = exp and exp > 0 and (exp - now()) or 0
+    local item, _, hand = weapon(c.spell)
+    local pre = item and (SLOT_LABEL[hand]:gsub("^%l", string.upper) .. "  ") or ""
+    local extra = (charges and charges > 0) and ("  |cff9d9d9d" .. charges .. " charges|r") or ""
+    if item and GetItemCount and (GetItemCount(item) or 0) == 0 then extra = extra .. "  |cffff6040none in bags|r" end
     if left > 0 then
-      c.sub:SetText(string.format("Running out  |cffffd100%d:%02d|r", math.floor(left / 60), math.floor(left % 60)))
+      c.sub:SetText(string.format("%sRunning out  |cffffd100%d:%02d|r%s", pre, math.floor(left / 60), math.floor(left % 60), extra))
     else
-      c.sub:SetText("Buff has run out")
+      c.sub:SetText(item and (pre .. "run out" .. extra) or "Buff has run out")
     end
+    c.charges:SetText((charges and charges > 0) and tostring(charges) or "")
+    if left > 0 then
+      c.time:SetText(left >= 60 and (math.ceil(left / 60) .. "m") or tostring(math.floor(left)))
+    else c.time:SetText("|cffff5050!|r") end
     dur = (dur and dur > 0) and dur or buffDur[c.spell]
     local frac = (dur and dur > 0) and math.max(0, math.min(1, left / dur)) or 0
-    c.bar:SetWidth(math.max(1, (CARD_W - 24) * frac)); c.bar:SetShown(frac > 0)
+    c.bar:SetWidth(math.max(1, (c.barW or (CARD_W - 24)) * frac)); c.bar:SetShown(frac > 0)
   end
   local function tick() for _, c in ipairs(cards) do if c:IsShown() then paintCard(c) end end end
+  local function scale() return math.max(0.5, math.min(1.5, (tonumber(QoL.Get("buffScale")) or 100) / 100)) end
   local function makeHolder()
     holder = CreateFrame("Frame", "OneForAllBuffReminder", UIParent)
+    holder:SetScale(scale())
     holder:SetSize(CARD_W, CARD_H); holder:SetFrameStrata("MEDIUM"); holder:SetClampedToScreen(true); holder:SetMovable(true)
     local pos = QoL.Get("buffPopupPos")
     if type(pos) == "table" then holder:SetPoint("CENTER", UIParent, "BOTTOMLEFT", pos[1], pos[2]) else holder:SetPoint("TOP", UIParent, "TOP", 0, -160) end
@@ -585,14 +642,30 @@ do
     holder:SetScript("OnHide", function() if buffTicker then buffTicker:Cancel(); buffTicker = nil end end)
     holder:Hide()
   end
+  -- normal: a card with name and time (cards under each other); icon only (user 01.11.): the icon with the time on
+  -- it and the bar as wide as the icon (icons next to each other)
+  function layoutCard(c)
+    local only = QoL.Get("buffIconOnly")
+    local i = c.i
+    c.iconX, c.iconY = only and 4 or 10, only and -4 or -6
+    c:SetSize(only and (ICON + 8) or CARD_W, only and (ICON + 16) or CARD_H)
+    c:ClearAllPoints()
+    if i == 1 then c:SetPoint("TOPLEFT")
+    elseif only then c:SetPoint("TOPLEFT", cards[i - 1], "TOPRIGHT", GAP, 0)
+    else c:SetPoint("TOPLEFT", cards[i - 1], "BOTTOMLEFT", 0, -GAP) end
+    c.icon:ClearAllPoints(); c.icon:SetPoint("TOPLEFT", c.iconX, c.iconY)
+    c.title:SetShown(not only); c.sub:SetShown(not only); c.time:SetShown(only and true or false); c.charges:SetShown(only and true or false)
+    c.barBg:ClearAllPoints()
+    if only then c.barBg:SetPoint("TOPLEFT", c.icon, "BOTTOMLEFT", 0, -4); c.barBg:SetPoint("TOPRIGHT", c.icon, "BOTTOMRIGHT", 0, -4); c.barW = ICON
+    else c.barBg:SetPoint("BOTTOMLEFT", 12, 6); c.barBg:SetPoint("BOTTOMRIGHT", -12, 6); c.barW = CARD_W - 24 end
+  end
   local function card(i)
     if cards[i] then return cards[i] end
-    local c = CreateFrame("Frame", nil, holder); c:SetSize(CARD_W, CARD_H); c.i = i
-    if i == 1 then c:SetPoint("TOPLEFT") else c:SetPoint("TOPLEFT", cards[i - 1], "BOTTOMLEFT", 0, -GAP) end
+    local c = CreateFrame("Frame", nil, holder); c.i = i
     c:EnableMouse(true); c:RegisterForDrag("LeftButton")
-    FLT.UI.FramedPanel(c)
-    for _, t in ipairs(FLT.UI.OrnateFrame(c, c, 16, 3, "OVERLAY", 4)) do t:SetVertexColor(1, 1, 1, 1) end
-    c.icon = c:CreateTexture(nil, "ARTWORK"); c.icon:SetSize(ICON, ICON); c.icon:SetPoint("TOPLEFT", 10, -6)
+    -- no frame any more, a plain dark card (user 01.11.: cleaner)
+    c.back = c:CreateTexture(nil, "BACKGROUND"); c.back:SetAllPoints(); c.back:SetColorTexture(0.04, 0.04, 0.05, 0.78)
+    c.icon = c:CreateTexture(nil, "ARTWORK"); c.icon:SetSize(ICON, ICON)
     c.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     local ring = CreateFrame("Frame", nil, c); ring:SetPoint("TOPLEFT", c.icon, -1, 1); ring:SetPoint("BOTTOMRIGHT", c.icon, 1, -1)
     FLT.UI.RoundRect(c, ring, "OVERLAY", 0, 6, 0, 0.62, 0.48, 0.26, 0.9, FLT.UI.ASSET_ROOT .. "window_ring")
@@ -600,9 +673,13 @@ do
     c.title:SetTextColor(1, 0.82, 0.20)
     c.sub = FLT.NewFS(c, nil, "OVERLAY", "GameFontHighlight"); c.sub:SetPoint("TOPLEFT", c.title, "BOTTOMLEFT", 0, -4)
     c.sub:SetTextColor(0.80, 0.78, 0.72)
-    local bg = c:CreateTexture(nil, "ARTWORK"); bg:SetColorTexture(0.12, 0.12, 0.14, 0.95); bg:SetHeight(4)
-    bg:SetPoint("BOTTOMLEFT", 12, 6); bg:SetPoint("BOTTOMRIGHT", -12, 6)
-    c.bar = c:CreateTexture(nil, "OVERLAY"); c.bar:SetColorTexture(barColor()); c.bar:SetHeight(4); c.bar:SetPoint("BOTTOMLEFT", bg, "BOTTOMLEFT")
+    -- icon only: the time left on the icon
+    c.time = FLT.NewFS(c, nil, "OVERLAY", "GameFontHighlight"); c.time:SetPoint("BOTTOM", c.icon, "BOTTOM", 0, 2)
+    do local font = c.time:GetFont(); if font then c.time:SetFont(font, 13, "OUTLINE") end end
+    c.charges = FLT.NewFS(c, nil, "OVERLAY", "GameFontHighlightSmall"); c.charges:SetPoint("TOPRIGHT", c.icon, "TOPRIGHT", -2, -2)
+    do local font = c.charges:GetFont(); if font then c.charges:SetFont(font, 11, "OUTLINE") end end
+    c.barBg = c:CreateTexture(nil, "ARTWORK"); c.barBg:SetColorTexture(0.12, 0.12, 0.14, 0.95); c.barBg:SetHeight(4)
+    c.bar = c:CreateTexture(nil, "OVERLAY"); c.bar:SetColorTexture(barColor()); c.bar:SetHeight(4); c.bar:SetPoint("BOTTOMLEFT", c.barBg, "BOTTOMLEFT")
     c:SetScript("OnDragStart", function() if not inCombat() then holder:StartMoving() end end)
     c:SetScript("OnDragStop", function()
       holder:StopMovingOrSizing()
@@ -614,24 +691,25 @@ do
       if button == "RightButton" and self.spell then buffSeen[self.spell] = nil; checkBuffs() end -- not now: until it was up again
     end)
     c:SetScript("OnEnter", function(self)
-      GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(self.spell or "", 1, 0.82, 0)
+      GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(label(self.spell or ""), 1, 0.82, 0)
       GameTooltip:AddLine("Click the icon to cast it again.", 1, 1, 1)
       GameTooltip:AddLine("Right-click: hide it until next time. Drag: move.", 0.75, 0.75, 0.75); GameTooltip:Show()
     end)
     c:SetScript("OnLeave", function() GameTooltip:Hide() end)
     cards[i] = c
+    layoutCard(c)
     return c
   end
   -- the cast buttons: made, set, placed and shown / hidden only out of combat. Placed on UIParent at the icon's
   -- spot, NOT anchored to the card: a frame that a protected button hangs on becomes protected itself, and then the
   -- cards could not be hidden in combat (beta20 ADDON_ACTION_BLOCKED; beta18: no anchoring to textures either).
-  -- No reminder in combat at all (user 31.10.): hidden when combat starts (PLAYER_REGEN_DISABLED still allows it),
-  -- checked again when it ends.
+  -- In combat (user 01.11.): the cards stay and keep counting, only the cast buttons are hidden when combat starts
+  -- (PLAYER_REGEN_DISABLED still allows it) - the icons cannot be clicked then; after combat they are set again.
   syncBuffButton = function()
     if inCombat() then return end
     for i = 1, MAXC do
       local c = cards[i]
-      local on = c and c:IsShown() and holder:IsShown() and c.spell
+      local on = c and c:IsShown() and holder:IsShown() and c.spell and c.spell ~= "Example buff"
       local sb = secures[i]
       if on and not sb then
         sb = CreateFrame("Button", "OneForAllBuffReminderCast" .. i, UIParent, "SecureActionButtonTemplate")
@@ -639,15 +717,26 @@ do
         sb:RegisterForClicks("AnyUp", "AnyDown"); sb:SetAttribute("type", "spell")
         sb:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
         sb:SetScript("OnEnter", function(self)
-          GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine("Click: cast " .. (self:GetAttribute("spell") or ""), 1, 0.82, 0); GameTooltip:Show()
+          local it = self:GetAttribute("item")
+          GameTooltip:SetOwner(self, "ANCHOR_TOP")
+          GameTooltip:AddLine(it and ("Click: use " .. it .. " on your " .. (self:GetAttribute("target-slot") == 17 and "off hand" or "main hand")) or ("Click: cast " .. (self:GetAttribute("spell") or "")), 1, 0.82, 0)
+          GameTooltip:Show()
         end)
         sb:SetScript("OnLeave", function() GameTooltip:Hide() end)
         secures[i] = sb
       end
       if sb then
         if on and c:GetLeft() then
-          sb:ClearAllPoints(); sb:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", c:GetLeft() + 10, c:GetTop() - 6)
-          sb:SetAttribute("spell", c.spell); sb:Show()
+          -- same scale as the cards, so the card's own numbers fit (size slider, user 01.11.)
+          sb:SetScale(holder:GetScale()); sb:ClearAllPoints()
+          sb:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", c:GetLeft() + c.iconX, c:GetTop() + c.iconY)
+          local item, slot = weapon(c.spell)
+          if item then -- use the item on that weapon (the game's own "target-slot")
+            sb:SetAttribute("type", "item"); sb:SetAttribute("item", item); sb:SetAttribute("target-slot", slot); sb:SetAttribute("spell", nil)
+          else
+            sb:SetAttribute("type", "spell"); sb:SetAttribute("spell", c.spell); sb:SetAttribute("item", nil); sb:SetAttribute("target-slot", nil)
+          end
+          sb:Show()
         else sb:Hide() end
       end
       if c and c:IsShown() then paintCard(c) end
@@ -671,10 +760,15 @@ do
     for i = #due, 1, -1 do due[i] = nil end
     if QoL.Get("buffReminder") and next(list) then
       local t, nextAt = now(), nil
+      local fight = inCombat()
+      if not fight then wipe(renewed) end
       for name, sec in pairs(list) do
         local exp, dur = findBuff(name)
         sec = tonumber(sec) or 30
-        if exp then
+        if fight and renewed[name] then -- cast again in combat: done for now
+        elseif exp == false then -- the game does not tell (combat): keep the card as it was
+          if wasDue[name] then due[#due + 1] = name end
+        elseif exp then
           buffSeen[name] = true
           if dur and dur > 0 then buffDur[name] = dur end
           if exp > 0 then -- buffs without a duration need no reminder
@@ -693,7 +787,13 @@ do
         return ea < eb
       end)
     end
-    if #due == 0 or inCombat() or (QoL.Get("buffSleepCities") and inCapital()) then
+    wipe(wasDue); for _, n in ipairs(due) do wasDue[n] = true end
+    local test = testUntil > now()
+    if test and #due == 0 then -- Test: the watched buffs (or an example) so the size and place can be set
+      for _, e in ipairs(QoL.GetBuffReminders()) do if #due < 2 then due[#due + 1] = e.name end end
+      if #due == 0 then due[1] = "Example buff" end
+    end
+    if #due == 0 or (not test and QoL.Get("buffSleepCities") and inCapital()) then
       if holder then holder:Hide() end
     else
       if not holder then makeHolder() end
@@ -701,7 +801,7 @@ do
         local name = due[i]
         if name then
           local c = card(i)
-          c.spell = name; c.title:SetText(name); FLT.SetTex(c.icon, spellIcon(name)); c:Show()
+          c.spell = name; c.title:SetText((weapon(name)) or name); FLT.SetTex(c.icon, spellIcon(name)); layoutCard(c); c:Show()
           paintCard(c)
         elseif cards[i] then
           cards[i]:Hide(); cards[i].spell = nil
@@ -712,13 +812,27 @@ do
     syncBuffButton()
   end
   buffAura = function()
-    if buffDebounce or inCombat() or not QoL.Get("buffReminder") then return end -- in combat: checked when it ends
+    if buffDebounce or not QoL.Get("buffReminder") then return end -- also in combat (user 01.11.), debounced
     buffDebounce = true
     C_Timer.After(0.2, function() buffDebounce = false; checkBuffs() end)
   end
   function QoL.AddBuffReminder(name, sec)
     name = tostring(name or ""):match("^%s*(.-)%s*$")
     if name == "" then return end
+    do -- "Superior Wizard Oil (main hand)" as typed or picked from the suggestions
+      local it, h = name:match("^(.-)%s*%((%a+) hand%)$")
+      if it and (h:lower() == "main" or h:lower() == "off") then name = it .. (h:lower() == "main" and "@mh" or "@oh") end
+    end
+    local item, _, hand = weapon(name)
+    if item then -- an item for a weapon: the game's spelling when it knows the item
+      pcall(function()
+        local n = C_Item and C_Item.GetItemInfo and C_Item.GetItemInfo(item) or (GetItemInfo and GetItemInfo(item))
+        if type(n) == "string" and n ~= "" then name = n .. "@" .. hand end
+      end)
+      buffList()[name] = math.max(5, math.min(3600, math.floor(tonumber(sec) or 30)))
+      checkBuffs()
+      return name
+    end
     -- the game's spelling when the spell is known ("demon skin" -> "Demon Skin")
     pcall(function()
       local info = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(name)
@@ -733,9 +847,28 @@ do
   function QoL.ClearBuffReminders() local d = db(); if d then d.buffReminders = {} end; checkBuffs() end
   QoL.CheckBuffs = checkBuffs
   -- combat starts: everything away (the secure buttons may still be hidden in this event)
+  -- UNIT_SPELLCAST_SUCCEEDED (player): only in combat and only for a watched buff
+  function QoL.BuffCast(spellID)
+    if not inCombat() or not QoL.Get("buffReminder") or not spellID or FLT.IsSecret(spellID) then return end
+    local n = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(spellID)) or (GetSpellInfo and GetSpellInfo(spellID))
+    if type(n) ~= "string" or FLT.IsSecret(n) or not buffList()[n] then return end
+    renewed[n] = true
+    checkBuffs()
+  end
   function QoL.BuffCombatStart()
-    if holder then holder:Hide() end
     for _, sb in pairs(secures) do sb:Hide() end
+  end
+  -- size / icon only changed: the cards and the cast buttons follow
+  function QoL.BuffLayout()
+    if not holder then return end
+    holder:SetScale(scale())
+    for _, c in ipairs(cards) do layoutCard(c) end
+    syncBuffButton()
+  end
+  function QoL.BuffTest()
+    testUntil = now() + 10
+    checkBuffs()
+    C_Timer.After(10.1, checkBuffs)
   end
   -- Suggestions for the name box (user 31.10.): the class's usual self buffs first, then the spellbook
   local PRESETS = {
@@ -783,6 +916,35 @@ do
     local class = UnitClass and select(2, UnitClass("player"))
     for _, n in ipairs(PRESETS[class or ""] or {}) do if isKnown[n] or #known == 0 then add(n, true) end end
     if text ~= "" then for _, n in ipairs(known) do add(n, false) end end
+    -- usable items in the bags (oils, sharpening stones, poisons ...) for the main / off hand, from 3 letters on;
+    -- only a few letters are needed ("sharp")
+    if #text >= 3 and C_Container and C_Container.GetContainerNumSlots then
+      -- each slot on its own (beta4: one missing global stopped the whole scan, user 01.11.); the name from the bag
+      -- info, a "Use:" effect when the client can tell (sharpening stones are trade goods, not consumables)
+      local itemName = C_Item and C_Item.GetItemNameByID or C_Item and C_Item.GetItemInfo or GetItemInfo
+      local itemSpell = C_Item and C_Item.GetItemSpell or GetItemSpell
+      local items = {}
+      for bag = 0, 4 do
+        for slot = 1, C_Container.GetContainerNumSlots(bag) or 0 do
+          pcall(function()
+            local info = C_Container.GetContainerItemInfo and C_Container.GetContainerItemInfo(bag, slot)
+            local id = type(info) == "table" and info.itemID or (C_Container.GetContainerItemID and C_Container.GetContainerItemID(bag, slot))
+            if not id then return end
+            local n = type(info) == "table" and info.itemName or (itemName and itemName(id))
+            if type(n) ~= "string" or items[n] or not n:lower():find(text, 1, true) then return end
+            if itemSpell and not itemSpell(id) then return end
+            items[n] = true; items[#items + 1] = n
+          end)
+        end
+      end
+      table.sort(items)
+      for _, n in ipairs(items) do
+        for _, hand in ipairs({ "mh", "oh" }) do
+          local key = n .. "@" .. hand
+          if #out < 8 and not buffList()[key] then out[#out + 1] = { name = key, label = label(key), item = true } end
+        end
+      end
+    end
     return out
   end
 end
@@ -939,6 +1101,8 @@ local MOVABLE = {
   "WorldMapFrame", "ProfessionsFrame", "ProfessionsBookFrame", "PlayerSpellsFrame", "ClassTalentFrame", "CollectionsJournal",
   "EncounterJournal", "AchievementFrame", "PVEFrame", "QuestLogPopupDetailFrame", "ItemSocketingFrame", "GuildBankFrame",
   "LFGParentFrame", -- Looking For Group (user 31.10.)
+  "AddonList", -- the AddOns window (user 02.11.)
+  "SettingsPanel", "HelpFrame", "GameMenuFrame", -- Options, Customer Support, Game Menu (user 02.11.)
 }
 -- windows whose pages cover them completely: the pages take the mouse, so they are grips as well
 local GRIPS = { LFGParentFrame = { "LFGWhoListFrame", "LFGListingFrame", "LFGBrowseFrame" } }
@@ -1050,6 +1214,14 @@ local function makeMovable(name)
       if h ~= f and h.EnableMouse then h:EnableMouse(true) end
       h:HookScript("OnMouseDown", down); h:HookScript("OnMouseUp", up)
     end
+  end
+  -- a title bar that takes the mouse may lie over the close button (AddOns window: the X could not be clicked, user
+  -- 02.11.): the close button goes above it
+  local close = f.CloseButton or f.ClosePanelButton or _G[name .. "CloseButton"]
+  local title = f.TitleContainer
+  if type(close) == "table" and close.SetFrameLevel and type(title) == "table" and title.GetFrameLevel
+    and not (close.IsProtected and close:IsProtected()) and close:GetFrameLevel() <= title:GetFrameLevel() then
+    close:SetFrameLevel(title:GetFrameLevel() + 2)
   end
   f:HookScript("OnShow", function(self)
     if C_Timer and C_Timer.After then C_Timer.After(0, function() applyScale(self, name); applyPos(self, name) end)
@@ -2173,6 +2345,8 @@ local EVENTS = {
 }
 for _, e in ipairs(EVENTS) do pcall(ev.RegisterEvent, ev, e) end
 if ev.RegisterUnitEvent then pcall(ev.RegisterUnitEvent, ev, "UNIT_AURA", "player") else pcall(ev.RegisterEvent, ev, "UNIT_AURA") end
+-- buff reminder: a watched buff cast again in combat (6.0.3)
+if ev.RegisterUnitEvent then pcall(ev.RegisterUnitEvent, ev, "UNIT_SPELLCAST_SUCCEEDED", "player") end
 
 local function onEventSafe(_, event, ...)
   -- chat texts can be "secret" in combat on newer clients: nothing to read then
@@ -2212,6 +2386,7 @@ local function onEventSafe(_, event, ...)
   elseif event == "CHAT_MSG_WHISPER" then whisper(...)
   elseif event == "DUEL_REQUESTED" then duelRequested(...)
   elseif event == "UNIT_AURA" then playerAura(...); if (...) == "player" then buffAura() end
+  elseif event == "UNIT_SPELLCAST_SUCCEEDED" then QoL.BuffCast(select(3, ...))
   elseif event == "UI_ERROR_MESSAGE" then errorMessage(...)
   elseif event == "LOOT_CLOSED" then if helper and not helper.noLoot then helper:Hide() end; pendingLoot = nil
   elseif event == "CVAR_UPDATE" then cvarChanged(...)
@@ -2243,6 +2418,8 @@ on("copyChat", setupCopyButtons)
 on("chatHistory", setupChatHistory)
 on("buffReminder", function() checkBuffs() end)
 on("buffSleepCities", function() checkBuffs() end)
+on("buffScale", function() QoL.BuffLayout() end)
+on("buffIconOnly", function() QoL.BuffLayout() end)
 on("moveWindows", setupMovable)
 on("resizeWindows", function(v)
   setupMovable()
