@@ -354,10 +354,14 @@ SlashCmdList.ONEFORALL = function(cmd)
     local st = FLT.RecipeShareStatus and FLT.RecipeShareStatus()
     if not st then return end
     if not st.enabled then msg("Recipe sharing with other OneForAll users is off (Settings).") return end
-    msg(string.format("Recipe channel: %s. Other users online: %d, players with known recipes: %d. Own status sent: %s.%s",
+    msg(string.format("Recipe channel: %s. Other users online: %d, known recipe holders: %d. Own status sent: %s (every %d min).%s",
       st.channel and ("joined as channel " .. st.channel) or ("not joined (" .. st.tries .. " tries)"),
-      st.online, st.known, st.lastStatus and (st.lastStatus .. " s ago") or "not yet",
+      st.online, st.known, st.lastStatus and (st.lastStatus .. " s ago") or "not yet", math.floor((st.every or 600) / 60),
       st.queued > 0 and (" Waiting to send: " .. st.queued .. ".") or ""))
+    if st.recv then
+      msg(string.format("Received: %d messages (this minute %d, peak %d per minute), dropped %d. Searches %d, players found %d, answers sent %d.",
+        st.recv, st.recvMin, st.recvPeak, st.dropped, st.searches, st.hits, st.answers))
+    end
   elseif cmd == "profscan" then
     if not FLT.ScanProfessions then return end
     local r = FLT.ScanProfessions()

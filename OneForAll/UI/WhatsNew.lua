@@ -64,7 +64,7 @@ local function create()
 
   local close = UI.CloseButton(f); close:SetPoint("TOPRIGHT", -12, -12)
 
-  local _, class = UnitClass and UnitClass("player")
+  local class = UnitClass and select(2, UnitClass("player"))
   local y = -70
   for _, entry in ipairs(NEWS) do
     do

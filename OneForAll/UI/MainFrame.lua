@@ -468,7 +468,7 @@ local function decorateWindow()
   do
     UI.WindowFrame(deco, frame) -- ht7: shared with the popups (UI/Widgets.lua)
     -- the banner across the top (Assets/qol_banner: tavern, camp fire, landscape), solid dark behind the logo on the
-    -- left, fading into the window at the bottom, a quiet line under it
+    -- left, fading into the window at the bottom
     local art = frame:CreateTexture(nil, "BORDER", nil, 0)
     -- ht8 (user 30.10.: the whole griffin): the picture at the banner's height on the right (its aspect 6.38), the dark
     -- logo side fills the rest and fades into it
@@ -480,20 +480,19 @@ local function decorateWindow()
     local BG = { 0.065, 0.058, 0.048 }
     local solid = frame:CreateTexture(nil, "BORDER", nil, 2); solid:SetColorTexture(BG[1], BG[2], BG[3], 1)
     solid:SetPoint("TOPLEFT", art, "TOPLEFT"); solid:SetPoint("BOTTOMLEFT", art, "BOTTOMLEFT"); solid:SetWidth(150)
-    local fadeL = frame:CreateTexture(nil, "BORDER", nil, 2); FLT.SetTex(fadeL, UI.ASSET_ROOT .. "shade_lr"); fadeL:SetVertexColor(BG[1], BG[2], BG[3])
-    fadeL:SetPoint("TOPLEFT", solid, "TOPRIGHT"); fadeL:SetPoint("BOTTOMLEFT", solid, "BOTTOMRIGHT"); fadeL:SetWidth(170)
+    -- 6.1.0 (user 03.11.: the picture stopped "hard" on the left): a real gradient from fully solid to clear, wider;
+    -- shade_lr starts at 92 % only, which left a visible step where the solid part ends
+    local fadeL = frame:CreateTexture(nil, "BORDER", nil, 2)
+    fadeL:SetPoint("TOPLEFT", solid, "TOPRIGHT"); fadeL:SetPoint("BOTTOMLEFT", solid, "BOTTOMRIGHT"); fadeL:SetWidth(240)
+    fadeL:SetColorTexture(1, 1, 1, 1)
+    if not (fadeL.SetGradient and CreateColor and pcall(fadeL.SetGradient, fadeL, "HORIZONTAL", CreateColor(BG[1], BG[2], BG[3], 1), CreateColor(BG[1], BG[2], BG[3], 0))) then
+      if fadeL.SetGradientAlpha then fadeL:SetGradientAlpha("HORIZONTAL", BG[1], BG[2], BG[3], 1, BG[1], BG[2], BG[3], 0)
+      else FLT.SetTex(fadeL, UI.ASSET_ROOT .. "shade_lr"); fadeL:SetVertexColor(BG[1], BG[2], BG[3]); fadeL:SetWidth(170) end
+    end
     local fadeB = frame:CreateTexture(nil, "BORDER", nil, 3); FLT.SetTex(fadeB, UI.ASSET_ROOT .. "shade_lr"); fadeB:SetVertexColor(BG[1], BG[2], BG[3])
     fadeB:SetTexCoord(1, 0, 0, 0, 1, 1, 0, 1)
     fadeB:SetPoint("BOTTOMLEFT", art, "BOTTOMLEFT"); fadeB:SetPoint("BOTTOMRIGHT", art, "BOTTOMRIGHT"); fadeB:SetHeight(14)
-    local edgeLine = frame:CreateTexture(nil, "BORDER", nil, 4); edgeLine:SetColorTexture(FLT.SkinC(0.50, 0.38, 0.19, 0.75)); edgeLine:SetHeight(1)
-    edgeLine:SetPoint("TOPLEFT", art, "BOTTOMLEFT"); edgeLine:SetPoint("TOPRIGHT", art, "BOTTOMRIGHT")
-    -- ht7 (user 30.10.: "so duenn wie moeglich"): exactly one screen pixel high at any UI scale
-    local function onePixel()
-      local _, ph = GetPhysicalScreenSize and GetPhysicalScreenSize()
-      local sc = frame:GetEffectiveScale()
-      if ph and ph > 0 and sc and sc > 0 then edgeLine:SetHeight(768 / ph / sc) end
-    end
-    frame:HookScript("OnShow", onePixel); onePixel()
+    -- no line under the banner (user 03.11., after testing it thin and without: "sieht besser aus")
   end
   -- the gold top edge covers the template's title position: move the title down
   if type(frame.TitleText) == "table" and frame.TitleText.ClearAllPoints then

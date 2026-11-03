@@ -152,7 +152,7 @@ end
 local function optionPage(parent, p)
   local f = CreateFrame("Frame", nil, parent); f:SetAllPoints(); f:Hide()
   local t = UI.SectionTitle(f, p[1], 16, -6)
-  local _, class = UnitClass and UnitClass("player")
+  local class = UnitClass and select(2, UnitClass("player"))
   local y, upd = -40, {}
   for _, it in ipairs(p[2]) do
     if not (it.hunter and class ~= "HUNTER") then

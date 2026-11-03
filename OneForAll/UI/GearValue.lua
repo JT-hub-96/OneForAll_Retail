@@ -204,7 +204,8 @@ function GV.EnchantValue(eid, slot, itemID)
       if sp and sp > 0 then estats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT = (estats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT or 0) + v / sp end
     elseif KEYS[k] then estats[k] = (estats[k] or 0) + v end
   end
-  local _, _, _, _, _, cid, sub = itemID and GetItemInfoInstant(itemID)
+  local cid, sub
+  if itemID and GetItemInfoInstant then cid, sub = select(6, GetItemInfoInstant(itemID)) end
   return score(estats, slot, itemID, cid == 2 and sub == 19)
 end
 
@@ -295,6 +296,8 @@ local OFA = "|cffc8961eOFA|r "  -- dark yellow (user 16.10.)
 local UP = OFA .. "|T" .. ASSET .. "icon_arrow_up:16:16:0:0|t "
 local DOWN = OFA .. "|T" .. ASSET .. "icon_arrow_down:16:16:0:0|t "
 GV.UP, GV.DOWN = UP, DOWN
+-- "OFA <gold star> Wishlist" in item tooltips (user 03.11.), the star tinted like the wishlist star
+GV.WISH = OFA .. "|T" .. ASSET .. "icon_star:16:16:0:0:64:64:0:64:0:64:255:209:64|t Wishlist"
 -- tooltip: green "Upgrade: 30%" with an arrow up, red "Downgrade: 12%" with an arrow down (like the user's example);
 -- Quality of Life switch "gearValue", on by default (user 16.10.)
 function GV.TooltipLine(tt, id)

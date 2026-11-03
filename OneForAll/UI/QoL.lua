@@ -216,18 +216,38 @@ local function createQoLPanel(parent)
   -- at: the option name of a row: the tooltip then sits in a fixed column of that row (user 01.11.; was right of the
   -- name, user 24.10.)
   local function hint(widget, title, text, at)
-    widget:HookScript("OnEnter", function(self)
-      if at then -- a fixed column at the height of the row (user 01.11.: next to the name it jumped with every row)
+    local function show(self)
+      if at then
+        -- under the row, left-aligned with the name (user 03.11.: right of the text it covered the boxes and
+        -- buttons; 01.11.: a fixed place, not next to the name where it jumped with every row)
         GameTooltip:SetOwner(self, "ANCHOR_NONE"); GameTooltip:ClearAllPoints()
-        GameTooltip:SetPoint("LEFT", at:GetParent() or at, "LEFT", 380, 0)
+        GameTooltip:SetPoint("TOPLEFT", at:GetParent() or at, "BOTTOMLEFT", 56, 2)
       else
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
       end
       GameTooltip:AddLine(title, FLT.SkinC(1, 0.82, 0))
       if text then GameTooltip:AddLine(text, 1, 1, 1, true) end
       GameTooltip:Show()
-    end)
-    widget:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    end
+    if not at then
+      widget:HookScript("OnEnter", show)
+      widget:HookScript("OnLeave", function() GameTooltip:Hide() end)
+      return
+    end
+    -- rows: only over the name and the description, not over the controls on the right (user 03.11.: the big
+    -- tooltip covered the boxes); followed while the mouse is on the row only
+    local row = at:GetParent() or at
+    local shown = false
+    local function over(self)
+      local x = GetCursorPosition and GetCursorPosition()
+      local sc = self:GetEffectiveScale() or 1
+      local right = math.max(at:GetRight() or 0, (row.desc and row.desc:GetRight()) or 0) + 12
+      local inside = not x or (x / sc) <= right
+      if inside and not shown then shown = true; show(self)
+      elseif not inside and shown then shown = false; GameTooltip:Hide() end
+    end
+    widget:HookScript("OnEnter", function(self) shown = false; over(self); self:SetScript("OnUpdate", over) end)
+    widget:HookScript("OnLeave", function(self) self:SetScript("OnUpdate", nil); shown = false; GameTooltip:Hide() end)
   end
 
   -- nav = shorter name for the button on the left (when the full one touches the count)
@@ -497,7 +517,7 @@ local function createQoLPanel(parent)
   check(g, "Target of players", "Shows who a player or NPC under your mouse is targeting.", "\"You\" when it is you.", "unitTarget")
 
   -- SOCIAL
-  c = category("social", "Social", "Interface\\Icons\\INV_Letter_15", "Group invites, duels and thanks.")
+  c = category("social", "Social", "Interface\\Icons\\INV_Letter_15", "Group invites, duels, recipe sharing and thanks.")
   g = group(c, "Groups")
   choice(g, "Group invites from", "Accepts group invites from the players you choose.", "Off: OneForAll does nothing with invites.", "inviteMode", Q.WHO_OPTIONS, "inviteOn")
   choice(g, "Keyword invites from", "Invites players who whisper you the keyword.", "Off: OneForAll does nothing with whispers.", "keywordMode", Q.WHO_OPTIONS, "keywordOn")
@@ -513,6 +533,11 @@ local function createQoLPanel(parent)
   end
   g = group(c, "Duels")
   choice(g, "Allow duels from", "Duel requests from everyone else are declined.", "Off: OneForAll does nothing with duels.", "duelMode", Q.DUEL_OPTIONS, "duelOn")
+  g = group(c, "Recipes")
+  check(g, "Share recipes with other OneForAll users", "Finds OneForAll users outside your guild who know a recipe.",
+    "The Search button of a recipe in Professions > All recipes asks the other OneForAll users who know it (blue marker); only a few of them answer, so it stays fast with many players. When off, you are not asked and do not search either. Guild members are always shared. Moved here from Settings in 6.1.0.",
+    nil, nil, function() return FLT.IsRecipeShareEnabled and FLT.IsRecipeShareEnabled() end,
+    function(v) if FLT.SetRecipeShareEnabled then FLT.SetRecipeShareEnabled(v) end end)
   g = group(c, "Buffs")
   check(g, "Thank players who buff you", "Sends a /thank to players outside your group who buff you.", "For buffs that last longer than 2 minutes. It comes 1 second later, not in combat, at most once every 5 minutes per player. Your target is not changed. /ofa thanks shows the last buffs.", "thanksBuff")
 
@@ -612,7 +637,7 @@ local function createQoLPanel(parent)
     refreshers[#refreshers + 1] = function() local v = Q.Get("buffScale") or 100; sl:SetValue(v); val:SetText(v .. " %") end
   end
   do
-    local r = row(g, "Add a buff", "Spell name and seconds left when you want the reminder.", "The name as in your spellbook, e.g. \"Demon Skin\". Flasks and elixirs: the name of their buff (e.g. \"Supreme Power\"). Weapon oils, sharpening stones and poisons: type their name and pick \"(main hand)\" or \"(off hand)\" - the item must be in your bags for the suggestion; a click on the reminder uses it on that weapon. Seconds: 5 - 3600.", 24)
+    local r = row(g, "Add a buff", "Spell name and seconds left when you want the reminder.", "Any buff name works, also without a suggestion - the list only helps. The name as in your spellbook, e.g. \"Demon Skin\". Flasks and elixirs: the name of their buff (e.g. \"Supreme Power\"). Weapon oils, sharpening stones and poisons: type their name (\"sh\" shows the sharpening stones) and pick \"(main hand)\", or add \"(off hand)\" for the other weapon; a click on the reminder uses it on that weapon when it is in your bags. Seconds: 5 - 3600.", 24)
     local list -- the list button, below
     local nameBox, secBox
     local function add()
@@ -621,6 +646,9 @@ local function createQoLPanel(parent)
     end
     button(r, "Add", 50, nil, add)
     secBox = FLT.SkinBlizz(CreateFrame("EditBox", nil, r, "InputBoxTemplate"))
+    -- "sec" behind the box (user 03.11.: not clear that 30 are seconds)
+    local secLabel = FLT.NewFS(r, nil, "OVERLAY", "GameFontDisableSmall"); secLabel:SetText("sec")
+    secLabel:SetPoint("RIGHT", r, "RIGHT", -10 - r.rightW, 0); r.rightW = r.rightW + (secLabel:GetStringWidth() or 18) + 6
     secBox:SetSize(40, 20); secBox:SetAutoFocus(false); secBox:SetMaxLetters(4); secBox:SetNumeric(true); secBox:SetText("30"); place(r, secBox, 10)
     nameBox = FLT.SkinBlizz(CreateFrame("EditBox", nil, r, "InputBoxTemplate"))
     nameBox:SetSize(150, 20); nameBox:SetAutoFocus(false); nameBox:SetMaxLetters(40); place(r, nameBox, 12)
@@ -634,12 +662,26 @@ local function createQoLPanel(parent)
       if not self:HasFocus() then return end
       local opts = {}
       for _, e in ipairs(Q.BuffSuggestions(self:GetText())) do
-        opts[#opts + 1] = { key = e.label or e.name, label = "|T" .. Q.BuffIcon(e.name) .. ":14:14|t " .. (e.label or e.name) .. (e.preset and "  |cff9d9d9d(class buff)|r" or "") }
+        opts[#opts + 1] = { key = e.label or e.name, label = "|T" .. Q.BuffIcon(e.name) .. ":14:14|t " .. (e.label or e.name) .. (e.preset and "  |cff9d9d9d(class buff)|r" or (e.notInBags and "  |cff9d9d9d(none in bags)|r" or "")) }
       end
-      if #opts > 0 then openDropDown(self, opts, nil, function(k) nameBox:SetText(k); secBox:SetFocus(); secBox:HighlightText() end, 320) end -- 260 was too narrow for "... (main hand)" (user 01.11.)
+      -- no suggestion: say that any name works (user 03.11.: players thought they could only pick from the list)
+      if #opts == 0 and self:GetText() ~= "" then
+        opts[1] = { key = "__any", label = "|cff9d9d9dNo suggestion - any buff name works: press Enter or Add|r" }
+      end
+      if #opts > 0 then openDropDown(self, opts, nil, function(k)
+        if k == "__any" then self:SetFocus(); return end
+        nameBox:SetText(k); secBox:SetFocus(); secBox:HighlightText()
+      end, 340) end -- 260 was too narrow for "... (main hand)" (user 01.11.)
     end
-    nameBox:SetScript("OnTextChanged", function(self, user) if user then suggest(self) end end)
-    nameBox:SetScript("OnEditFocusGained", function(self) if self:GetText() == "" then suggest(self) end end)
+    -- grey example while empty: any name can be typed, the list only helps (hooked after SetScript - beta13 set it
+    -- before, the SetScript calls replaced the hooks and the example stayed under the typed text)
+    local hint = FLT.NewFS(nameBox, nil, "ARTWORK", "GameFontDisableSmall"); hint:SetPoint("LEFT", 6, 0); hint:SetPoint("RIGHT", -4, 0)
+    hint:SetJustifyH("LEFT"); hint:SetText("any buff, e.g. Demon Skin"); if hint.SetWordWrap then hint:SetWordWrap(false) end
+    local function paintHint() hint:SetShown(nameBox:GetText() == "" and not nameBox:HasFocus()) end
+    nameBox:SetScript("OnTextChanged", function(self, user) paintHint(); if user then suggest(self) end end)
+    nameBox:SetScript("OnEditFocusGained", function(self) paintHint(); if self:GetText() == "" then suggest(self) end end)
+    nameBox:SetScript("OnEditFocusLost", paintHint)
+    paintHint()
     r:SetScript("OnClick", function() nameBox:SetFocus() end)
     -- the watched buffs: a click on one removes it
     local lr = row(g, "Watched buffs", "Click a buff in the list to remove it.", nil, 24)

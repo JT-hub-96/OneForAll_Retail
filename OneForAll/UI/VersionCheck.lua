@@ -9,7 +9,7 @@ local _, FLT = ...
 -- newer version seen later is remembered and shown at the next login.
 
 local PREFIX = "OFAVER"
-local CHANNEL = "OFAShare"
+local CHANNEL = "OFAShare2" -- the recipe channel (6.1.0; 6.0 and older use "OFAShare")
 local LOGIN_WINDOW = 180 -- seconds after login in which the note may appear
 
 local function myVersion()

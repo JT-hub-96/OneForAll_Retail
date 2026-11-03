@@ -26,8 +26,8 @@ local SLOTS = {
   { 11, "Finger0Slot", "Finger" }, { 12, "Finger1Slot", "Finger" }, { 13, "Trinket0Slot", "Trinket" }, { 14, "Trinket1Slot", "Trinket" },
   { 16, "MainHandSlot", "Main Hand" }, { 17, "SecondaryHandSlot", "Off Hand" }, { 18, "RangedSlot", "Ranged" },
 }
-local SLOT_NAME = {}
-for _, s in ipairs(SLOTS) do SLOT_NAME[s[1]] = s[3] end
+local SLOT_NAME, SLOT_INDEX = {}, {}
+for i, s in ipairs(SLOTS) do SLOT_NAME[s[1]] = s[3]; SLOT_INDEX[s[1]] = i end
 -- equip location -> slots it fits
 local LOC_SLOTS = {
   INVTYPE_HEAD = {1}, INVTYPE_NECK = {2}, INVTYPE_SHOULDER = {3}, INVTYPE_CLOAK = {15}, INVTYPE_CHEST = {5}, INVTYPE_ROBE = {5},
@@ -540,7 +540,8 @@ function UI.CreateGearPlanner(parent)
         local link = GetInventoryItemLink("player", self.slot); if link then HandleModifiedItemClick(link) end; return
       end
       if self.grey then return end
-      selected = self.slot; enchMode = false; search = ""; if f.searchBox then f.searchBox:SetText("") end
+      selected = self.slot; enchMode = false; search = ""; prefs.wishAll = nil; -- a slot click shows that slot again
+      if f.searchBox then f.searchBox:SetText("") end
       f.paintSlots()
       refreshList()
     end)
@@ -810,7 +811,64 @@ function UI.CreateGearPlanner(parent)
   allBtn:SetScript("OnClick", function() minBox:ClearFocus(); maxBox:ClearFocus(); setRange(1, MAX_LEVEL) end)
   -- the level range is for items; hidden while the enchants of a slot are listed
   local function showRange(on) for _, w in ipairs({ lvLabel, minBox, dash, maxBox, mineBtn, allBtn }) do w:SetShown(on) end end
+  -- "Clear wishlist" (user 03.11.): where the level range is, on the Wishlist tab (the range does not filter the
+  -- wishlist). Clear all, or clear smart = the items that are no upgrade any more; both ask first.
+  local clearBtn = UI.GoldButton(right, "Clear wishlist", 116, 22, nil, 11); clearBtn:SetPoint("TOPRIGHT", -32, -44); clearBtn:Hide()
+  do local nm = UI.NewMark(clearBtn, "New in OneForAll 6.1.0: clear the wishlist, all or only what is no upgrade any more."); nm:SetPoint("RIGHT", clearBtn, "LEFT", -4, 0) end
+  -- "All slots" (user 03.11.): the whole wishlist at once instead of the selected slot
+  local allSlotsBtn = UI.GoldButton(right, "All slots", 80, 22, nil, 11); allSlotsBtn:SetPoint("RIGHT", clearBtn, "LEFT", -22, 0); allSlotsBtn:Hide()
+  allSlotsBtn:SetScript("OnClick", function() prefs.wishAll = not prefs.wishAll or nil; refreshList() end)
+  allSlotsBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("All slots", 1, 0.82, 0)
+    GameTooltip:AddLine("Shows the whole wishlist, sorted by slot. Click again for the selected slot only.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  allSlotsBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  local function noUpgrades()
+    local out, GV = {}, FLT.GearValue
+    for id in pairs(wishlist()) do
+      if type(id) == "number" and GV and GV.Change then
+        local kind = GV.Change(id)
+        if kind == "down" or kind == "same" or kind == "worn" then out[#out + 1] = id end -- no data yet: kept
+      end
+    end
+    return out
+  end
+  clearBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Clear wishlist", 1, 0.82, 0)
+    GameTooltip:AddLine("Clear all: everything on the wishlist of this character (items and enchants).", 1, 1, 1, true)
+    GameTooltip:AddLine("Clear smart: only the items that are no upgrade any more (the same or worse than what you wear, for your spec). Items without data yet and enchants stay.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  clearBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  clearBtn:SetScript("OnClick", function(self)
+    GameTooltip:Hide()
+    local all = 0
+    for _ in pairs(wishlist()) do all = all + 1 end
+    local smart = noUpgrades()
+    UI.OpenDropDown(self, { { key = "all", label = string.format("Clear all (%d)", all) },
+      { key = "smart", label = string.format("Clear smart (%d)", #smart) } }, nil, function(k)
+      UI.CloseDropDown()
+      if k == "all" then
+        if all == 0 then return end
+        UI.Confirm(string.format("Remove all %d entries from the wishlist of this character?", all), function()
+          wipe(wishlist()); refreshList()
+        end, "Clear all")
+      else
+        if #smart == 0 then
+          if FLT.Msg then FLT.Msg("Every item on your wishlist is still an upgrade (or has no data yet) - nothing to remove.") end
+          return
+        end
+        UI.Confirm(string.format("Remove the %d %s from the wishlist that %s no upgrade any more?", #smart, #smart == 1 and "item" or "items", #smart == 1 and "is" or "are"), function()
+          local w = wishlist(); for _, id in ipairs(smart) do w[id] = nil end; refreshList()
+        end, "Clear smart")
+      end
+    end, 150)
+  end)
   local function paintRange()
+    local wish = tab == "wish" and search == ""
+    clearBtn:SetShown(wish); allSlotsBtn:SetShown(wish); allSlotsBtn:SetActive(prefs.wishAll and true or false)
+    if wish then showRange(false); return end
     showRange(true)
     local lo, hi = range()
     if not minBox:HasFocus() then minBox:SetText(lo) end
@@ -1080,17 +1138,25 @@ function UI.CreateGearPlanner(parent)
       end
       table.sort(list, function(a, b) return (a.name or "") < (b.name or "") end)
     elseif tab == "wish" then
-      title:SetText("Wishlist: " .. slotName)
+      -- "All slots" (user 03.11.): the whole wishlist, in the order of the slots, else the selected slot
+      local all = prefs.wishAll and true or false
+      title:SetText("Wishlist: " .. (all and "all slots" or slotName))
       for id in pairs(wishlist()) do
-        local e = ids[id]
-        if not e then -- an item that is not in our data: build a small entry
+        local e = type(id) == "number" and ids[id]
+        if not e and type(id) == "number" then -- an item that is not in our data: build a small entry
           local _, _, _, loc, icon, cid, sub = GetItemInfoInstant(id)
           if loc and LOC_SLOTS[loc] then e = { id = id, loc = loc, icon = icon, cid = cid, sub = sub }; ids[id] = e end
         end
-        if e and fits(e) and sourceOK(e) then list[#list + 1] = e end
+        if e and (all or fits(e)) and sourceOK(e) then list[#list + 1] = e end
       end
       for _, e in ipairs(list) do reqLevel(e) end
-      table.sort(list, function(a, b) return (a.req or a.lvl or 0) > (b.req or b.lvl or 0) end)
+      table.sort(list, function(a, b)
+        if all then
+          local sa, sb = SLOT_INDEX[(LOC_SLOTS[a.loc] or {})[1]] or 99, SLOT_INDEX[(LOC_SLOTS[b.loc] or {})[1]] or 99
+          if sa ~= sb then return sa < sb end
+        end
+        return (a.req or a.lvl or 0) > (b.req or b.lvl or 0)
+      end)
     else
       title:SetText(slotName) -- without "Suggested:" so the sources fit (user 31.10.); the full text is on mouseover
       for _, e in ipairs(idx) do
@@ -1144,7 +1210,7 @@ function UI.CreateGearPlanner(parent)
       if e.qreq and (lv or 0) < e.qreq then lv = e.qreq end
       local parts = {}
       if lv and lv > 0 then parts[#parts + 1] = (e.req and "lvl " or "lvl ~") .. lv end
-      if search ~= "" then parts[#parts + 1] = SLOT_NAME[(LOC_SLOTS[e.loc] or {})[1]] end
+      if search ~= "" or (tab == "wish" and prefs.wishAll) then parts[#parts + 1] = SLOT_NAME[(LOC_SLOTS[e.loc] or {})[1]] end
       if e.src then parts[#parts + 1] = e.src end
       r.sub:SetText(table.concat(parts, "  ·  "))
       -- star, then Chain or the map icon in the same place (a chain has its maps in the popup)
@@ -1176,7 +1242,7 @@ function UI.CreateGearPlanner(parent)
     if #list == 0 then
       empty:SetText(short and (tab ~= "wish" and search == "" and FLT.GearValue
           and "No upgrade among the \"" .. short .. "\" items for this slot in your level range.\nOnly items better than what you wear (for your spec) are listed.\nThe filter button is next to the Wishlist tab."
-          or "Nothing here with the source filter \"" .. short .. "\".\nThe filter button is next to the Wishlist tab.") or search ~= "" and "No item found." or (tab == "wish" and "Your wishlist has no item for this slot yet.\nClick the star on an item to add it." or (FLT.GearValue and "No upgrade for this slot in your level range yet." or "No item from our data fits this slot and level yet.")))
+          or "Nothing here with the source filter \"" .. short .. "\".\nThe filter button is next to the Wishlist tab.") or search ~= "" and "No item found." or (tab == "wish" and (prefs.wishAll and "Your wishlist is empty.\nClick the star on an item to add it." or "Your wishlist has no item for this slot yet.\nClick the star on an item to add it.") or (FLT.GearValue and "No upgrade for this slot in your level range yet." or "No item from our data fits this slot and level yet.")))
       empty:Show()
     else empty:Hide() end
   end

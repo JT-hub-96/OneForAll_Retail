@@ -292,22 +292,31 @@ local function sellJunk()
       local id = link and tonumber(link:match("item:(%d+)"))
       if link and (quality == 0 or junkList()[id]) and not noValue and not locked then
         local price = sellPrice(link)
-        if price > 0 then list[#list + 1] = { bag, slot }; total = total + price * (count or 1) end
+        if price > 0 then list[#list + 1] = { bag, slot, link, price } end
       end
     end
   end
   if #list == 0 or not (C_Timer and C_Timer.NewTicker) then return end
-  local i = 0
-  local function stop() if sellTicker then sellTicker:Cancel(); sellTicker = nil end end
+  local i, sold, gold = 0, 0, 0
+  local function stop()
+    if sellTicker then sellTicker:Cancel(); sellTicker = nil end
+    if sold > 0 then msg(string.format("Sold %d junk item%s for %s.", sold, sold == 1 and "" or "s", money(gold))) end
+  end
+  -- each slot is checked again right before it is sold (code review 03.11.): the same item, still junk, not
+  -- locked, the option still on, the merchant still open, Shift not held - items moved in between are skipped
   sellTicker = C_Timer.NewTicker(0.15, function()
     i = i + 1
-    if not (type(MerchantFrame) == "table" and MerchantFrame:IsShown()) then stop(); return end
+    if not (type(MerchantFrame) == "table" and MerchantFrame:IsShown()) or not QoL.Get("sellJunk") or paused() then stop(); return end
     local e = list[i]
-    if e then useItem(e[1], e[2]) end
-    if i >= #list then
-      stop()
-      msg(string.format("Sold %d junk item%s for %s.", #list, #list == 1 and "" or "s", money(total)))
+    if e then
+      local link, count, quality, noValue, locked = itemInfo(e[1], e[2])
+      local id = link and tonumber(link:match("item:(%d+)"))
+      if link == e[3] and (quality == 0 or junkList()[id]) and not noValue and not locked then
+        useItem(e[1], e[2])
+        sold = sold + 1; gold = gold + e[4] * (count or 1)
+      end
     end
+    if i >= #list then stop() end
   end, #list)
 end
 
@@ -876,11 +885,19 @@ do
     MAGE = { "Frost Armor", "Ice Armor", "Mage Armor", "Arcane Intellect", "Ice Barrier", "Mana Shield", "Dampen Magic", "Amplify Magic" },
     PRIEST = { "Power Word: Fortitude", "Inner Fire", "Divine Spirit", "Shadow Protection", "Fear Ward" },
     DRUID = { "Mark of the Wild", "Thorns", "Omen of Clarity" },
-    PALADIN = { "Righteous Fury", "Blessing of Might", "Blessing of Wisdom", "Blessing of Kings", "Blessing of Salvation", "Blessing of Light", "Blessing of Sanctuary" },
+    PALADIN = { "Righteous Fury", "Blessing of Might", "Blessing of Wisdom", "Blessing of Kings", "Blessing of Sanctuary" }, -- Light and Salvation removed in Forever (bluepost 02.11.)
     SHAMAN = { "Lightning Shield" },
     WARRIOR = { "Battle Shout" },
     HUNTER = { "Trueshot Aura" },
   }
+  -- weapon items suggested even when none is in the bags (main hand; type "(off hand)" for the other weapon)
+  local WEAPON_ITEMS = {
+    "Rough Sharpening Stone", "Coarse Sharpening Stone", "Heavy Sharpening Stone", "Solid Sharpening Stone",
+    "Dense Sharpening Stone", "Elemental Sharpening Stone", "Rough Weightstone", "Coarse Weightstone", "Heavy Weightstone",
+    "Solid Weightstone", "Dense Weightstone", "Minor Wizard Oil", "Lesser Wizard Oil", "Wizard Oil", "Brilliant Wizard Oil",
+    "Minor Mana Oil", "Lesser Mana Oil", "Brilliant Mana Oil", "Shadow Oil", "Frost Oil",
+  }
+  local POISONS = { "Instant Poison", "Deadly Poison", "Crippling Poison", "Mind-numbing Poison", "Wound Poison" }
   function QoL.BuffSuggestions(text)
     text = (text or ""):lower()
     local out, seen = {}, {}
@@ -916,14 +933,14 @@ do
     local class = UnitClass and select(2, UnitClass("player"))
     for _, n in ipairs(PRESETS[class or ""] or {}) do if isKnown[n] or #known == 0 then add(n, true) end end
     if text ~= "" then for _, n in ipairs(known) do add(n, false) end end
-    -- usable items in the bags (oils, sharpening stones, poisons ...) for the main / off hand, from 3 letters on;
-    -- only a few letters are needed ("sharp")
-    if #text >= 3 and C_Container and C_Container.GetContainerNumSlots then
+    -- usable items in the bags (oils, sharpening stones, poisons ...) for the main / off hand, from 2 letters on
+    -- (user 03.11.: "sh" showed nothing); then the usual weapon items even when none is in the bags
+    local items = {}
+    if #text >= 2 and C_Container and C_Container.GetContainerNumSlots then
       -- each slot on its own (beta4: one missing global stopped the whole scan, user 01.11.); the name from the bag
       -- info, a "Use:" effect when the client can tell (sharpening stones are trade goods, not consumables)
       local itemName = C_Item and C_Item.GetItemNameByID or C_Item and C_Item.GetItemInfo or GetItemInfo
       local itemSpell = C_Item and C_Item.GetItemSpell or GetItemSpell
-      local items = {}
       for bag = 0, 4 do
         for slot = 1, C_Container.GetContainerNumSlots(bag) or 0 do
           pcall(function()
@@ -942,6 +959,17 @@ do
         for _, hand in ipairs({ "mh", "oh" }) do
           local key = n .. "@" .. hand
           if #out < 8 and not buffList()[key] then out[#out + 1] = { name = key, label = label(key), item = true } end
+        end
+      end
+    end
+    if #text >= 2 then
+      local list = WEAPON_ITEMS
+      if class == "ROGUE" then list = {} for _, n in ipairs(WEAPON_ITEMS) do list[#list + 1] = n end for _, n in ipairs(POISONS) do list[#list + 1] = n end end
+      for _, n in ipairs(list) do
+        if #out >= 8 then break end
+        if not items[n] and n:lower():find(text, 1, true) then
+          local key = n .. "@mh"
+          if not buffList()[key] then out[#out + 1] = { name = key, label = label(key), item = true, notInBags = true } end
         end
       end
     end
@@ -1477,6 +1505,8 @@ local function addItemLines(tt, link)
     if drops then tt:AddLine("Drops from: " .. nameList(drops, 2), 0.95, 0.80, 0.45, true) end
   end
   if QoL.Get("gearValue") and FLT.GearValue then FLT.GearValue.TooltipLine(tt, id) end
+  -- on the wishlist (Armory > Gear Planner): always, it is the player's own choice (user 03.11.)
+  if FLT.IsOnWishlist and FLT.GearValue and FLT.GearValue.WISH and FLT.IsOnWishlist(id) then tt:AddLine(FLT.GearValue.WISH, 1, 0.82, 0.25) end
   if QoL.Get("sellJunk") and junkList()[id] then tt:AddLine("On your junk list (Alt+right-click to take it off)", 0.62, 0.62, 0.62) end
   if FLT.CraftList then FLT.CraftList.TooltipLine(tt, id) end -- only while something is planned
   if QoL.Get("recipeTip") then
@@ -2019,7 +2049,8 @@ function QoL.FindCandidates()
   local onlyLow = QoL.Get("bagsLowOnly")
   local famFn = (C_Container and C_Container.GetContainerNumFreeSlots) or GetContainerNumFreeSlots
   for bag = 0, NUM_BAGS do
-    local _, family = famFn and famFn(bag)
+    local family
+    if famFn then family = select(2, famFn(bag)) end -- special bags (herbs, soul shards ...) are skipped
     if family == 0 or family == nil then
       for slot = 1, numSlots(bag) do
         local link, count, quality, noValue, locked, icon = itemInfo(bag, slot)

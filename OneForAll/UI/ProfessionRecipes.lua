@@ -469,10 +469,36 @@ function UI.CreateRecipeBrowser(parent)
   local meta = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall")
   meta:SetPoint("TOPLEFT", 60, -32); meta:SetTextColor(FLT.SkinC(0.82, 0.80, 0.72))
 
-  -- Re-check who is online once a minute while the browser is open.
-  local tick = 0
+  -- the search line of the open recipe (6.1.0): its text and "Search again" change without rebuilding the details
+  local searchUI = {}
+  local function updateSearchUI()
+    local ui = searchUI
+    if not (ui.fs and ui.r and FLT.RecipeSearchState) then return end
+    local state, ago, canAgain = FLT.RecipeSearchState(prof, ui.r.s)
+    local msg = ""
+    if not state then msg = (ui.n or 0) > 0 and "" or "|cff9d9d9dClick Search to find players who know this recipe.|r"
+    elseif state == "connecting" then msg = "|cffd0c8b0Connecting to the other OneForAll users ...|r"
+    elseif state == "searching" then msg = "|cffd0c8b0Searching ...|r"
+    elseif state == "limited" then msg = "|cffff9933Many searches right now - try again in 30 s.|r"
+    elseif state == "done" and (ui.n or 0) == 0 then msg = "|cff9d9d9dNo current results received.|r"
+    elseif state == "done" and ago then msg = string.format("|cff9d9d9dSearched %s.|r", ago < 60 and "just now" or (math.floor(ago / 60) .. " min ago"))
+    end
+    local wait = (state ~= "searching" and not canAgain and ago) and math.max(1, 30 - math.floor(ago)) or nil
+    if wait then msg = msg .. string.format("  |cff9d9d9d(search again in %d s)|r", wait) end
+    ui.fs:SetText(msg)
+    -- grey while it can't be used (plain Disable() keeps the gold look of our buttons)
+    local can = (state == nil) or (state ~= "searching" and state ~= "connecting" and canAgain) or false
+    if ui.btn.SetLabel then ui.btn:SetLabel(state and state ~= "connecting" and "Search again" or "Search") end
+    if can then ui.btn:Enable() else ui.btn:Disable() end
+    if ui.btn.SetLook then ui.btn:SetLook(can) end
+  end
+
+  -- Re-check who is online once a minute while the browser is open; the search line every second.
+  local tick, stick = 0, 0
   f:SetScript("OnUpdate", function(_, elapsed)
     tick = tick + (elapsed or 0)
+    stick = stick + (elapsed or 0)
+    if stick >= 1 then stick = 0; updateSearchUI() end -- a few SetText calls, only while a recipe is open
     if tick >= 60 and not (InCombatLockdown and InCombatLockdown()) then tick = 0; f:Refresh(true) end -- not in combat (secure craft buttons)
   end)
 
@@ -569,6 +595,7 @@ function UI.CreateRecipeBrowser(parent)
   local function clearDetail()
     for _, w in ipairs(detailWidgets) do w:Hide() end
     wipe(detailWidgets)
+    searchUI.fs, searchUI.btn, searchUI.r = nil, nil, nil
   end
   local function dtext(template, w, parent)
     local t = FLT.NewFS(parent or rchild, nil, "OVERLAY", template or "GameFontHighlightSmall")
@@ -629,6 +656,7 @@ function UI.CreateRecipeBrowser(parent)
     local name = dtext("GameFontNormalLarge", 350); name:SetPoint("TOPLEFT", 56, y - 2)
     name:SetText(r.n .. ((r.c and r.c > 1) and (" x" .. r.c) or "")); local qc = QCOL[r.q or 1] or QCOL[1]; name:SetTextColor(FLT.SkinC(qc[1], qc[2], qc[3]))
     local sub = dtext("GameFontDisableSmall", 350); sub:SetPoint("TOPLEFT", 56, y - 26)
+    -- 6.1.0 (user 03.11.): no automatic search when a recipe is opened - only the "Search" button asks the channel
     local guild = FLT.GetGuildRecipeKnowers and FLT.GetGuildRecipeKnowers(prof, r.s)
     local others = onlineOthers(prof, r.s)
     sub:SetText((r.cat or "") .. (p.known[r.s] and "   " .. FLT.SkinHex("ffd926") .. "Known|r" or (guild and "   |cff59ff73Known in your guild|r" or (others and "   |cff5ab3ffKnown by other players|r" or ""))))
@@ -713,7 +741,13 @@ function UI.CreateRecipeBrowser(parent)
         for _, g in ipairs(list) do if g[2] then on[#on + 1] = g else hidden = hidden + 1 end end
         list = on
       end
-      if not isGuild then hidden = 0; if #list == 0 then return end end
+      -- other players: search state line (6.1.0), shown also without results
+      local state
+      if not isGuild then
+        hidden = 0
+        if FLT.RecipeSearchState then state = FLT.RecipeSearchState(prof, r.s) end -- (not "a and f()": keeps one value)
+        if state == "off" then return end -- shown also before any search, with the "Search" button
+      end
       y = y - 12
       y = y - 6
       -- tinted box behind the section (size set below)
@@ -728,6 +762,31 @@ function UI.CreateRecipeBrowser(parent)
       for _, t in ipairs(card.fill.pieces) do detailWidgets[#detailWidgets + 1] = t end
       y = y - 6
       local hk = dtext("GameFontNormal"); hk:SetPoint("TOPLEFT", 10, y); hk:SetText(label); hk:SetTextColor(FLT.SkinC(unpack(GOLD)))
+      if not isGuild then
+        -- "Search again" (at most every 30 s) and the state of the search
+        local nm = UI.NewMark(rchild, "Now you need to click \"Search\" to see who knows this recipe. Had to make it this way to get no lags and stay fast. Players near you are preferred to show up.")
+        nm:SetPoint("LEFT", hk, "RIGHT", 4, 0)
+        detailWidgets[#detailWidgets + 1] = nm
+        local holder = dframe("Frame"); holder:SetSize(104, 22); holder:SetPoint("TOPLEFT", 286, y + 2)
+        local sb = UI.GoldButton(holder, state and "Search again" or "Search", 100, 20, nil, 11); sb:SetPoint("RIGHT", 0, 0)
+        sb:SetScript("OnClick", function()
+          if FLT.SearchRecipe then FLT.SearchRecipe(prof, r.s, true); f:Refresh(true) end
+        end)
+        -- explain the wait (the button is grey for 30 s after a search; the tooltip shows while grey too)
+        if sb.SetMotionScriptsWhileDisabled then sb:SetMotionScriptsWhileDisabled(true) end
+        sb:SetScript("OnEnter", function(self)
+          GameTooltip:SetOwner(self, "ANCHOR_TOP")
+          GameTooltip:AddLine("Search", 1, 0.82, 0)
+          GameTooltip:AddLine("Asks the other OneForAll users who know this recipe. Only a few of them answer, and you can search again 30 seconds after the last search - so the channel stays quiet and fast with many players.", 1, 1, 1, true)
+          GameTooltip:Show()
+        end)
+        sb:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        -- text and button state are kept up to date by updateSearchUI (no rebuild for "2 min ago")
+        y = y - 20
+        local st = dtext("GameFontHighlightSmall", 380); st:SetPoint("TOPLEFT", 12, y)
+        searchUI.fs, searchUI.btn, searchUI.r, searchUI.n = st, sb, r, #list
+        updateSearchUI()
+      end
       if isGuild then
         -- "Show offline" next to the guild heading (off by default)
         local cb = dframe("CheckButton", "UICheckButtonTemplate"); cb:SetSize(22, 22)
@@ -763,6 +822,17 @@ function UI.CreateRecipeBrowser(parent)
           if #parts > 0 then who = "|cff9d9d9d, " .. table.concat(parts, " ") .. "|r" end
         end
         t:SetText((g[2] and col or "|cff9d9d9d") .. g[1] .. "|r" .. who .. "|cff9d9d9d - |r" .. where)
+        if g.seen then
+          row:EnableMouse(true)
+          local seen = g.seen
+          row:SetScript("OnEnter", function(self)
+            local m = math.max(0, math.floor(((time and time() or 0) - seen) / 60))
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:AddLine(m < 1 and "Last heard just now" or ("Last heard " .. m .. " min ago"), 1, 1, 1)
+            GameTooltip:Show()
+          end)
+          row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        end
         if g[2] then
           local wb = UI.GoldButton(row, "Whisper", 70, 20, nil, 11); wb:SetPoint("RIGHT", -10, 0)
           local who = g[1]
@@ -781,7 +851,7 @@ function UI.CreateRecipeBrowser(parent)
       box:SetPoint("TOPLEFT", 0, top); box:SetSize(400, top - y)
     end
     knowers("Guild members who know it", guild, "|cff59ff73", true)
-    knowers("Other OneForAll users online who know it", others, "|cff5ab3ff", false)
+    knowers("Other OneForAll users online who know it", others or {}, "|cff5ab3ff", false)
 
     if r.ri then
       y = section("Recipe", y - 10, function(b, ry)
@@ -896,6 +966,26 @@ function UI.CreateRecipeBrowser(parent)
   f:SetScript("OnEvent", function(self) if self:IsVisible() then self:DrawRows() end end)
   lsf:HookScript("OnSizeChanged", function() f:DrawRows() end)
 
+  -- what the detail view of a recipe shows, as a string (see f:Refresh)
+  local lastSig
+  local sigParts = {}
+  local function addKnowers(list)
+    for _, g in ipairs(list or {}) do
+      sigParts[#sigParts + 1] = tostring(g[1]) .. (g[2] and "+" or "-") .. tostring(g[3]) .. tostring(g[4]) .. tostring(g.level)
+    end
+  end
+  local function detailSig(r)
+    wipe(sigParts)
+    local p = profDB(prof)
+    sigParts[1] = prof .. ":" .. r.s .. (p.known[r.s] and "k" or "") .. (showOffline() and "o" or "") .. tostring(p.skill)
+    sigParts[2] = (recipeBar and recipeBar:IsShown()) and "b" or ""
+    if FLT.RecipeSearchState then sigParts[3] = tostring((FLT.RecipeSearchState(prof, r.s))) end -- time and button: updateSearchUI
+    for _, rg in ipairs(r.r or {}) do sigParts[#sigParts + 1] = GetItemCount and GetItemCount(rg[1], true) or 0 end
+    addKnowers(FLT.GetGuildRecipeKnowers and FLT.GetGuildRecipeKnowers(prof, r.s))
+    addKnowers(FLT.GetOtherRecipeKnowers and FLT.GetOtherRecipeKnowers(prof, r.s))
+    return table.concat(sigParts, "|")
+  end
+
   function f:Refresh(keepScroll)
     if self.otherLegend then
       local on = not FLT.IsRecipeShareEnabled or FLT.IsRecipeShareEnabled()
@@ -937,7 +1027,14 @@ function UI.CreateRecipeBrowser(parent)
     lchild:SetHeight(math.max(1, #vis * ROW_STEP + 4))
     if not keepScroll then lsf:SetVerticalScroll(0) end
     f:DrawRows()
-    if selected then showDetail(selected, keepScroll) else clearDetail(); if recipeBar then recipeBar:SetRecipe(nil) end end
+    if selected then
+      -- rebuild the details only when something in them changed (the frames of a detail view can't be freed; the
+      -- browser refreshes once a minute and after search answers)
+      local sig = detailSig(selected)
+      if sig ~= lastSig or not keepScroll then lastSig = sig; showDetail(selected, keepScroll) else updateSearchUI() end
+    else
+      lastSig = nil; clearDetail(); if recipeBar then recipeBar:SetRecipe(nil) end
+    end
     paintStar()
   end
 

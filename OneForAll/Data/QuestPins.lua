@@ -2476,9 +2476,9 @@ FLT.QUEST_PINS = {
 347|24|20|0|A||0|345||||Rethban Ore
 98386|21|15|0|A||0|89||||Alther's Mill
 !28.4,49.0,Marshal Marris
-19|25|18|0|A||0|20||||Tharil'zun
+19|25|18|0|A||0||20/98387|||Tharil'zun
 20|21|18|0|A||0|||||Blackrock Menace
-115|23|18|0|A||0|20||||Shadow Magic
+115|23|18|0|A||0||20/98387|||Shadow Magic
 98387|21|18|0|A||0|||||Blackrock Blockade
 !79.4,46.8,Old Lion Statue
 248|22|20|0|A||0|94||||Looking Further
@@ -2924,7 +2924,7 @@ FLT.QUEST_PINS = {
 293|30|22|0|A||0|292||||Cleansing the Eye
 321|29|20|0|A||0|270||||Lightforge Iron
 322|29|20|0|A||0|324||||Blessed Arm
-526|29|20|0|A||0|324||322/324||Lightforge Ingots
+526|29|20|0|A||0|321||324||Lightforge Ingots
 !10.6,60.8,Mikhail
 1249|33|28|0|A||0|1248||||The Missing Diplomat
 1264|33|28|0|A||0|1250||||The Missing Diplomat
@@ -2945,7 +2945,7 @@ FLT.QUEST_PINS = {
 95647|31|24|0|A||0|||||Lost in the Thicket Things
 98282|22|20|0|A||0|||||Alchemical Hazards
 !12.1,64.2,Waterlogged Chest
-324|29|20|0|A||0|321||||The Lost Ingots
+324|29|20|0|A||0|321||526||The Lost Ingots
 !13.5,41.4,Damaged Crate
 284|25|20|0|A||0|281||||The Search Continues
 !13.6,38.2,Sealed Barrel
@@ -3283,7 +3283,7 @@ FLT.QUEST_PINS = {
 995|20|10|0|A||0|993||994||Escape Through Stealth
 !45.9,90.3,Sentinel Aynasha
 ~45.8,90.4;45.7,90.6;45.6,90.6;45.4,90.7;45.3,90.8;45.2,90.8
-5713|15|10|0|A||0|||||One Shot. One Kill.
+5713|15|10|0|A||0|||||One Shot.  One Kill.
 !47.3,48.7,Mysterious Red Crystal
 4813|14|12|0|A||0|4812||||The Fragments Within
 !51.3,24.6,Buzzbox 323
@@ -3952,7 +3952,7 @@ FLT.QUEST_PINS = {
 1171|43|38|0|H||0|1170||||The Brood of Onyxia
 1173|45|38|0|H||0|1172||||Challenge Overlord Mok'Morokk
 !36.4,31.9,Krog
-1276|37|30|0|H||0|1273||||The Black Shield
+1276|37|30|0|H||0||1273/1323|||The Black Shield
 1321|35|30|0|H||0|1251||||The Black Shield
 !36.5,30.8,Do'gol
 1322|37|30|0|H||0|1321||||The Black Shield
