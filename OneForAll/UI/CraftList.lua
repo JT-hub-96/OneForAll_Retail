@@ -237,7 +237,8 @@ local GOLD = { 1, 0.82, 0.20 }
 -- items not cached yet (fresh client): ask the server and redraw once a moment later (user 26.10.: "Item 3371")
 local namePending
 local function itemName(id, fallback)
-  local n, _, q = GetItemInfo and GetItemInfo(id)
+  local n, _, q
+  if GetItemInfo then n, _, q = GetItemInfo(id) end -- not "a, b = f and f()": that keeps only one value
   if not n and C_Item and C_Item.RequestLoadItemDataByID then
     pcall(C_Item.RequestLoadItemDataByID, id)
     if not namePending and C_Timer and C_Timer.After then

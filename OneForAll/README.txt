@@ -69,6 +69,45 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.1.0 - Recipe search, launch talents, wishlist tools
+======================================================
+Ready for the WoW Forever launch: a recipe search that stays fast with many
+players, the talent trees of the launch patch and handy wishlist tools.
+Recipes of other OneForAll users
+- New "Search" button in Professions > All recipes: asks the other OneForAll
+  users who know the recipe (a new hidden channel). Only a few of them answer,
+  so the channel stays quiet and fast however many players use OneForAll.
+  Players in your zone are found first. Shows "Searching", the players with
+  level, class and zone, and "Search again" (after 30 seconds, with a countdown).
+- Players found before show up at once while they are online (blue check in the
+  list). Recipe lists are no longer sent to the channel; the online status is
+  sent less often when many players are online. Guild sharing stays as it was,
+  and a guild list now replaces the stored one only when it arrived complete.
+- "Share recipes with other OneForAll users" moved from Settings to Quality of
+  Life > Social. /ofa channel shows more numbers.
+- Note: 6.0 and 6.1 users no longer see each other's recipes - please update.
+Talents
+- Talent trees of the launch patch (talentsforever.com, 03.11.): Rogue, Warrior,
+  Shaman (e.g. Call of Thunder instead of Lava Burst), Paladin, Druid, Mage,
+  Priest and Hunter. Trainer and quest data refreshed. Old Paladin and Warrior
+  build links no longer fit and are refused.
+Gear Planner
+- Item tooltips show "OFA (star) Wishlist" for items on your wishlist.
+- Wishlist: "Clear wishlist" with "Clear all" and "Clear smart" (only items that
+  are no upgrade any more), both ask first; "All slots" shows the whole wishlist.
+Quality of Life
+- Buff reminder: weapon items are suggested from 2 letters on, also when none is
+  in your bags (sharpening stones, weightstones, oils; poisons for rogues); a
+  note that any buff name can be added; "sec" next to the seconds. Blessing of
+  Light and Salvation removed from the Paladin presets.
+- Sell junk checks each item again right before it is sold.
+- Option tooltips open below the option and only over its name and text;
+  drop-down menus grow with their longest entry.
+Other
+- The main window banner fades out softly on the left, without a line under it.
+- Fixes: special bags in the bag helper, hunter options in the welcome setup,
+  item quality in the Crafting List, wand check in the enchant score.
+
 6.0.3 - Buff reminder update and quest fixes
 ==============================================
 A bigger buff reminder, quest marks for loot quests and many small fixes.

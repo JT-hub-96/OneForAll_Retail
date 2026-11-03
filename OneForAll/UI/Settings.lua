@@ -196,9 +196,7 @@ local function createSettingsPanel(parent)
   gen:check("Tell me about new versions", "Prints a short note in the chat when another OneForAll user (guild, group or recipe sharing) runs a newer version.",
     function() return db().versionNotice ~= false end,
     function(v) db().versionNotice = v end); gen:nextRow()
-  gen:check("Share recipes with other OneForAll users", "Exchanges known recipes with OneForAll users outside your guild (blue marker in All recipes). When off, you do not share yours and do not see theirs either. Guild members are always shared.",
-    function() return FLT.IsRecipeShareEnabled and FLT.IsRecipeShareEnabled() end,
-    function(v) if FLT.SetRecipeShareEnabled then FLT.SetRecipeShareEnabled(v) end end); gen:nextRow()
+  -- "Share recipes with other OneForAll users" moved to Quality of Life > Social (6.1.0, user 03.11.)
   gen:finish()
 
   -- "Popups & alerts" moved to Quality of Life (5.6.8, user 22.10.)

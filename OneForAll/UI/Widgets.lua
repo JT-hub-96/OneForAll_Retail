@@ -1203,8 +1203,11 @@ function UI.OpenDropDown(owner, options, current, onPick, width)
       r.del:SetTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
       ddMenu.rows[i] = r
     end
-    r:ClearAllPoints(); r:SetPoint("TOPLEFT", 4, -4 - (i - 1) * 22); r:SetWidth(w - 8)
+    r:ClearAllPoints(); r:SetPoint("TOPLEFT", 4, -4 - (i - 1) * 22)
     r.text:SetText(o.label)
+    -- the menu grows with its longest entry (6.1.0, user 03.11.: long buff names ran over the edge)
+    local need = (r.text:GetStringWidth() or 0) + 22 + (o.remove and 24 or 10) + 8
+    if need > w then w = math.ceil(need) end
     local sel = o.key == current
     if o.checked ~= nil then sel = o.checked end -- several picks at once (Gear Planner sources, user 31.10.)
     r.check:SetShown(sel); r.del:SetShown(o.remove and true or false)
@@ -1212,6 +1215,7 @@ function UI.OpenDropDown(owner, options, current, onPick, width)
     r:SetScript("OnClick", function() ddMenu:Hide(); onPick(o.key) end)
     r:Show()
   end
+  for i = 1, #options do ddMenu.rows[i]:SetWidth(w - 8) end
   ddMenu:SetSize(w, #options * 22 + 8)
   ddMenu:ClearAllPoints(); ddMenu:SetPoint("TOPRIGHT", owner, "BOTTOMRIGHT", 0, -2)
   ddMenu.owner = owner

@@ -1664,7 +1664,7 @@ FLT.QUEST_REWARDS = {
     [14] = "The People's Militia|17|9|A|0|13||Gryan Stoutmantle|1436|56.3|47.5",
     [15] = "Investigate Echo Ridge|3|1|A|0|7||Marshal McBride|1429|48.9|41.6",
     [18] = "Brotherhood of Thieves|4|2|A|0|783||Deputy Willem|1429|48.2|42.9",
-    [19] = "Tharil'zun|25|18|A|0|20||Marshal Marris|1433|28.4|49.0",
+    [19] = "Tharil'zun|25|18|A|0||20/98387|Marshal Marris|1433|28.4|49.0",
     [20] = "Blackrock Menace|21|18|A|0|||Marshal Marris|1433|28.4|49.0",
     [21] = "Skirmish at Echo Ridge|5|1|A|0|15||Marshal McBride|1429|48.9|41.6",
     [23] = "Ursangous's Paw|24|20|H|0|6383||Item: Ursangous's Paw",
@@ -3855,5 +3855,6 @@ FLT.QUEST_REWARDS = {
     [9341] = "Tabard of the Argent Dawn|60|50|A|0|9153||Argent Quartermaster|1423|71.3|50.0",
     [9343] = "Tabard of the Argent Dawn|60|50|H|0|9153||Argent Outfitter|1423|71.1|49.8",
     [9365] = "A Thief's Reward|60|50|A|0||9324/9325/9326|Festival Loremaster|1438|56.5|92.2",
+    [98387] = "Blackrock Blockade|21|18|A|0|||Marshal Marris|1433|28.4|49.0",
   },
 }
