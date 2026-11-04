@@ -25,6 +25,7 @@ local DEFAULTS = {
   buffScale = 100, buffIconOnly = false, -- buff reminder size in % and icon only (6.0.3, user 01.11.)
   mapZoneLevel = true, -- level range of the zone on the world map: on (user 01.11.)
   mapQuests = true, -- quest icons on the world map: on (user 01.11., first off)
+  mapQuestsContinent = true, -- quest icons also on the continent map: on (user 04.11.)
   mapFogAlpha = 100, -- how visible the unexplored parts are, 0-100 %; 100 (user 01.11.)
   mapBooks = true, -- Library Books on the world map: on (user 23.10.)
   mapButton = true, -- OneForAll button on the world map: on (user 01.11.)

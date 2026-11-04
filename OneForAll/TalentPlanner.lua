@@ -242,7 +242,7 @@ local function referenceLayout(configID, all, classID, st)
   for _,t in ipairs(data.talents) do byName[string.lower(t[5])]=t end
   local aliases=FLT.TALENT_NAME_ALIASES or {}
   local bySpell=(FLT.TALENT_SPELL_IDS and FLT.TALENT_SPELL_IDS[classID]) or {}
-  local placed,seen,unmatched={},{},0
+  local placed,seen,unmatched,rest={},{},0,{}
   for _,n in ipairs(all) do
     local _,_,sid,name=entryDetails(configID,n.info,st.entries[n.id])
     -- Spell ID first (language independent), talent name as fallback.
@@ -257,12 +257,50 @@ local function referenceLayout(configID, all, classID, st)
       seen[key]=true
       placed[#placed+1]={node=n,tree=ref[1],row=ref[2],col=ref[3],maxRanks=ref[4],key=key,req=ref[6] and string.lower(ref[6]) or nil}
     elseif not ref then
-      unmatched=unmatched+1
+      rest[#rest+1]={node=n,key=key}
     end
   end
   if #placed < #data.talents*0.6 then return nil end
-  return placed,unmatched
+  -- 6.1.1 (user 04.11.: the launch client's trees differ from the reference): the grid comes from the client's own
+  -- node positions (a cell is 600 units). The matched talents give each tree's origin; every client talent - also
+  -- one the reference does not know - goes to the cell its position says. Talents outside the three grids are left out.
+  local STEP=600
+  local votes={{},{},{}}
+  for _,p in ipairs(placed) do
+    local ox,oy=p.node.x-(p.col-1)*STEP,p.node.y-(p.row-1)*STEP
+    local k=ox..","..oy
+    votes[p.tree][k]=(votes[p.tree][k] or 0)+1
+  end
+  local origin={}
+  for t=1,3 do
+    local best,bn
+    for k,c in pairs(votes[t]) do if not bn or c>bn then best,bn=k,c end end
+    if best then local x,y=best:match("^(.-),(.-)$"); origin[t]={tonumber(x),tonumber(y)} end
+  end
+  local function cell(n)
+    for t=1,3 do
+      local o=origin[t]
+      if o then
+        local cx,cy=(n.x-o[1])/STEP,(n.y-o[2])/STEP
+        if cx>=0 and cx<=3 and cy>=0 and cy<=10 and cx==math.floor(cx) and cy==math.floor(cy) then return t,math.floor(cy)+1,math.floor(cx)+1 end
+      end
+    end
+  end
+  local out={}
+  for _,p in ipairs(placed) do
+    local t,row,col=cell(p.node)
+    if t then p.tree,p.row,p.col=t,row,col end
+    out[#out+1]=p
+  end
+  for _,r in ipairs(rest) do
+    local t,row,col=cell(r.node)
+    if t then out[#out+1]={node=r.node,tree=t,row=row,col=col,maxRanks=r.node.info and r.node.info.maxRanks,key=r.key,clientOnly=true}
+    else unmatched=unmatched+1 end
+  end
+  return out,unmatched
 end
+
+FLT.TalentReferenceLayout=referenceLayout -- tests (tools/tests/t_talentlayout.lua)
 
 -- Points spent per talent tree of the active talents { tree1, tree2, tree3 } (Gear Planner Value picks the
 -- tree with the most points). Forever: the trait tree of the active config, nodes placed into trees with
@@ -802,6 +840,17 @@ function FLT:CreateTalentPlannerPanel(parent)
       for _,m in pairs(currentMeta) do
         if m.req then addPair(byKey[m.req],m) end
       end
+      -- talents the reference does not know (6.1.1): their arrows from the client's own talent graph
+      for _,m in pairs(currentMeta) do
+        for _,edge in ipairs((m.node.info and m.node.info.visibleEdges) or {}) do
+          local target=edge.targetNode or edge.targetNodeID or edge.targetNodeId or edge.nodeID
+          if type(target)=="table" then target=target.nodeID or target.ID or target.id end
+          local other=currentMeta[target]
+          if other and (m.clientOnly or other.clientOnly) then
+            if m.row<other.row then addPair(m,other) elseif other.row<m.row then addPair(other,m) end
+          end
+        end
+      end
     else
       -- Fallback: use the live client talent graph.
       for _,m in pairs(currentMeta) do
@@ -891,7 +940,7 @@ function FLT:CreateTalentPlannerPanel(parent)
       local entryID,_,sid,name,icon=entryDetails(configID,ni,st.entries[n.id])
       st.entries[n.id]=entryID or st.entries[n.id]
       b.name=name; b.entryID=entryID; b.spellID=sid; b.maxRanks=ni.maxRanks or p.maxRanks or 1
-      currentMeta[n.id]={id=n.id,tree=p.tree,row=p.row,col=p.col,node=n,button=b,maxRanks=b.maxRanks,name=name,entryID=entryID,key=p.key,req=p.req}
+      currentMeta[n.id]={id=n.id,tree=p.tree,row=p.row,col=p.col,node=n,button=b,maxRanks=b.maxRanks,name=name,entryID=entryID,key=p.key,req=p.req,clientOnly=p.clientOnly}
       perTree[p.tree]=perTree[p.tree]+(st.ranks[n.id] or 0)
       FLT.SetTex(b.icon, icon)
       b:ClearAllPoints(); b:SetParent(treePanels[p.tree]); b:SetPoint("TOPLEFT",gridLeft(p.tree,p.col),-GRID_Y0-(p.row-1)*GRID_Y_STEP); b:Show()

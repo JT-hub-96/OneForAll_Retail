@@ -69,6 +69,23 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.1.1 - Launch talents, quest icons on the continent map
+==========================================================
+- Talent Trees: every talent is placed where your game client has it, and talents
+  the planner's data does not know are shown too. (The launch client still had
+  the old Rogue, Shaman and Warrior trees, so some talents were missing.)
+- Trainer data of the launch build: Righteous Fury from level 10, Death Mark
+  (Rogue), Lacerate ranks for Druids, Holy Shield and Explosive Trap ranks;
+  removed spells are gone (Blessing of Light, Salvation, Lava Burst, Binding
+  Heal, Frost Blast, Revoke).
+- World Map > Quest icons "Also on the continent map" (on): the ! and ? of every
+  zone also when you zoom out to the continent (Quality of Life and the map
+  button).
+- Quest icons no longer show quests more than 10 levels above you (level 60
+  book, Legacy and event quests showed for low characters).
+- The route of a walking quest giver shows the giver's tooltip and is slightly
+  highlighted when you move the mouse over it.
+
 6.1.0 - Recipe search, launch talents, wishlist tools
 ======================================================
 Ready for the WoW Forever launch: a recipe search that stays fast with many
