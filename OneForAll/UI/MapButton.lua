@@ -20,6 +20,7 @@ local ROWS = {
   { key = "mapBooks", label = "   Library Books", sub = true },
   { key = "lmSkyborne", label = "   Skyborne: Ley Lines & Convergences", sub = true },
   { key = "mapQuests", label = "Quest icons (! and ?)" },
+  { key = "mapQuestsContinent", label = "   Also on the continent map", sub = true, parent = "mapQuests" },
   { key = "mapFog", label = "Remove Fog" },
   { key = "mapZoneLevel", label = "Zone level range" },
   { key = "dungeonMapKey", label = "Dungeon map on M",
@@ -47,7 +48,8 @@ local function paintMenu()
   local landmarks = Q().Get("mapLandmarks")
   for _, row in ipairs(menu.rows) do
     row.check:SetShown(value(row.r))
-    local dim = row.r.sub and not landmarks -- the parts only work with Map Landmarks on
+    -- the parts only work with their main switch on (Map Landmarks, or Quest icons for the continent switch)
+    local dim = row.r.sub and not (row.r.parent and Q().Get(row.r.parent) or (not row.r.parent and landmarks))
     row.text:SetTextColor(dim and 0.5 or 0.92, dim and 0.5 or 0.90, dim and 0.5 or 0.84)
   end
   local fogOn = Q().Get("mapFog") and true or false

@@ -5,6 +5,8 @@ local _, FLT = ...
 -- pre-quests done, not done or in the log yet - and a yellow "?" where a finished quest from your log is turned in.
 -- Tooltip only (giver, quests with their level and the levels in which they can be taken and give experience), no click; a walking giver's route is drawn with it. Data: Data/QuestPins.lua (QuestieDB, GPL-3).
 -- Switch qol.mapQuests (on by default, user 01.11.); hidden while Questie is loaded (it draws its own, user 01.11.).
+-- qol.mapQuestsContinent (6.1.1, user 04.11.): also on the continent map, all zones at once (rect of each zone from
+-- C_Map.GetMapRectOnMap), a bit smaller, without the walking routes.
 -- Lean: a map's data string is read only when that map is shown (cached per map); the quest log is read once per
 -- refresh; quest events are only registered while the map is open and the switch on, debounced.
 
@@ -111,6 +113,9 @@ end
 
 local function available(q)
   if q.req > me.level or q.lvl < me.grey or (q.max > 0 and me.level > q.max) then return false end
+  -- far above your level (6.1.1, user 04.11.: level 60 book, Legacy and event quests that anyone may take showed for
+  -- a level 9 character): only up to 10 levels above
+  if q.lvl > me.level + 10 then return false end
   if q.side ~= "" and me.side and q.side ~= me.side then return false end
   if q.race and me.race and not bit(q.race, me.race) then return false end
   if q.class > 0 and me.class and not bit(q.class, me.class) then return false end
@@ -154,14 +159,31 @@ local spotList = {}
 
 -- the route of a walking quest giver, always shown with its icon (user 01.11., like Questie)
 local routeFrame, lines, nLines = nil, {}, 0
+-- invisible hover spots along the routes (6.1.1, user 04.11.: like Questie, the route shows its giver's tooltip and
+-- lights up on mouseover); pooled like the lines
+local hits, nHits = {}, 0
+local onEnter, onLeave -- forward (the tooltip of the pins)
+local function paintRoute(r, on)
+  for i = r.first, r.last do
+    local l = lines[i]
+    -- only a touch more (user 04.11.: the strong glow looked cheap): slightly thicker, fully opaque
+    if on then l:SetColorTexture(1, 0.85, 0.15, 1); l:SetThickness(3.2 * r.scale)
+    else l:SetColorTexture(1, 0.82, 0.1, 0.85); l:SetThickness(2.5 * r.scale) end
+  end
+end
+local function hitEnter(self) paintRoute(self.route, true); onEnter(self) end
+local function hitLeave(self) paintRoute(self.route, false); onLeave() end
 local function hideRoute()
   for i = 1, nLines do lines[i]:Hide() end
-  nLines = 0
+  for i = 1, nHits do hits[i]:Hide(); hits[i].spot, hits[i].route = nil, nil end
+  nLines, nHits = 0, 0
 end
-local function showRoute(route, child, w, h, scale, level)
+local HIT_STEP = 10 -- a hover spot every 10 units along the route
+local function showRoute(route, child, w, h, scale, level, s)
   if not child.CreateLine then return end
   if not routeFrame then routeFrame = CreateFrame("Frame", nil, child); routeFrame:SetAllPoints() end
   routeFrame:SetFrameLevel(math.max(1, level - 1)); routeFrame:Show()
+  local r = { first = nLines + 1, scale = scale }
   for path in route:gmatch("[^|]+") do
     local px, py
     for x, y in path:gmatch("([%d.]+),([%d.]+)") do
@@ -169,17 +191,35 @@ local function showRoute(route, child, w, h, scale, level)
       if px then
         nLines = nLines + 1
         local l = lines[nLines]
-        if not l then l = routeFrame:CreateLine(nil, "OVERLAY"); l:SetColorTexture(1, 0.82, 0.1, 0.85); lines[nLines] = l end
-        l:SetThickness(2.5 * scale)
+        if not l then l = routeFrame:CreateLine(nil, "OVERLAY"); lines[nLines] = l end
+        l:SetColorTexture(1, 0.82, 0.1, 0.85); l:SetThickness(2.5 * scale)
         l:SetStartPoint("TOPLEFT", routeFrame, px, py); l:SetEndPoint("TOPLEFT", routeFrame, x, y)
         l:Show()
+        -- hover spots along this piece
+        local dx, dy = x - px, y - py
+        local steps = math.max(1, math.floor(math.sqrt(dx * dx + dy * dy) / (HIT_STEP * scale)))
+        if nHits + steps > 600 then steps = math.max(0, 600 - nHits) end -- a few routes per map; never hundreds more
+        for k = 0, steps - 1 do
+          nHits = nHits + 1
+          local hf = hits[nHits]
+          if not hf then
+            hf = CreateFrame("Frame", nil, routeFrame); hf:EnableMouse(true)
+            hf:SetScript("OnEnter", hitEnter); hf:SetScript("OnLeave", hitLeave)
+            hits[nHits] = hf
+          end
+          hf.spot, hf.route = s, r
+          hf:SetSize(HIT_STEP * scale * 1.4, HIT_STEP * scale * 1.4)
+          hf:ClearAllPoints(); hf:SetPoint("CENTER", routeFrame, "TOPLEFT", px + dx * k / steps, py + dy * k / steps)
+          hf:SetFrameLevel(math.max(1, level - 1)); hf:Show()
+        end
       end
       px, py = x, y
     end
   end
+  r.last = nLines
 end
 
-local function onEnter(pin)
+onEnter = function(pin)
   local s = pin.spot
   if not s or not GameTooltip then return end
   GameTooltip:SetOwner(pin, "ANCHOR_RIGHT")
@@ -192,7 +232,7 @@ local function onEnter(pin)
   end
   GameTooltip:Show()
 end
-local function onLeave() if GameTooltip then GameTooltip:Hide() end end
+onLeave = function() if GameTooltip then GameTooltip:Hide() end end
 
 local function acquire(parent)
   used = used + 1
@@ -223,13 +263,41 @@ local function spot(x, y, name, route)
   return s
 end
 
+-- the zones of a continent with quest data and where they lie on it: { {mapID, x0, y0, sx, sy} } (0-1 of the
+-- continent map), cached per continent (6.1.1, user 04.11.: the icons also when zoomed out of the zone)
+local continents = {}
+local function continentZones(mapID)
+  local c = continents[mapID]
+  if c ~= nil then return c end
+  c = false
+  local info = C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(mapID)
+  local CONT = Enum and Enum.UIMapType and Enum.UIMapType.Continent or 2
+  if info and info.mapType == CONT and C_Map.GetMapChildrenInfo and FLT.QUEST_PINS then
+    c = {}
+    local ok, kids = pcall(C_Map.GetMapChildrenInfo, mapID, nil, true)
+    for _, k in ipairs(ok and kids or {}) do
+      if k.mapID and FLT.QUEST_PINS[k.mapID] and C_Map.GetMapRectOnMap then
+        local ok2, x0, x1, y0, y1 = pcall(C_Map.GetMapRectOnMap, k.mapID, mapID)
+        if ok2 and x0 and x1 and y0 and y1 and x1 > x0 and y1 > y0 then c[#c + 1] = { k.mapID, x0, y0, x1 - x0, y1 - y0 } end
+      end
+    end
+    if #c == 0 then c = false end
+  end
+  continents[mapID] = c
+  return c
+end
+
+local ONE = { { nil, 0, 0, 1, 1 } } -- a zone map: its own data at full size
 function MQ.Refresh()
   if not WorldMapFrame then return end
   hideAll(); hideRoute()
   if not Q("mapQuests") or questieLoaded() or not WorldMapFrame:IsShown() then return end
   local mapID = WorldMapFrame.GetMapID and WorldMapFrame:GetMapID()
-  local d = mapID and mapData(mapID)
-  if not d then return end
+  if not mapID then return end
+  local zones
+  if mapData(mapID) then ONE[1][1] = mapID; zones = ONE
+  elseif Q("mapQuestsContinent") then zones = continentZones(mapID) end
+  if not zones then return end
   local LM = FLT.MapLandmarks
   local child, w, h, scale, level
   if LM and LM.Canvas then child, w, h, scale, level = LM.Canvas() end
@@ -237,25 +305,34 @@ function MQ.Refresh()
   readLog(); readMe()
   for _, s in ipairs(spotList) do s.used = nil; wipe(s.avail); wipe(s.turnin) end
   wipe(spotList)
-  for _, g in ipairs(d.starts) do
-    for _, q in ipairs(g.quests) do
-      if available(q) then local s = spot(g.x, g.y, g.name, g.route); s.avail[#s.avail + 1] = q end
+  local whole = zones == ONE
+  for _, z in ipairs(zones) do
+    local d = mapData(z[1])
+    if d then
+      -- zone coordinates (0-100) -> this map's; walking routes only on the zone map itself
+      local function at(x, y) return z[2] * 100 + x * z[4], z[3] * 100 + y * z[5] end
+      for _, g in ipairs(d.starts) do
+        for _, q in ipairs(g.quests) do
+          if available(q) then local x, y = at(g.x, g.y); local s = spot(x, y, g.name, whole and g.route or nil); s.avail[#s.avail + 1] = q end
+        end
+      end
+      for _, e in ipairs(d.ends) do
+        for _, id in ipairs(e.ids) do
+          if complete[id] then local x, y = at(e.x, e.y); local s = spot(x, y, e.name, whole and e.route or nil); s.turnin[#s.turnin + 1] = id end
+        end
+      end
     end
   end
-  for _, e in ipairs(d.ends) do
-    for _, id in ipairs(e.ids) do
-      if complete[id] then local s = spot(e.x, e.y, e.name, e.route); s.turnin[#s.turnin + 1] = id end
-    end
-  end
+  local size = whole and SIZE or SIZE * 0.8 -- a bit smaller on the continent
   for _, s in ipairs(spotList) do
     local pin = acquire(child)
     pin.spot = s
     setIcon(pin.tex, #s.turnin > 0)
-    pin:SetSize(SIZE, SIZE); pin:SetScale(scale); pin:SetFrameLevel(level)
+    pin:SetSize(size, size); pin:SetScale(scale); pin:SetFrameLevel(level)
     pin:ClearAllPoints()
     pin:SetPoint("CENTER", child, "TOPLEFT", (s.x / 100) * w / scale, -(s.y / 100) * h / scale)
     pin:Show()
-    if s.route then showRoute(s.route, child, w, h, scale, level) end
+    if s.route then showRoute(s.route, child, w, h, scale, level, s) end
   end
 end
 
@@ -293,6 +370,6 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", function(self)
   self:UnregisterAllEvents()
-  if FLT.QoL and FLT.QoL.On then FLT.QoL.On("mapQuests", MQ.Apply) end
+  if FLT.QoL and FLT.QoL.On then FLT.QoL.On("mapQuests", MQ.Apply); FLT.QoL.On("mapQuestsContinent", MQ.Refresh) end
   if Q("mapQuests") then MQ.Apply() end
 end)
