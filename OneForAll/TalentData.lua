@@ -1,13 +1,13 @@
 local _, FLT = ...
 
 -- WoW Forever talent layouts (tree, row, column, max ranks, prerequisite).
--- Source: talentsforever.com exports (CC BY 4.0), beta build 1.60.1.70753, generated 2026-11-03
+-- Source: talentsforever.com exports (CC BY 4.0), beta build 1.60.1.70755, generated 2026-11-04
 -- (tools/talent-gen/talents.py, cross-checked with the wowtbc.gg calculator).
 -- The planner matches these entries to the live client talents by name; the
 -- client still provides icons, tooltips and node IDs.
 -- To update after a patch, only this file needs to change.
 -- Entry format: { tree, row, col, maxRanks, "Name", "Prerequisite name" or nil }
-FLT.TALENT_DATA_BUILD = "1.60.1.70753 (2026-11-03)"
+FLT.TALENT_DATA_BUILD = "1.60.1.70755 (2026-11-04)"
 
 FLT.TALENT_DATA = {
   [1] = { token="WARRIOR", name="Warrior", trees={"Arms", "Fury", "Protection"}, talents={
@@ -37,15 +37,14 @@ FLT.TALENT_DATA = {
     {2,3,3,3,"Blood Craze"},
     {2,3,4,5,"Enrage"},
     {2,4,1,5,"Dual Wield Specialization"},
-    {2,4,2,1,"Raging Blows"},
-    {2,4,3,1,"Reckless Swings"},
+    {2,4,2,1,"Reckless Swings"},
     {2,4,4,2,"Improved Execute"},
     {2,5,1,2,"Improved Berserker Rage"},
     {2,5,2,1,"Death Wish"},
     {2,5,3,2,"Gore Drinker","Blood Craze"},
     {2,5,4,2,"Improved Intercept"},
-    {2,6,2,3,"Flurry"},
-    {2,6,3,2,"Improved Whirlwind"},
+    {2,6,1,2,"Improved Whirlwind"},
+    {2,6,3,3,"Flurry"},
     {2,7,2,1,"Bloodthirst","Death Wish"},
     {3,1,1,2,"Improved Bloodrage"},
     {3,1,2,5,"Shield Specialization"},
@@ -188,7 +187,7 @@ FLT.TALENT_DATA = {
     {1,5,2,1,"Venom"},
     {1,5,3,2,"Improved Kidney Shot"},
     {1,6,3,3,"Seal Fate"},
-    {1,7,2,1,"Mutilate"},
+    {1,7,2,1,"Mutilate","Venom"},
     {2,1,1,3,"Coup de Grace"},
     {2,1,2,2,"Efficient Strikes"},
     {2,1,3,5,"Lightning Reflexes"},
@@ -201,31 +200,31 @@ FLT.TALENT_DATA = {
     {2,3,4,2,"Composure"},
     {2,4,1,2,"Improved Kick"},
     {2,4,2,1,"Flawless Execution"},
-    {2,4,3,3,"Aggression"},
-    {2,4,4,2,"Weapon Expertise"},
+    {2,4,3,2,"Weapon Expertise","Precision"},
+    {2,4,4,3,"Aggression"},
+    {2,5,1,2,"Dual Wield Specialization"},
     {2,5,2,1,"Blade Flurry"},
     {2,5,3,5,"Hack and Slash"},
-    {2,5,4,2,"Dual Wield Specialization","Precision"},
     {2,6,3,5,"Flash of Steel"},
-    {2,7,2,1,"Adrenaline Rush"},
+    {2,7,2,1,"Adrenaline Rush","Blade Flurry"},
     {3,1,1,3,"Setup"},
     {3,1,2,3,"Master of Deception"},
     {3,1,3,5,"Opportunity"},
-    {3,2,1,3,"Camouflage"},
-    {3,2,2,2,"Dirty Deeds"},
-    {3,2,3,2,"Dirty Tricks"},
-    {3,2,4,3,"Improved Ambush"},
+    {3,2,1,2,"Dirty Deeds"},
+    {3,2,2,3,"Camouflage"},
+    {3,2,3,3,"Improved Ambush"},
+    {3,2,4,2,"Dirty Tricks"},
     {3,3,1,3,"Initiative"},
     {3,3,2,1,"Premeditation"},
     {3,3,3,3,"Serrated Blades"},
-    {3,4,1,1,"Ghostly Strike"},
-    {3,4,2,2,"Elusiveness"},
-    {3,4,4,2,"Quick Getaway"},
+    {3,4,1,2,"Elusiveness"},
+    {3,4,2,1,"Ghostly Strike"},
+    {3,4,4,2,"Quick Getaway","Dirty Tricks"},
     {3,5,1,2,"Heightened Senses"},
     {3,5,2,1,"Preparation"},
     {3,5,3,1,"Hemorrhage","Serrated Blades"},
     {3,6,3,5,"Boot Knife"},
-    {3,7,2,1,"Death Mark"},
+    {3,7,2,1,"Death Mark","Preparation"},
   }},
   [5] = { token="PRIEST", name="Priest", trees={"Discipline", "Holy", "Shadow"}, talents={
     {1,1,1,5,"Power in Light"},
@@ -303,7 +302,7 @@ FLT.TALENT_DATA = {
     {2,1,3,5,"Ancestral Knowledge"},
     {2,2,1,2,"Guardian Totems"},
     {2,2,2,3,"Mental Dexterity"},
-    {2,2,4,3,"Improved Lightning Shield"},
+    {2,2,3,3,"Improved Lightning Shield"},
     {2,3,1,3,"Elemental Weapons"},
     {2,3,3,1,"Shamanistic Focus"},
     {2,3,4,3,"Anticipation"},

@@ -583,6 +583,22 @@ do
       if left > (weaponDur[name] or 0) then weaponDur[name] = left end
       return now() + left, weaponDur[name], tonumber(charges) or 0
     end
+    -- go through the buffs ourselves (idea from GitHub #34, 05.11.): in combat the live client keeps some aura
+    -- names secret; AuraUtil.FindAuraByName then just finds nothing ("run out"), here a secret one means "unknown"
+    local get = type(C_UnitAuras) == "table" and C_UnitAuras.GetAuraDataByIndex
+    if get then
+      for i = 1, 40 do
+        local ok, a = pcall(get, "player", i, "HELPFUL")
+        if not ok then return false end
+        if not a then return end
+        if FLT.IsSecret(a.name) then return false end
+        if a.name == name then
+          if FLT.IsSecret(a.expirationTime, a.duration) then return false end
+          return a.expirationTime or 0, a.duration or 0
+        end
+      end
+      return
+    end
     if type(AuraUtil) == "table" and AuraUtil.FindAuraByName then
       local ok, n, _, _, _, dur, exp = pcall(AuraUtil.FindAuraByName, name, "player", "HELPFUL")
       if not ok or FLT.IsSecret(n) then return false end
@@ -607,7 +623,7 @@ do
   local MAXC, CARD_W, CARD_H, GAP, ICON = 4, 270, 64, 6, 46
   local holder, cards, secures, due = nil, {}, {}, {}
   local testUntil = 0 -- "Test" in Quality of Life shows the cards for 10 s (user 01.11.)
-  local buffSeen, buffDur = {}, {}
+  local buffSeen, buffDur, buffExp = {}, {}, {}
   local buffToken, buffDebounce, buffTicker = 0, false, nil
   local function scheduleBuffCheck(delay)
     buffToken = buffToken + 1
@@ -778,8 +794,15 @@ do
         if fight and renewed[name] then -- cast again in combat: done for now
         elseif exp == false then -- the game does not tell (combat): keep the card as it was
           if wasDue[name] then due[#due + 1] = name end
+        elseif not exp and fight and buffExp[name] and buffExp[name] > t then
+          -- 6.1.3 (Discord 05.11.): in combat the game may not list a buff that is still up (once another aura
+          -- is added): until combat ends, go by the time it had when it was last seen
+          local left = buffExp[name] - t
+          if left <= sec then due[#due + 1] = name
+          elseif not nextAt or left - sec < nextAt then nextAt = left - sec end
         elseif exp then
           buffSeen[name] = true
+          buffExp[name] = exp > 0 and exp or nil
           if dur and dur > 0 then buffDur[name] = dur end
           if exp > 0 then -- buffs without a duration need no reminder
             local left = exp - t
