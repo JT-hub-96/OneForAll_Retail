@@ -479,6 +479,7 @@ function UI.CreateRecipeBrowser(parent)
     if not state then msg = (ui.n or 0) > 0 and "" or "|cff9d9d9dClick Search to find players who know this recipe.|r"
     elseif state == "connecting" then msg = "|cffd0c8b0Connecting to the other OneForAll users ...|r"
     elseif state == "searching" then msg = "|cffd0c8b0Searching ...|r"
+    elseif state == "error" then msg = "|cffff9933Could not reach the other OneForAll users - joining the channel again, try again in 30 s.|r"
     elseif state == "limited" then msg = "|cffff9933Many searches right now - try again in 30 s.|r"
     elseif state == "done" and (ui.n or 0) == 0 then msg = "|cff9d9d9dNo current results received.|r"
     elseif state == "done" and ago then msg = string.format("|cff9d9d9dSearched %s.|r", ago < 60 and "just now" or (math.floor(ago / 60) .. " min ago"))

@@ -19,7 +19,13 @@ local _, FLT = ...
 
 local PREFIX = "OFAPR"        -- guild
 local PREFIX2 = "OFAPR2"      -- channel and answers (6.1.0)
-local CHANNEL = "OFAShare2"
+-- 6.1.2 (user 05.11.): on the live servers OFAShare2 is disabled (GetChannelList) and every addon message there is
+-- refused (result 7), a new channel works. The channel is OFAShare<n> from CHAN_FIRST on; when the game refuses
+-- one, everybody moves on to the next name (up to CHAN_LAST), so the clients meet again in the same channel.
+local CHAN_FIRST, CHAN_LAST = 3, 12
+local chanN = CHAN_FIRST
+local CHANNEL = "OFAShare" .. chanN
+function FLT.RecipeChannelName() return CHANNEL end
 local OLD_CHANNEL = "OFAShare" -- 5.6-6.0 channel, left on login
 local GUILD_GAP = 0.35        -- seconds between guild messages
 local CHANNEL_GAP = 1.2       -- channel messages are throttled harder by the server
@@ -364,6 +370,14 @@ local function channelID(name)
   return nil
 end
 
+-- true when the game lists our channel as disabled (GetChannelList: id, name, disabled, ...)
+local function channelDisabled()
+  if not GetChannelList then return false end
+  local l = { GetChannelList() }
+  for i = 1, #l - 2, 3 do if l[i + 1] == CHANNEL then return l[i + 2] == true end end
+  return false
+end
+
 local function hideChannelFromChat()
   if not ChatFrame_RemoveChannel then return end
   for i = 1, (NUM_CHAT_WINDOWS or 10) do
@@ -389,10 +403,15 @@ local joinTries, joinTimer = 0, false
 local function joinChannel()
   if not shareEnabled() then return end
   -- the channel of 6.0 and older carries full recipe lists: leave it
-  if channelID(OLD_CHANNEL) and LeaveChannelByName then pcall(LeaveChannelByName, OLD_CHANNEL) end
+  if LeaveChannelByName then
+    if channelID(OLD_CHANNEL) then pcall(LeaveChannelByName, OLD_CHANNEL) end
+    for n = 2, chanN - 1 do local c = OLD_CHANNEL .. n; if channelID(c) then pcall(LeaveChannelByName, c) end end
+  end
   if channelID() then hideChannelFromChat(); onChannelReady(); return end
-  if JoinTemporaryChannel then pcall(JoinTemporaryChannel, CHANNEL)
-  elseif JoinChannelByName then pcall(JoinChannelByName, CHANNEL) end
+  -- a normal channel: the live servers refuse addon messages in temporary channels (result 7 InvalidChannel,
+  -- user 05.11.2026); it is hidden from the chat windows like before
+  if JoinChannelByName then pcall(JoinChannelByName, CHANNEL)
+  elseif JoinTemporaryChannel then pcall(JoinTemporaryChannel, CHANNEL) end
   joinTries = joinTries + 1
   if not (C_Timer and C_Timer.After) then return end
   -- the join takes a moment; look again, and retry every minute while it failed
@@ -437,6 +456,18 @@ local GAP = { GUILD = GUILD_GAP, CHANNEL = CHANNEL_GAP, WHISPER = WHISPER_GAP }
 local function qlen(q) return q.t - q.h + 1 end
 
 -- true when the game took the message; nil/true/0 = sent, false or another code = throttled or refused
+-- the game refuses our channel: move on to the next name (once per 10 s; the last name is kept)
+local rejoinAt = -1e9
+local function rejoinChannel(force)
+  local t = GetTime and GetTime() or 0
+  if (t - rejoinAt < 10 and not force) or chanN >= CHAN_LAST or not (LeaveChannelByName and C_Timer and C_Timer.After) then return end
+  rejoinAt = t
+  pcall(LeaveChannelByName, CHANNEL)
+  chanN = chanN + 1; CHANNEL = OLD_CHANNEL .. chanN
+  channelReady = false
+  C_Timer.After(2, function() joinChannel() end)
+end
+
 local function accepted(ok, res)
   if not ok then return false end
   return res == nil or res == true or res == 0
@@ -462,7 +493,12 @@ local function pump(dist)
       local id = channelID()
       if id and shareEnabled() then ok, res = pcall(send, PREFIX2, item[1], "CHANNEL", id) else ok, res = false, nil end
     end
-    if accepted(ok, res) then
+    if ok and res ~= nil and res ~= true and res ~= 0 then stats.lastErr = tostring(res) end
+    if dist == "CHANNEL" and ok and res == 7 then
+      -- the server refuses this channel (joined as a temporary one): join it again, the message is lost
+      rejoinChannel()
+      if item.onFail then item.onFail(true) end
+    elseif accepted(ok, res) then
       if item.onSent then item.onSent() end
     elseif ok and (item[3] or 0) < 3 then
       -- throttled: try the same message again a little later (3 tries)
@@ -915,7 +951,7 @@ local function runRound(online)
       C_Timer.After(ROUND_WAIT, function() if search == s and s.round == round then runRound() end end)
     end
   end
-  local function failed() if search == s then s.limited = true; finishSearch() end end
+  local function failed(err) if search == s then s.limited = true; s.err = err; finishSearch() end end
   -- 6th field: our map, so players nearby answer in any case
   local item = send("CHANNEL", "S\t" .. s.qid .. "\t" .. s.prof .. "\t" .. enc(s.spell) .. "\t" .. math.max(1, math.floor(p * 1e6)) .. "\t" .. (ownMapID() or 0), nil, sent, failed)
   if not item then s.limited = true; finishSearch(); return end
@@ -928,7 +964,7 @@ finishSearch = function()
   search = nil
   if s.pending then s.pending.cancelled = true end -- a round still waiting in the queue is not sent any more
   lastStart = clock() -- the next search waits SEARCH_GAP after this one ended
-  lastSearch[key(s.prof, s.spell)] = { t = now(), n = s.n, limited = s.limited }
+  lastSearch[key(s.prof, s.spell)] = { t = now(), n = s.n, limited = s.limited, err = s.err }
   refreshSoon()
   if wanted then
     local w = wanted; wanted = nil
@@ -1023,7 +1059,7 @@ function FLT.RecipeSearchState(prof, spell)
   local last = lastSearch[key(prof, spell)]
   if not last then return nil end
   local ago = now() - last.t
-  return last.limited and "limited" or "done", ago, ago >= AGAIN_MANUAL
+  return last.err and "error" or last.limited and "limited" or "done", ago, ago >= AGAIN_MANUAL
 end
 
 -- sharing turned off: no search, nothing waiting is sent, planned answers are dropped
@@ -1097,6 +1133,7 @@ end
 -- (spread out, many players log in at the same time)
 onChannelReady = function()
   if channelReady then return end
+  if channelDisabled() and chanN < CHAN_LAST then rejoinChannel(true); return end
   channelReady = true
   joinedAt = clock()
   -- a recipe opened before the channel was there is searched now
@@ -1121,7 +1158,7 @@ function FLT.RecipeShareStatus()
     lastStatus = last, queued = qlen(queues.CHANNEL) + qlen(queues.WHISPER),
     every = math.floor(statusEvery), recv = stats.recv, recvMin = stats.recvMin, recvPeak = math.max(stats.recvPeak, stats.recvMin),
     dropped = stats.dropped, searches = stats.searches, answers = stats.answers, hits = stats.hits,
-    qPeak = stats.qPeak, load = searchLoad(), limited = stats.limited, dQueue = stats.dQueue, dRate = stats.dRate, dBudget = stats.dBudget,
+    qPeak = stats.qPeak, load = searchLoad(), limited = stats.limited, lastErr = stats.lastErr, dQueue = stats.dQueue, dRate = stats.dRate, dBudget = stats.dBudget,
   }
 end
 
