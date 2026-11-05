@@ -69,6 +69,15 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.1.2 - Recipe search works on the live servers
+================================================
+- The live servers disabled the hidden recipe channel and refused all messages
+  there, so the recipe search found nobody and said "Many searches right now".
+  OneForAll now uses a new channel, joins it as a normal (hidden) channel and
+  moves on to the next one when the game refuses or disables it. Then it says
+  so instead of "Many searches". Version checks use the same channel.
+- /ofa channel shows the last message the game refused.
+
 6.1.1 - Launch talents, quest icons on the continent map
 ==========================================================
 - Talent Trees: every talent is placed where your game client has it, and talents

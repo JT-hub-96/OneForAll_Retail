@@ -9,7 +9,6 @@ local _, FLT = ...
 -- newer version seen later is remembered and shown at the next login.
 
 local PREFIX = "OFAVER"
-local CHANNEL = "OFAShare2" -- the recipe channel (6.1.0; 6.0 and older use "OFAShare")
 local LOGIN_WINDOW = 180 -- seconds after login in which the note may appear
 
 local function myVersion()
@@ -82,7 +81,7 @@ local function send(msg, dist, target)
 end
 
 local function channelID()
-  local id = GetChannelName and GetChannelName(CHANNEL)
+  local id = GetChannelName and GetChannelName(FLT.RecipeChannelName and FLT.RecipeChannelName() or "OFAShare3")
   if id and id > 0 then return id end
 end
 
