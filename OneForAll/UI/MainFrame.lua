@@ -597,6 +597,13 @@ local function createUI()
     sub:SetText("FOREVER COMPANION"); sub:SetTextColor(FLT.SkinC(0.90, 0.68, 0.30))
     local credit = FLT.NewFS(frame, nil, "OVERLAY", "GameFontDisableSmall"); credit:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 22, 4)
     credit:SetText("made by Smoergi")
+    -- the addon version at the bottom right, left of the resize grip (user 05.11.)
+    local ver = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("OneForAll", "Version"))
+      or (GetAddOnMetadata and GetAddOnMetadata("OneForAll", "Version"))
+    if ver then
+      local vfs = FLT.NewFS(frame, nil, "OVERLAY", "GameFontDisableSmall"); vfs:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -40, 4)
+      vfs:SetText("Version " .. ver)
+    end
   end
 
   if frame.Inset and frame.Inset.Bg then frame.Inset.Bg:SetVertexColor(FLT.SkinC(0.11, 0.085, 0.055, 0.98)) end

@@ -362,6 +362,7 @@ SlashCmdList.ONEFORALL = function(cmd)
       msg(string.format("Received: %d messages (this minute %d, peak %d per minute), dropped %d. Searches %d, players found %d, answers sent %d.",
         st.recv, st.recvMin, st.recvPeak, st.dropped, st.searches, st.hits, st.answers))
       if st.lastErr then msg("Last message the game refused: result " .. st.lastErr .. " (7 = channel refused, 3/8 = throttled).") end
+      if st.refused then msg("The game refuses the channel for this character right now (low level?).") end
     end
   elseif cmd == "profscan" then
     if not FLT.ScanProfessions then return end

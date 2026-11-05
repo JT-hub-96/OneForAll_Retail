@@ -19,12 +19,14 @@ local _, FLT = ...
 
 local PREFIX = "OFAPR"        -- guild
 local PREFIX2 = "OFAPR2"      -- channel and answers (6.1.0)
--- 6.1.2 (user 05.11.): on the live servers OFAShare2 is disabled (GetChannelList) and every addon message there is
--- refused (result 7), a new channel works. The channel is OFAShare<n> from CHAN_FIRST on; when the game refuses
--- one, everybody moves on to the next name (up to CHAN_LAST), so the clients meet again in the same channel.
-local CHAN_FIRST, CHAN_LAST = 3, 12
-local chanN = CHAN_FIRST
-local CHANNEL = "OFAShare" .. chanN
+-- 6.1.2 (user 05.11.): on the live servers OFAShare2 refused every addon message (result 7), a new channel worked.
+-- 6.1.3 (Discord 05.11.): 6.1.2 moved on to the next channel name on every refusal - low characters are refused
+-- everywhere and ended up in OFAShare3-12 ("You can only be in 20 channels"). Now there is only OFAShare3; the
+-- others (and the ones of older versions) are left at login, and a refusal only shows a note.
+local CHANNEL = "OFAShare3"
+local STALE = { "OFAShare", "OFAShare2", "OFAShare4", "OFAShare5", "OFAShare6", "OFAShare7", "OFAShare8",
+  "OFAShare9", "OFAShare10", "OFAShare11", "OFAShare12" }
+local refused = false -- the game refused our channel (result 7, e.g. a low character); tried again with the next status
 function FLT.RecipeChannelName() return CHANNEL end
 local OLD_CHANNEL = "OFAShare" -- 5.6-6.0 channel, left on login
 local GUILD_GAP = 0.35        -- seconds between guild messages
@@ -370,12 +372,19 @@ local function channelID(name)
   return nil
 end
 
--- true when the game lists our channel as disabled (GetChannelList: id, name, disabled, ...)
-local function channelDisabled()
-  if not GetChannelList then return false end
-  local l = { GetChannelList() }
-  for i = 1, #l - 2, 3 do if l[i + 1] == CHANNEL then return l[i + 2] == true end end
-  return false
+function FLT.LeaveStaleChannels(quiet)
+  if not LeaveChannelByName then return end
+  for _, c in ipairs(STALE) do if channelID(c) then pcall(LeaveChannelByName, c) end end
+  if quiet == nil or not (C_Timer and C_Timer.After) then return end
+  C_Timer.After(4, function()
+    local left = {}
+    for _, c in ipairs(STALE) do if channelID(c) then left[#left + 1] = "/leave " .. c end end
+    if #left > 0 and FLT.Msg then
+      FLT.Msg("Could not leave old OneForAll channels. Please type: " .. table.concat(left, "  "))
+    elseif not quiet and FLT.Msg then
+      FLT.Msg("Old OneForAll channels left.")
+    end
+  end)
 end
 
 local function hideChannelFromChat()
@@ -402,11 +411,8 @@ local onChannelReady -- forward (defined with the sending code)
 local joinTries, joinTimer = 0, false
 local function joinChannel()
   if not shareEnabled() then return end
-  -- the channel of 6.0 and older carries full recipe lists: leave it
-  if LeaveChannelByName then
-    if channelID(OLD_CHANNEL) then pcall(LeaveChannelByName, OLD_CHANNEL) end
-    for n = 2, chanN - 1 do local c = OLD_CHANNEL .. n; if channelID(c) then pcall(LeaveChannelByName, c) end end
-  end
+  -- channels of older versions (6.0: full recipe lists; 6.1.2: OFAShare4-12 by mistake): leave them
+  FLT.LeaveStaleChannels(true)
   if channelID() then hideChannelFromChat(); onChannelReady(); return end
   -- a normal channel: the live servers refuse addon messages in temporary channels (result 7 InvalidChannel,
   -- user 05.11.2026); it is hidden from the chat windows like before
@@ -456,17 +462,6 @@ local GAP = { GUILD = GUILD_GAP, CHANNEL = CHANNEL_GAP, WHISPER = WHISPER_GAP }
 local function qlen(q) return q.t - q.h + 1 end
 
 -- true when the game took the message; nil/true/0 = sent, false or another code = throttled or refused
--- the game refuses our channel: move on to the next name (once per 10 s; the last name is kept)
-local rejoinAt = -1e9
-local function rejoinChannel(force)
-  local t = GetTime and GetTime() or 0
-  if (t - rejoinAt < 10 and not force) or chanN >= CHAN_LAST or not (LeaveChannelByName and C_Timer and C_Timer.After) then return end
-  rejoinAt = t
-  pcall(LeaveChannelByName, CHANNEL)
-  chanN = chanN + 1; CHANNEL = OLD_CHANNEL .. chanN
-  channelReady = false
-  C_Timer.After(2, function() joinChannel() end)
-end
 
 local function accepted(ok, res)
   if not ok then return false end
@@ -495,10 +490,11 @@ local function pump(dist)
     end
     if ok and res ~= nil and res ~= true and res ~= 0 then stats.lastErr = tostring(res) end
     if dist == "CHANNEL" and ok and res == 7 then
-      -- the server refuses this channel (joined as a temporary one): join it again, the message is lost
-      rejoinChannel()
+      -- the game refuses the channel (e.g. a low character): the message is lost, the search says so
+      refused = true
       if item.onFail then item.onFail(true) end
     elseif accepted(ok, res) then
+      if dist == "CHANNEL" then refused = false end
       if item.onSent then item.onSent() end
     elseif ok and (item[3] or 0) < 3 then
       -- throttled: try the same message again a little later (3 tries)
@@ -1133,7 +1129,6 @@ end
 -- (spread out, many players log in at the same time)
 onChannelReady = function()
   if channelReady then return end
-  if channelDisabled() and chanN < CHAN_LAST then rejoinChannel(true); return end
   channelReady = true
   joinedAt = clock()
   -- a recipe opened before the channel was there is searched now
@@ -1158,7 +1153,7 @@ function FLT.RecipeShareStatus()
     lastStatus = last, queued = qlen(queues.CHANNEL) + qlen(queues.WHISPER),
     every = math.floor(statusEvery), recv = stats.recv, recvMin = stats.recvMin, recvPeak = math.max(stats.recvPeak, stats.recvMin),
     dropped = stats.dropped, searches = stats.searches, answers = stats.answers, hits = stats.hits,
-    qPeak = stats.qPeak, load = searchLoad(), limited = stats.limited, lastErr = stats.lastErr, dQueue = stats.dQueue, dRate = stats.dRate, dBudget = stats.dBudget,
+    qPeak = stats.qPeak, load = searchLoad(), limited = stats.limited, lastErr = stats.lastErr, refused = refused, dQueue = stats.dQueue, dRate = stats.dRate, dBudget = stats.dBudget,
   }
 end
 

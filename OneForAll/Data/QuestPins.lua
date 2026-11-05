@@ -34,8 +34,8 @@ FLT.QUEST_PINS = {
 3089|1|1|0|H|2|64|788||||Rune-Inscribed Parchment
 3090|1|1|0|H|2|256|788||||Tainted Parchment
 97279|2|1|0|H||0|||||Wayward Weapons
-98575|1|1|0|H|128|0|788||||Tainted Tablet
-98576|1|1|0|H|2|0|788||||Glyphic Parchment
+98575|1|1|0|H|128|256|788||||Tainted Tablet
+98576|1|1|0|H|2|128|788||||Glyphic Parchment
 !42.4,68.8,Ken'jai
 5649|4|5|0|H|128|16||||5648|In Favor of Spirituality
 !42.4,69.2,Canaga Earthcaller
@@ -1723,7 +1723,7 @@ FLT.QUEST_PINS = {
 3113|1|1|0|A|64|8|179||||Encrypted Memorandum
 3114|1|1|0|A|64|128|179||||Glyphic Memorandum
 3115|1|1|0|A|64|256|179||||Tainted Memorandum
-98574|1|1|0|A|64|0|179||||Hallowed Memorandum
+98574|1|1|0|A|64|16|179||||Hallowed Memorandum
 98581|1|1|0|A|4|0|179||||Archaic Rune
 !30.2,45.5,Marleth Barleybrew
 310|6|2|0|A||0|||||Bitter Rivals
@@ -5019,8 +5019,6 @@ FLT.QUEST_PINS = {
 98024|13|7|0|||0|95350||||Journey to the Crossroads
 !32.3,35.8,Nazgrel
 1361|32|30|0|H||0||||1362|Regthar Deathgate
-!34.3,39.4,Eitrigg
-787|1|1|0|H||0|||||The New Horde
 !35.0,38.3,Mokvar
 8913|60|58|0|H||1024|||||An Earnest Proposition
 8914|60|58|0|H||4|||||An Earnest Proposition

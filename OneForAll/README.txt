@@ -69,6 +69,24 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.1.3 - Too many channels, buff reminder in combat, quest icon fixes
+===================================================================
+- 6.1.2 could join up to ten OneForAll channels (OFAShare3 to OFAShare12) when
+  the game refused the recipe channel, e.g. for low characters, and then showed
+  "You can only be in 20 channels at a time". Now OneForAll uses only OFAShare3.
+  The game does not let addons leave channels, so OneForAll tells you the
+  /leave commands for the extra ones. When the game refuses the channel, the
+  recipe search says so and nothing else is joined.
+- Buff reminder: a buff no longer counts as run out in combat just because the
+  game hides it or stops listing it (e.g. after another buff or debuff came up);
+  it reads your buffs one by one and goes by the time the buff had left.
+- Quest icons: the WoW Forever class quests Glyphic Parchment (Orc mage),
+  Tainted Tablet (Troll warlock) and Hallowed Memorandum (Gnome priest) showed
+  for every class of that race; "The New Horde" no longer shows at Eitrigg in
+  Orgrimmar (he does not give it there).
+- The main window shows the OneForAll version at the bottom right.
+- Talent data of 04.11. (talentsforever), checked against the live client.
+
 6.1.2 - Recipe search works on the live servers
 ================================================
 - The live servers disabled the hidden recipe channel and refused all messages
