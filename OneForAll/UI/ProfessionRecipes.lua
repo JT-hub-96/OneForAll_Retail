@@ -509,9 +509,10 @@ function UI.CreateRecipeBrowser(parent)
     local lx = -14
     local K = UI.KNOW_COLORS
     local specs = {{"Other users |cff9d9d9d(only visible when online)|r", K.other}, {"Guild member", K.guild}, {"I know it", K.me}}
+    if FLT.RecipeChannelOff then table.remove(specs, 1) end -- 6.1.4: no search among other users
     for i, spec in ipairs(specs) do
       local t = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); t:SetPoint("TOPRIGHT", lx, -14); t:SetText(spec[1]); t:SetTextColor(FLT.SkinC(0.85, 0.82, 0.75))
-      if i == 1 then
+      if i == 1 and not FLT.RecipeChannelOff then
         -- keeps its width when the text changes (see f:Refresh), so the other entries stay put
         t:SetWidth(t:GetStringWidth() or 200); t:SetJustifyH("RIGHT"); f.otherLegend = t
       end
@@ -523,6 +524,8 @@ function UI.CreateRecipeBrowser(parent)
   -- hint in the second line, left-aligned with the "I know it" check
   local scanHint = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); scanHint:SetTextColor(FLT.SkinC(1, 0.82, 0))
   if legendFirst then scanHint:SetPoint("TOPLEFT", legendFirst, "BOTTOMLEFT", 0, -5) else scanHint:SetPoint("TOPRIGHT", -14, -32) end
+  -- stays inside the window (user 05.11.: the learn level note ran past its right edge)
+  scanHint:SetPoint("RIGHT", f, "RIGHT", -14, 0); scanHint:SetJustifyH("LEFT"); scanHint:SetWordWrap(false)
 
   -- filters + search
   local filters = {}
@@ -579,6 +582,8 @@ function UI.CreateRecipeBrowser(parent)
   star:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
   local rows, selected = {}, nil
+  local openReagent, reagentSources -- the reagent whose sources are open (6.1.5), its builder (below)
+  local allDrops, redrawDetail = {}, nil -- [itemID] = true: "Show all" mobs that drop it; redraw (set below showDetail)
   selectedRecipe = function() return selected end
   star:SetScript("OnClick", function()
     if not (prof and selected) then return end
@@ -628,10 +633,10 @@ function UI.CreateRecipeBrowser(parent)
     local sep = UI.makeTexture(row, "BORDER", 0.72, 0.50, 0.12, 0.18); sep:SetPoint("BOTTOMLEFT", 0, -1); sep:SetPoint("BOTTOMRIGHT", 0, -1); sep:SetHeight(1)
     local t = FLT.NewFS(row, nil, "OVERLAY", "GameFontHighlightSmall"); t:SetPoint("LEFT", 0, 0); t:SetWidth(300); t:SetJustifyH("LEFT")
     local fac = n.fac == "A" and " |cff4f9fff(Alliance)|r" or (n.fac == "H" and " |cffff5040(Horde)|r" or "")
-    t:SetText((n[2] or "?") .. "  |cff9d9d9d- " .. (n[3] or "?") .. "|r" .. fac)
+    t:SetText((n[2] or "?") .. (n[3] == "" and "" or ("  |cff9d9d9d- " .. (n[3] or "?") .. "|r")) .. fac)
     if n[4] and n[5] then
       local mb = UI.GoldButton(row, "Map", 62, 20, UI.ASSET_ROOT .. "icon_map", 11); mb:SetPoint("RIGHT", 0, 0)
-      mb:SetScript("OnClick", function() FLT:ShowOnMap({mapID = n[4], x = n[5], y = n[6], zone = n[3], name = n[2]}) end)
+      mb:SetScript("OnClick", function() FLT:ShowOnMap({mapID = n[4], x = n[5], y = n[6], zone = n[3], name = n[2], area = n.area}) end)
     end
   end
 
@@ -646,6 +651,82 @@ function UI.CreateRecipeBrowser(parent)
     return y0 - h - 10
   end
 
+  -- where to get a reagent (6.1.5): made with a profession (our recipe data), vendors of your side (nearest map first),
+  -- the objects it comes from (herbs, veins, fishing schools) or the mobs that drop it (Data/ReagentSources.lua)
+  local function mapName(id)
+    local i = id and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(id)
+    return i and i.name or "?"
+  end
+  reagentSources = function(item, ry, b)
+    -- a little room under the reagent and between the parts (user 05.11.: looked squeezed)
+    ry = ry - 6
+    local first = true
+    local function sub(text)
+      if not first then ry = ry - 6 end
+      first = false
+      local t = dtext("GameFontDisableSmall", 370, b); t:SetPoint("TOPLEFT", 16, ry); t:SetText(text); ry = ry - 20
+    end
+    local any = false
+    for prof, list in pairs(FLT.PROFESSION_RECIPES or {}) do
+      for _, x in ipairs(list) do
+        if x.i == item then sub("|cffffd100Made with " .. prof .. ":|r " .. x.n); any = true; break end
+      end
+    end
+    local src = FLT.REAGENT_SOURCES and FLT.REAGENT_SOURCES[item]
+    if src then
+      local side = UnitFactionGroup and UnitFactionGroup("player")
+      side = side == "Alliance" and "A" or (side == "Horde" and "H" or nil)
+      local here = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+      -- the nearest first (user 05.11.: in the Barrens it showed Stranglethorn; drops looked random): world distance
+      -- where the game tells it (same continent), else your zone first
+      local wpos = C_Map and C_Map.GetWorldPosFromMapPos
+      local me, meCont
+      if wpos and here and C_Map.GetPlayerMapPosition then
+        local p = C_Map.GetPlayerMapPosition(here, "player")
+        if p then meCont, me = wpos(here, p) end
+      end
+      local function nearest(ids, tbl, keep)
+        local l = {}
+        for _, id in ipairs(ids) do
+          local v = tbl and tbl[id]
+          if v and (not keep or keep(v)) then
+            local d = v[2] == here and 1e6 or 1e9
+            if me and CreateVector2D then
+              local ok, cont, pos = pcall(wpos, v[2], CreateVector2D(v[3] / 100, v[4] / 100))
+              if ok and cont == meCont and pos then local x1, y1 = me:GetXY(); local x2, y2 = pos:GetXY(); d = math.sqrt((x1 - x2) ^ 2 + (y1 - y2) ^ 2) end
+            end
+            l[#l + 1] = { id, v, d }
+          end
+        end
+        table.sort(l, function(a, c) if a[3] ~= c[3] then return a[3] < c[3] end return a[1] < c[1] end)
+        return l
+      end
+      if src.v then
+        local l = nearest(src.v, FLT.REAGENT_VENDORS, function(v) return not side or not v[5] or v[5] == side end)
+        if #l > 0 then
+          sub("|cffffd100Sold by|r" .. (#l > 3 and string.format("  |cff9d9d9d(the nearest of %d vendors)|r", #l) or "")); any = true
+          for i = 1, math.min(3, #l) do local v = l[i][2]; npcRow({ l[i][1], v[1], mapName(v[2]), v[2], v[3], v[4] }, ry, b); ry = ry - 24 end
+        end
+      end
+      if src.oz then
+        sub("|cffffd100From " .. src.o .. "|r"); any = true
+        for i = 1, math.min(3, #src.oz) do local z = src.oz[i]; npcRow({ 0, mapName(z[1]), "", z[1], z[2], z[3], area = z[4] }, ry, b); ry = ry - 24 end
+      elseif src.d then
+        -- the 3 nearest, "Show all" lists every one we have (up to 2 per zone; user 05.11.)
+        local l = nearest(src.d, FLT.REAGENT_MOBS)
+        local total, all = src.dn or #l, allDrops[item]
+        local n = all and #l or math.min(3, #l)
+        sub("|cffffd100Drops from|r" .. (total > n and string.format("  |cff9d9d9d(the nearest %d of %d mobs)|r", n, total) or "")); any = true
+        if #l > 3 then
+          local sb = UI.GoldButton(b, all and "Fewer" or "Show all", 74, 18); sb:SetPoint("TOPRIGHT", -14, ry + 21)
+          sb:SetScript("OnClick", function() allDrops[item] = not all or nil; if redrawDetail then redrawDetail() end end)
+        end
+        for i = 1, n do local v = l[i][2]; npcRow({ l[i][1], v[1], mapName(v[2]), v[2], v[3], v[4], area = v[5] }, ry, b); ry = ry - 24 end
+      end
+    end
+    if not any then sub("Where to get it is not known.") end
+    return ry - 4
+  end
   local function showDetail(r, keepScroll)
     clearDetail()
     if recipeBar then recipeBar:SetRecipe(prof, r) end
@@ -688,7 +769,7 @@ function UI.CreateRecipeBrowser(parent)
     end
     local function c(col, v) local k = DIFF[col]; return string.format("|cff%02x%02x%02x%s|r", math.floor(k[1] * 255), math.floor(k[2] * 255), math.floor(k[3] * 255), tostring(v)) end
     y = section("Details", y, function(b, y1) box, by = b, y1
-    line("Skill", (r.req and ("learn at " .. r.req .. "   ") or "") .. c("yellow", r.y) .. "  " .. c("green", r.g) .. "  " .. c("gray", r.gr))
+    line("Skill", (r.req and ("learn at " .. r.req .. "   ") or ((not r.ri and not r.fav and not r.start) and "|cff9d9d9dlearn level: visit a trainer|r   " or "")) .. c("yellow", r.y) .. "  " .. c("green", r.g) .. "  " .. c("gray", r.gr))
     do -- chance of a skill-up at your skill (yellow / green only)
       local d = difficulty(r, p.skill)
       local pct = skillUpChance(r, d, p.skill)
@@ -722,10 +803,19 @@ function UI.CreateRecipeBrowser(parent)
     return by + 4 end)
 
     y = section("Reagents", y, function(b, ry)
+      do local nm = UI.NewMark(b, "New in OneForAll 6.1.5: click a reagent to see where to get it - vendors, herbs and ore, mobs that drop it, with a map button."); nm:SetPoint("TOPRIGHT", -12, -8) end
       for _, rg in ipairs(r.r or {}) do
         local have = GetItemCount and GetItemCount(rg[1], true) or 0
         local col = have >= rg[2] and "|cff59ff73" or "|cffff6060"
-        itemRow(rg[1], ry, itemName(rg[1]) or (rg[3] ~= "" and rg[3]) or nil, nil, col .. have .. "|r / " .. rg[2], b); ry = ry - 32
+        local row = itemRow(rg[1], ry, itemName(rg[1]) or (rg[3] ~= "" and rg[3]) or nil, nil, col .. have .. "|r / " .. rg[2], b); ry = ry - 32
+        -- a click shows where to get it (6.1.5, user 05.11.); Shift / Ctrl-click as before
+        local old = row:GetScript("OnClick")
+        row:SetScript("OnClick", function(self, button)
+          if IsModifiedClick and IsModifiedClick() then if old then old(self, button) end; return end
+          openReagent = (openReagent ~= rg[1]) and rg[1] or nil
+          showDetail(selected, true)
+        end)
+        if openReagent == rg[1] then ry = reagentSources(rg[1], ry, b) end
       end
       return ry + 2
     end) + 10
@@ -862,8 +952,19 @@ function UI.CreateRecipeBrowser(parent)
           local t = dtext("GameFontNormalSmall", nil, b); t:SetPoint("TOPLEFT", 12, ry); t:SetText(text); t:SetTextColor(FLT.SkinC(unpack(GOLD))); ry = ry - 20
         end
         if src.v then
+          -- only vendors of the own side (and neutral ones), user 05.11.
+          local side = UnitFactionGroup and UnitFactionGroup("player")
+          side = side == "Alliance" and "A" or (side == "Horde" and "H" or nil)
           sub("Sold by")
-          for _, n in ipairs(src.v) do npcRow(n, ry, b); ry = ry - 24 end
+          local shown, other = 0, nil
+          for _, n in ipairs(src.v) do
+            if not side or not n.fac or n.fac == side then npcRow(n, ry, b); ry = ry - 24; shown = shown + 1
+            else other = n.fac end
+          end
+          if shown == 0 then
+            local t = dtext("GameFontDisableSmall", 370, b); t:SetPoint("TOPLEFT", 14, ry)
+            t:SetText("Only sold by " .. (other == "A" and "Alliance" or "Horde") .. " vendors."); ry = ry - 18
+          end
           ry = ry - 6
         end
         if src.d then
@@ -887,6 +988,7 @@ function UI.CreateRecipeBrowser(parent)
   end
 
   if recipeBar then recipeBar.onChange = function() if selected then showDetail(selected, true) end end end
+  redrawDetail = function() if selected then showDetail(selected, true) end end
 
   local function rowFor(i)
     if rows[i] then return rows[i] end
@@ -945,7 +1047,8 @@ function UI.CreateRecipeBrowser(parent)
       b.name:SetText(r.n .. (n > 0 and (" (" .. n .. ")") or "") .. (pct and ("  " .. pct .. "%") or ""))
       local col = d and DIFF[d] or {0.92, 0.90, 0.84}
       b.name:SetTextColor(FLT.SkinC(col[1], col[2], col[3]))
-      b.lvl:SetText(r.req and tostring(r.req) or ("|cff9d9d9d" .. (r.y or "?") .. "|r"))
+      -- learn level; "?" when not known yet (6.1.5: the yellow level was shown here and read like the learn level)
+      b.lvl:SetText(r.req and tostring(r.req) or "|cff9d9d9d?|r")
       if r.lv then
         b.req:SetText((pl < r.lv and "|cffcc5555" or "|cff8f8f8f") .. "L" .. r.lv .. "|r")
       else
@@ -1003,7 +1106,12 @@ function UI.CreateRecipeBrowser(parent)
     -- The skill comes from the profession book; no skill = not learned on this character.
     meta:SetText((skill and ("Your skill: " .. skill .. (p.maxSkill and ("/" .. p.maxSkill) or "")) or "|cff9d9d9dNot learned on this character|r") ..
       string.format("   |   %d recipes, %d known", #list, knownCount))
-    scanHint:SetText((skill and not p.scanned) and ("Open your " .. prof .. " window once to mark known recipes") or "")
+    -- user 05.11.: a quiet note while learn levels are missing (only the trainer tells them; read when you visit one)
+    local noLvl = 0
+    for _, r in ipairs(list) do if not r.req then noLvl = noLvl + 1 end end
+    if skill and not p.scanned then scanHint:SetText("Open your " .. prof .. " window once to mark known recipes")
+    elseif noLvl > 0 then scanHint:SetText("|cff9d9d9d" .. noLvl .. " learn levels unknown (?) - read at the trainer|r")
+    else scanHint:SetText("") end
 
     -- Filtered list first (cheap); rows are only drawn for the visible part
     -- (virtual list), so a profession with 500 recipes builds ~20 rows.

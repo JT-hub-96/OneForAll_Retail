@@ -40,6 +40,13 @@ function UI.CreateDungeonMap(parent)
   hint:SetPoint("BOTTOMLEFT", 12, 10)
   hint:SetText("Mouse wheel: zoom  ·  drag: move  ·  click a boss to see its loot  ·  map layout: Forever Simple World Map by Tarolg")
   local fit = UI.GoldButton(f, "Fit", 54, 20, nil, 11); fit:SetPoint("BOTTOMRIGHT", -10, 6)
+  -- switch to the game's world map (user 05.11.: from the dungeon map on M there was no way to it)
+  local wm = UI.GoldButton(f, "World map", 90, 20, nil, 11); wm:SetPoint("RIGHT", fit, "LEFT", -6, 0)
+  do local nm = UI.NewMark(f, "New in OneForAll 6.1.4: back to the world map."); nm:SetPoint("RIGHT", wm, "LEFT", -3, 0) end
+  wm:SetScript("OnClick", function()
+    if UI.IsWindowShown and UI.IsWindowShown() then FLT:ToggleUI() end
+    if ToggleWorldMap then ToggleWorldMap() elseif WorldMapFrame then WorldMapFrame:Show() end
+  end)
   local note = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); note:SetPoint("TOPLEFT", vp, "TOPLEFT", 10, -8)
   note:SetTextColor(0.75, 0.72, 0.66)
 
@@ -275,9 +282,13 @@ function FLT.ApplyDungeonMapKey()
   for _, k in ipairs(keys) do SetOverrideBindingClick(keyButton, false, k, "OneForAllDungeonMapKey") end
 end
 
-function FLT.ToggleDungeonMap()
+-- test (/ofa dmap): any dungeon with a map when you are not in one
+function FLT.ToggleDungeonMap(test)
   if UI.IsWindowShown and UI.IsWindowShown() then FLT:ToggleUI(); return end
   local d = currentMapDungeon()
+  if not d and test and FLT.DUNGEONS and FLT.DUNGEON_MAPS then
+    for _, x in ipairs(FLT.DUNGEONS) do if FLT.DUNGEON_MAPS[x.name] then d = x; break end end
+  end
   if not d then if ToggleWorldMap then ToggleWorldMap() end return end
   FLT:OpenPanel("dungeons")
   if UI.OpenDungeon then UI.OpenDungeon(d, nil, "map") end

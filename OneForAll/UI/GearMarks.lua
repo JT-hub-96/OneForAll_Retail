@@ -49,7 +49,7 @@ end
 
 -- an upgrade the player can use (and, for the bags, wear at his level now); 2nd value: true when it is a lighter
 -- armour type and the option for it is on (yellow arrow)
-local function isUpgrade(id, nowOnly)
+local function isUpgrade(id, nowOnly, link)
   if not id or not on() then return false end
   local _, _, _, loc, _, cid, sub = GetItemInfoInstant(id)
   if not (loc and FLT.GEAR_LOC_SLOTS and FLT.GEAR_LOC_SLOTS[loc]) or not FLT.GearCanUse(loc, cid, sub) then return false end
@@ -57,7 +57,7 @@ local function isUpgrade(id, nowOnly)
     local minLevel = select(5, GetItemInfo(id))
     if minLevel and UnitLevel and minLevel > UnitLevel("player") then return false end
   end
-  local kind = FLT.GearValue.Change(id)
+  local kind = FLT.GearValue.Change(id, link)
   if kind ~= "up" and kind ~= "new" then return false end
   return true, FLT.QoL.Get("arrowTiers") and lighterArmor(loc, cid, sub) or false
 end
@@ -96,6 +96,7 @@ end
 
 -- Bags ---------------------------------------------------------------------------
 local getContainerItemID = (C_Container and C_Container.GetContainerItemID) or GetContainerItemID
+local getContainerItemLink = (C_Container and C_Container.GetContainerItemLink) or GetContainerItemLink
 local function buttonsOf(frame)
   if frame.EnumerateValidItems then
     local list = {}
@@ -114,7 +115,8 @@ local function markBag(frame)
     local up, lighter = false, false
     if active and b:IsShown() then
       local bag = b.GetBagID and b:GetBagID() or frame:GetID()
-      up, lighter = isUpgrade(getContainerItemID and getContainerItemID(bag, b:GetID()), true)
+      local slot = b:GetID()
+      up, lighter = isUpgrade(getContainerItemID and getContainerItemID(bag, slot), true, getContainerItemLink and getContainerItemLink(bag, slot))
     end
     if up or b.ofaUp then upMark(b, 15, "TOPLEFT", 1, -1, up, lighter) end
   end
@@ -222,7 +224,7 @@ local function markQuest()
       local link
       if fromLog and GetQuestLogItemLink then link = GetQuestLogItemLink(b.type, b:GetID())
       elseif GetQuestItemLink then link = GetQuestItemLink(b.type, b:GetID()) end
-      up, lighter = isUpgrade(itemID(link))
+      up, lighter = isUpgrade(itemID(link), nil, link)
     end
     if up or b.ofaUp then
       local icon = b.Icon or (b:GetName() and _G[b:GetName() .. "IconTexture"]) or b

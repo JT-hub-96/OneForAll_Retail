@@ -139,6 +139,21 @@ local function greyAt(pl)
   elseif pl <= 59 then return pl - math.floor(pl / 5) - 1 end
   return 48
 end
+-- grey for you (no experience any more): used by "Accept quests automatically" (6.1.5, user 05.11.)
+local questLevel -- [questID] = level, read from the pin data on first use
+function FLT.IsQuestGrey(id, level)
+  local pl = UnitLevel and UnitLevel("player") or 1
+  if not level and id then
+    if not questLevel then
+      questLevel = {}
+      for _, raw in pairs(FLT.QUEST_PINS or {}) do
+        for qid, lvl in raw:gmatch("\n(%d+)|(%d+)|") do questLevel[tonumber(qid)] = tonumber(lvl) end
+      end
+    end
+    level = questLevel[id]
+  end
+  return level ~= nil and level > 0 and level <= greyAt(pl)
+end
 local function xpRange(q)
   local from = math.max(1, q.req)
   local to = from

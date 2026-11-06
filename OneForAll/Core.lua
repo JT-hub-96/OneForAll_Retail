@@ -353,6 +353,7 @@ SlashCmdList.ONEFORALL = function(cmd)
   elseif cmd == "channel" then
     local st = FLT.RecipeShareStatus and FLT.RecipeShareStatus()
     if not st then return end
+    if FLT.RecipeChannelOff then msg("OneForAll no longer uses a chat channel: the game blocks channels with many players. Recipes are shared in your guild.") return end
     if not st.enabled then msg("Recipe sharing with other OneForAll users is off (Settings).") return end
     msg(string.format("Recipe channel: %s. Other users online: %d, known recipe holders: %d. Own status sent: %s (every %d min).%s",
       st.channel and ("joined as channel " .. st.channel) or ("not joined (" .. st.tries .. " tries)"),
@@ -364,6 +365,8 @@ SlashCmdList.ONEFORALL = function(cmd)
       if st.lastErr then msg("Last message the game refused: result " .. st.lastErr .. " (7 = channel refused, 3/8 = throttled).") end
       if st.refused then msg("The game refuses the channel for this character right now (low level?).") end
     end
+  elseif cmd == "dmap" then -- the dungeon map as on M (outside a dungeon: the first one with a map), for testing
+    if FLT.ToggleDungeonMap then FLT.ToggleDungeonMap(true) end
   elseif cmd == "profscan" then
     if not FLT.ScanProfessions then return end
     local r = FLT.ScanProfessions()

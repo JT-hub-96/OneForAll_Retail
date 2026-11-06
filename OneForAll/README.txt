@@ -14,6 +14,7 @@ Commands
 /oneforall portraits     Show which source each boss portrait came from
 /oneforall craft         Open/close the Crafting List
 /oneforall setup         Open the welcome setup again
+/oneforall dmap         Open the dungeon map like M does in a dungeon (for testing)
 /oneforall where         Print the current map and coordinates (to report wrong map pins)
 /oneforall reset         Reset manual Library Book marks
 /oneforall tabs reset    Show the default tabs again for this character
@@ -68,6 +69,73 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 
 Changelog (newest first)
 ========================
+
+6.1.5 - Reagent sources, flight times, recipe learn levels, gear value fixes
+============================================================================
+Professions
+- Click a reagent in the recipe details to see where to get it: made with a
+  profession, the nearest vendors of your side, gathered from herbs, ore veins
+  or fishing schools, or the nearest mobs that drop it ("Show all" for more),
+  each with a map button that outlines the area where it spawns (data from
+  QuestieDB).
+- Recipe learn levels are read when you visit a profession trainer (also for
+  recipes you know) and shown from then on; "?" where it is not known yet, with
+  a quiet note how many are still unknown.
+- Crafting List: "Craft" makes all of them (not more than your materials allow),
+  every craft takes one off the list, no more "Cannot anchor protected frames"
+  error, and the button text fits.
+Flights (Quality of Life > World Map, both on)
+- "Open flight map at once" at a flight master (not when it has quests for you,
+  Shift talks normally).
+- "Flight times": the time in the flight map tooltip and a small movable window
+  with the time left while you fly. The times come from the flight paths in the
+  game data and get more exact with every flight; works in every client language.
+Gear Value
+- Random bonus items ("... of the Bear") are valued with their bonus stats in
+  your bags too - they always showed as a downgrade.
+- With a two-hander in your hands shields, held items and off-hand weapons no
+  longer show as an upgrade for an empty slot.
+- Spell power no longer counts twice for healers.
+Buff reminder
+- Shaman weapon imbues (Flametongue, Frostbrand, Rockbiter, Windfury Weapon) work,
+  in every client language; the card comes as soon as the imbue is gone.
+- Buffs that are no spell of yours (Well Fed, flasks) show their real icon.
+Other
+- Accept quests automatically: grey quests are left for you to take by hand.
+- Hunter Pets: no more "secret string" errors in dungeons.
+- Yellow "!" marks on the new options and features of 6.1.4 and 6.1.5.
+
+6.1.4 - Buff reminder snooze and glow, recipe channel off, quest and vendor fixes
+==================================================================================
+Buff reminder
+- Snooze: right-click a card (or "Zz" on it with the new option "Snooze
+  button") and that buff stays quiet until you cast it again - e.g. Battle Shout
+  while you fish.
+- New option "Flash cards" (on): the game's proc glow around the icon, so you
+  notice the card.
+- The buffs you have right now are offered first when you add a buff.
+- Combat: the card comes when a buff runs low also while the game hides your
+  buffs (OneForAll goes by the time the buff had, or by its duration when you
+  cast it right before the fight, e.g. a Seal); a buff you cast again removes
+  its card at once; no false "run out" for buffs whose time is not known (thanks
+  to MartinDoyleUK, PR #36).
+Recipes
+- Recipes of other OneForAll users: the game disables chat channels once many
+  players are in them (OFAShare2, then OFAShare3), so this search is gone - no
+  channel, no "Search" button, no "Share recipes" switch. Recipes of your guild
+  members are shared as before. If OFAShare channels are still in your channel
+  list, OneForAll shows the /leave commands at login.
+- "Sold by" shows only vendors of your faction (and neutral ones).
+Other
+- Turn in quests automatically: quests that take battleground marks (Warsong
+  Gulch, Arathi Basin, Alterac Valley) are not turned in by themselves.
+- Bags full helper: items can be destroyed in combat too.
+- Dungeon maps: a "World map" button switches to the game's world map (handy when
+  M opens the dungeon map). /ofa dmap opens the dungeon map for testing.
+- Quality of Life: the sub-options of Buff reminder and Map Landmarks sit two in
+  a row.
+- Move Blizzard windows: no more "AddOn tried to call a protected function" when
+  the spellbook is first opened in combat; it becomes movable after the fight.
 
 6.1.3 - Too many channels, buff reminder in combat, quest icon fixes
 ===================================================================

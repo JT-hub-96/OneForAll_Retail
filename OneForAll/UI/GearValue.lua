@@ -170,13 +170,14 @@ local function score(stats, slot, id, isWand)
         elseif isWand and W.dpswand then wk = "dpswand" end
       end
       local w = W[wk] or 0
+      -- spell power also heals: it counts with the higher of the two weights, not with both (Discord Nimair 05.11.:
+      -- the leveling healer weights have both, and spell power counted 43.6 + 20)
+      if k == "ITEM_MOD_SPELL_POWER_SHORT" then w = math.max(w, W.heal or 0) end
       if w > 0 then
         local val = RATING[s] and v / RATING[s] or v
         if slot == 17 and s == "dps" and wk ~= "dpsoh" then val = val * 0.5 end
         total = total + val * w
       end
-      -- spell power also heals
-      if k == "ITEM_MOD_SPELL_POWER_SHORT" and (W.heal or 0) > 0 then total = total + v * W.heal end
     end
   end
   if (slot == 16 or slot == 17) and (W.speed or 0) > 0 and stats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT then
@@ -229,13 +230,14 @@ local function itemValue(id, slot, link)
   return v
 end
 
+-- the item's own stats only: the enchant is taken out of the link (user 23.10.), its random bonus stays
+local function bare(link) return type(link) == "string" and (link:gsub("(item:%d+):%d*", "%1:0", 1)) or nil end
 local function wornValue(slot)
   local v = worn[slot]
   if v ~= nil then return v end
   local link = GetInventoryItemLink("player", slot)
   if not link then worn[slot] = 0; return 0 end
-  -- the item's own stats only: the enchant is taken out of the link (user 23.10.), its random bonus stays
-  link = link:gsub("(item:%d+):%d*", "%1:0", 1)
+  link = bare(link)
   local id = tonumber(link:match("item:(%d+)"))
   v = id and itemValue(id, slot, link)
   if v then worn[slot] = v end
@@ -250,16 +252,24 @@ local function slotFor(loc, slots)
   return slots[1]
 end
 
--- Value of an item and the change against what is worn: value, delta (nil = no data yet / not gear)
-function GV.Upgrade(id)
+-- Value of an item and the change against what is worn: value, delta (nil = no data yet / not gear). With the link the
+-- random bonus counts (user 05.11.: "... of the Bear" in the bags was valued without its stats - always a downgrade)
+function GV.Upgrade(id, link)
   local _, _, _, loc, _, cid, sub = GetItemInfoInstant(id)
   local slots = loc and FLT.GEAR_LOC_SLOTS and FLT.GEAR_LOC_SLOTS[loc]
   if not slots then return nil end
   local slot = slotFor(loc, slots)
-  local v = itemValue(id, slot)
+  link = link and tonumber(link:match("item:(%d+)")) == id and bare(link) or nil
+  local v = itemValue(id, slot, link)
   if not v or not forMyClass(id) then return nil end
   for _, s in ipairs(slots) do
     if GetInventoryItemID and GetInventoryItemID("player", s) == id then return v, 0, true end
+  end
+  -- with a two-hander worn an off-hand item (shield, held item, off-hand weapon) has nothing to compare with - it would
+  -- always be "slot empty" (user 06.11.: every shield an upgrade): no Value
+  if loc == "INVTYPE_SHIELD" or loc == "INVTYPE_HOLDABLE" or loc == "INVTYPE_WEAPONOFFHAND" then
+    local mh = GetInventoryItemID and GetInventoryItemID("player", 16)
+    if mh and select(4, GetItemInfoInstant(mh)) == "INVTYPE_2HWEAPON" then return v end
   end
   local base, replaced
   if loc == "INVTYPE_2HWEAPON" then
@@ -279,8 +289,8 @@ end
 -- What players see is the change in % against the worn item (user 16.10.): kind, pct
 -- kind: "up" / "down" / "same" / "new" (nothing worn there, or it has no value) / "worn"; nil = no data yet;
 -- third value: the slot compared with when there are two (rings, trinkets, dual wield)
-function GV.Change(id)
-  local v, d, equipped, base, replaced = GV.Upgrade(id)
+function GV.Change(id, link)
+  local v, d, equipped, base, replaced = GV.Upgrade(id, link)
   if not v then return nil end
   if equipped then return "worn" end
   if not d then return nil end
@@ -300,10 +310,10 @@ GV.UP, GV.DOWN = UP, DOWN
 GV.WISH = OFA .. "|T" .. ASSET .. "icon_star:16:16:0:0:64:64:0:64:0:64:255:209:64|t Wishlist"
 -- tooltip: green "Upgrade: 30%" with an arrow up, red "Downgrade: 12%" with an arrow down (like the user's example);
 -- Quality of Life switch "gearValue", on by default (user 16.10.)
-function GV.TooltipLine(tt, id)
+function GV.TooltipLine(tt, id, itemLink)
   local _, _, _, loc, _, cid, sub = GetItemInfoInstant(id)
   if not (loc and FLT.GEAR_LOC_SLOTS and FLT.GEAR_LOC_SLOTS[loc]) or not FLT.GearCanUse(loc, cid, sub) then return end
-  local kind, pct, slot = GV.Change(id)
+  local kind, pct, slot = GV.Change(id, itemLink)
   -- with two slots (rings, trinkets, dual wield): which worn item it is compared with (user 17.10.)
   -- only for upgrades: a downgrade replaces nothing (user 22.10.)
   local link = kind == "up" and slot and GetInventoryItemLink("player", slot)

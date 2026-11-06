@@ -226,6 +226,19 @@ function CL.Add(prof, spell, n)
   changed()
 end
 function CL.Count(spell) for _, e in ipairs(list()) do if e.s == spell then return e.n end end return 0 end
+-- one craft of a planned recipe is done: one less on the list, gone at 0 (6.1.5, user 05.11.: had to click "-")
+function CL.Crafted(spell)
+  local l = list()
+  for i, e in ipairs(l) do
+    if e.s == spell then
+      index()
+      local x = bySpell[spell]
+      local per = x and x.r.c or 1 -- the list counts items, one craft can make several
+      if e.n > per then e.n = e.n - per else table.remove(l, i) end
+      changed(); return true
+    end
+  end
+end
 
 -- Window ----------------------------------------------------------------------------
 local secureCraft -- the secure Craft behaviour, below (Recipe bar)
@@ -365,7 +378,7 @@ refresh = function()
     local name, q = r and r.i and itemName(r.i, r.n) or (r and r.n or ("Recipe " .. e.s)), r and r.q
     b.name:SetText(name); b.name:SetTextColor(qcolor(q)); b.name:SetPoint("RIGHT", b.minus, "LEFT", -6, 0)
     if r and CL.ICanCraft(x.prof, r) then
-      b.craftBtn:ClearAllPoints(); b.craftBtn:SetPoint("RIGHT", b.minus, "LEFT", -6, 0); b.craftBtn:SetLabel("Craft"); b.craftBtn:Show()
+      b.craftBtn:ClearAllPoints(); b.craftBtn:SetPoint("RIGHT", b.minus, "LEFT", -6, 0); b.craftBtn:SetLabel("Craft"); b.craftBtn:SetWidth(46); b.craftBtn:Show()
       b.craftBtn.target = { prof = x.prof, r = r, n = math.ceil(e.n / (r.c or 1)) }
       b.name:SetPoint("RIGHT", b.craftBtn, "LEFT", -4, 0)
     end
@@ -386,7 +399,7 @@ refresh = function()
     local name, q = itemName(row.id, row.name)
     b.name:SetText(name); b.name:SetTextColor(qcolor(q)); b.name:SetPoint("RIGHT", b.c2, "LEFT", -50, 0)
     if row.craft and CL.ICanCraft(row.maker.prof, row.maker.r) then
-      b.craftBtn:ClearAllPoints(); b.craftBtn:SetPoint("RIGHT", b.c2, "LEFT", -2, 0); b.craftBtn:SetLabel("Craft"); b.craftBtn:Show()
+      b.craftBtn:ClearAllPoints(); b.craftBtn:SetPoint("RIGHT", b.c2, "LEFT", -2, 0); b.craftBtn:SetLabel("Craft"); b.craftBtn:SetWidth(46); b.craftBtn:Show()
       b.craftBtn.target = { prof = row.maker.prof, r = row.maker.r, n = math.ceil(row.craft / (row.maker.r.c or 1)) }
     end
     local col = row.have >= row.need and "|cff59ff73" or (row.craft and "|cff9fd0ff" or "|cffff6060")
@@ -459,7 +472,16 @@ local function create()
   local ov = CreateFrame("Button", "OneForAllCraftListCraft", frame, "SecureActionButtonTemplate"); ov:Hide()
   UI.CombatDetach(ov) -- not inside the Crafting List window in combat, so the window can still be closed
   local ohl = ov:CreateTexture(nil, "HIGHLIGHT"); ohl:SetAllPoints(); ohl:SetColorTexture(FLT.SkinC(1, 0.82, 0.3, 0.15))
-  secureCraft(ov, function() if ov.t then return ov.t.prof, ov.t.r, ov.t.n end end, function(t) if ov.fake then ov.fake:SetLabel(t) end end)
+  -- the small button grows with its text ("Craft now" ran over its edge, user 05.11.), the secure one follows it
+  secureCraft(ov, function() if ov.t then return ov.t.prof, ov.t.r, ov.t.n end end, function(t)
+    local fake = ov.fake
+    if not fake then return end
+    fake:SetLabel(t)
+    local fs = fake._label
+    local w = fs and fs.GetStringWidth and fs:GetStringWidth() or 0
+    fake:SetWidth(math.max(46, math.ceil(w) + 14))
+    if CL._hoverCraft then CL._hoverCraft(fake) end
+  end)
   ov:SetScript("OnEnter", function(self)
     if not self.t then return end
     GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine("Craft " .. self.t.n .. "x", 1, 0.82, 0)
@@ -468,7 +490,13 @@ local function create()
   ov:SetScript("OnLeave", function(self) GameTooltip:Hide(); if not (InCombatLockdown and InCombatLockdown()) then self:Hide() end end)
   CL._hoverCraft = function(fake)
     if InCombatLockdown and InCombatLockdown() then return end
-    ov:ClearAllPoints(); ov:SetAllPoints(fake); ov:SetFrameLevel(fake:GetFrameLevel() + 5)
+    -- placed by screen position, not anchored to the row (user 05.11.: "Cannot anchor protected frames to regions" -
+    -- the live client does not let a secure button hang on a normal frame)
+    local l, b, w, h = fake:GetLeft(), fake:GetBottom(), fake:GetWidth(), fake:GetHeight()
+    if not (l and b and w and h) then return end
+    local k = (fake:GetEffectiveScale() or 1) / (ov:GetEffectiveScale() or 1)
+    ov:ClearAllPoints(); ov:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", l * k, b * k); ov:SetSize(w * k, h * k)
+    ov:SetFrameStrata(frame:GetFrameStrata()); ov:SetFrameLevel(fake:GetFrameLevel() + 5)
     ov.t, ov.fake = fake.target, fake
     ov:Show()
   end
@@ -568,6 +596,11 @@ local function say(text) if FLT.Msg then FLT.Msg(text) end end
 local function craft(prof, r, n, how)
   local want = spellName(r.s) or r.n
   if how == 3 then
+    -- not more than the materials allow (6.1.5, user 05.11.: 2 planned, materials for 2 - only 1 was made, then the
+    -- second click with 2 did nothing)
+    local info = C_TradeSkillUI.GetRecipeInfo and call(C_TradeSkillUI.GetRecipeInfo, r.s)
+    local can = type(info) == "table" and tonumber(info.numAvailable)
+    if can and can > 0 and n > can then n = can end
     if call(C_TradeSkillUI.CraftRecipe, r.s, n) == nil and not C_TradeSkillUI.CraftRecipe then say("Crafting is not possible here.") end
     return
   end
@@ -598,7 +631,13 @@ secureCraft = function(btn, target, onState)
     if openHow then self:SetAttribute("type", nil)
     else self:SetAttribute("type", "spell"); self:SetAttribute("spell", profName(prof)) end
   end)
+  local lastClick = 0
   btn:HookScript("OnClick", function()
+    -- the button is registered for down and up (works with either key setting): act once per click (user 05.11.: the
+    -- second call stopped the crafting after one)
+    local t = GetTime and GetTime() or 0
+    if t - lastClick < 0.4 then return end
+    lastClick = t
     local prof, r, n = target()
     if not prof then return end
     if openHow then craft(prof, r, n, openHow); onState("Craft")
@@ -692,8 +731,11 @@ local function bagsLater()
 end
 local ev = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_LOGIN", "BAG_UPDATE_DELAYED", "BANKFRAME_OPENED", "BANKFRAME_CLOSED" }) do pcall(ev.RegisterEvent, ev, e) end
-ev:SetScript("OnEvent", function(_, event)
-  if event == "BANKFRAME_OPENED" then bankOpen = true; local c = me(); if c then scan(c, "bank", BANK); changed() end
+if ev.RegisterUnitEvent then pcall(ev.RegisterUnitEvent, ev, "UNIT_SPELLCAST_SUCCEEDED", "player") end
+ev:SetScript("OnEvent", function(_, event, _, _, spell)
+  if event == "UNIT_SPELLCAST_SUCCEEDED" then
+    if spell and not (FLT.IsSecret and FLT.IsSecret(spell)) and #list() > 0 then CL.Crafted(spell) end
+  elseif event == "BANKFRAME_OPENED" then bankOpen = true; local c = me(); if c then scan(c, "bank", BANK); changed() end
   elseif event == "BANKFRAME_CLOSED" then bankOpen = false
   else bagsLater() end
 end)

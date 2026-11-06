@@ -442,12 +442,15 @@ local function ensureMarker()
     local current = WorldMapFrame.GetMapID and WorldMapFrame:GetMapID()
     marker:SetAlpha((current == marker.mapID) and 1 or 0)
     marker:EnableMouse(current == marker.mapID)
+    if marker.areaFrame then marker.areaFrame:SetAlpha((current == marker.mapID) and 1 or 0) end
   end
   marker.sync = sync
   if WorldMapFrame.OnMapChanged then hooksecurefunc(WorldMapFrame, "OnMapChanged", function() if marker:IsShown() then sync() end end) end
   -- a click removes it again (user 01.11.: there was no way to get rid of it)
   marker:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   marker:SetScript("OnClick", function(self) self:Hide(); GameTooltip:Hide() end)
+  -- the outline of an area goes with the pin (6.1.5: where a mob or herb spawns)
+  marker:HookScript("OnHide", function(self) if self.areaFrame then self.areaFrame:Hide() end end)
   marker:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("OneForAll marker", 1, 0.82, 0)
     if self.label then GameTooltip:AddLine(self.label, 1, 1, 1, true) end
@@ -480,6 +483,52 @@ local function forceMap(mapID)
   return false
 end
 
+-- outlines "x,y;x,y;...|..." (map percent) drawn as closed lines on the map canvas, lines pooled
+local SOFT = { { 3, 0.12 }, { 1.8, 0.22 }, { 0.8, 0.7 } } -- thickness factor, alpha of the three lines per edge
+local function drawArea(m, area, w, h)
+  local parent = m:GetParent()
+  if not area or not (parent and parent.CreateLine) then if m.areaFrame then m.areaFrame:Hide() end return end
+  local f = m.areaFrame
+  -- about 2.5 pixels on screen whatever the zoom: the map canvas is scaled down, a thinner line broke up (user 05.11.,
+  -- Westfall coast)
+  local function thickness(fr)
+    local sc = (fr:GetEffectiveScale() or 1) / ((UIParent and UIParent:GetEffectiveScale()) or 1)
+    return 2.5 / math.max(0.05, sc)
+  end
+  if not f then
+    f = CreateFrame("Frame", nil, parent); f:SetAllPoints(); f.lines = {}; m.areaFrame = f
+    if hooksecurefunc and WorldMapFrame and WorldMapFrame.OnCanvasScaleChanged then
+      hooksecurefunc(WorldMapFrame, "OnCanvasScaleChanged", function()
+        if not f:IsShown() then return end
+        local t = thickness(f)
+        for _, l in ipairs(f.lines) do l:SetThickness(t * (l.soft or 1)) end
+      end)
+    end
+  end
+  -- above the map's own layers like the pin (user 05.11.: the explored-area textures and the fog covered most of the line)
+  f:SetFrameStrata(m:GetFrameStrata()); f:SetFrameLevel(math.max(1, m:GetFrameLevel() - 1))
+  local thick = thickness(f)
+  local n = 0
+  for ring in area:gmatch("[^|]+") do
+    local pts = {}
+    for x, y in ring:gmatch("([%d.]+),([%d.]+)") do pts[#pts + 1] = { tonumber(x) / 100 * w, -tonumber(y) / 100 * h } end
+    for i = 1, #pts do
+      local a, b = pts[i], pts[i % #pts + 1]
+      -- soft (user 05.11.: "nicht so hart"): a wide faint glow, a medium one and a thin core per edge
+      for k = 1, 3 do
+        n = n + 1
+        local l = f.lines[n]
+        if not l then l = f:CreateLine(nil, "OVERLAY", nil, k); f.lines[n] = l end
+        l.soft = SOFT[k][1]
+        l:SetColorTexture(1, 0.82, 0.1, SOFT[k][2]); l:SetThickness(thick * l.soft)
+        l:SetStartPoint("TOPLEFT", f, a[1], a[2]); l:SetEndPoint("TOPLEFT", f, b[1], b[2]); l:Show()
+      end
+    end
+  end
+  for i = n + 1, #f.lines do f.lines[i]:Hide() end
+  f:Show()
+end
+
 local function positionMarker(book, mapID)
   if not WorldMapFrame then return end
 
@@ -504,7 +553,9 @@ local function positionMarker(book, mapID)
     m:SetPoint("BOTTOM", parent, "TOPLEFT", (book.x / 100) * w, -(book.y / 100) * h + 3)
     m.mapID = mapID
     m.label = book.label or book.name
-    m:Show(); m.sync()
+    m:Show()
+    drawArea(m, book.area, w, h)
+    m.sync()
   end
 end
 

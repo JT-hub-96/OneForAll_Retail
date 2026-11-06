@@ -24,6 +24,11 @@ local PREFIX2 = "OFAPR2"      -- channel and answers (6.1.0)
 -- everywhere and ended up in OFAShare3-12 ("You can only be in 20 channels"). Now there is only OFAShare3; the
 -- others (and the ones of older versions) are left at login, and a refusal only shows a note.
 local CHANNEL = "OFAShare3"
+-- 6.1.4 (user 05.11.): the servers disable a custom channel once many players are in it (OFAShare2, then OFAShare3),
+-- so the search among other OneForAll users is switched off: no channel, no search, no answers. Guild sharing stays.
+-- The code stays for now (true = off); if it stays off, it is deleted later.
+local CHANNEL_OFF = not FLT.TEST_CHANNEL_ON -- tests (tools/tests/sim_core.lua) switch it on
+FLT.RecipeChannelOff = CHANNEL_OFF
 local STALE = { "OFAShare", "OFAShare2", "OFAShare4", "OFAShare5", "OFAShare6", "OFAShare7", "OFAShare8",
   "OFAShare9", "OFAShare10", "OFAShare11", "OFAShare12" }
 local refused = false -- the game refused our channel (result 7, e.g. a low character); tried again with the next status
@@ -101,6 +106,7 @@ local function isMe(name)
 end
 
 local function shareEnabled()
+  if CHANNEL_OFF then return false end
   return not (type(OneForAllDB) == "table" and OneForAllDB.recipeShareChannel == false)
 end
 
@@ -375,12 +381,15 @@ end
 function FLT.LeaveStaleChannels(quiet)
   if not LeaveChannelByName then return end
   for _, c in ipairs(STALE) do if channelID(c) then pcall(LeaveChannelByName, c) end end
+  if CHANNEL_OFF and channelID(CHANNEL) then pcall(LeaveChannelByName, CHANNEL) end
   if quiet == nil or not (C_Timer and C_Timer.After) then return end
   C_Timer.After(4, function()
     local left = {}
     for _, c in ipairs(STALE) do if channelID(c) then left[#left + 1] = "/leave " .. c end end
+    if CHANNEL_OFF and channelID(CHANNEL) then left[#left + 1] = "/leave " .. CHANNEL end
     if #left > 0 and FLT.Msg then
-      FLT.Msg("Could not leave old OneForAll channels. Please type: " .. table.concat(left, "  "))
+      FLT.Msg((CHANNEL_OFF and "OneForAll no longer uses chat channels (the game blocks them). You can leave them: "
+        or "Could not leave old OneForAll channels. Please type: ") .. table.concat(left, "  "))
     elseif not quiet and FLT.Msg then
       FLT.Msg("Old OneForAll channels left.")
     end
@@ -1197,7 +1206,7 @@ ev:SetScript("OnEvent", function(_, event, ...)
           send("GUILD", "H\t" .. SESSION)
           broadcastGuild()
         end
-        joinChannel()
+        if CHANNEL_OFF then FLT.LeaveStaleChannels(true) else joinChannel() end
       end)
       C_Timer.After(20, heartbeat)
       C_Timer.After(120, cleanup)
