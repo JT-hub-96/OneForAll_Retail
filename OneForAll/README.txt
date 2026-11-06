@@ -70,6 +70,12 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.1.7 - Hotfix
+==============
+- World map: with Remove Fog our icons (quest "!" and "?", flight masters, zone
+  transitions ...) no longer vanish under the uncovered parts of the map - they
+  lay below the map's own layer since 6.1.6.
+
 6.1.6 - More reagent sources, more quest icons, bug fixes
 ==========================================================
 Professions
