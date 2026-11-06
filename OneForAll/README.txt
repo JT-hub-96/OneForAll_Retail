@@ -70,6 +70,24 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.1.8 - Herb & ore sparkle fix, recipe fixes, more movable windows
+=================================================================
+- Professions, recipe sources: vendors and mobs with an apostrophe in their name
+  (Hula'mahi, Rin'wosho the Trader, the Mosh'Ogg ogres ...) showed a line of raw
+  data instead of their name, zone and faction (GitHub #45, thanks Checkov23).
+- Professions, "Sold by": vendors of both factions (e.g. Kzixx in Duskwood) were
+  hidden for everyone since 6.1.4.
+- Sparkle on herbs & ore works again for players without a controller: since
+  6.1.6 it left the game's "Enable Interact Key" off, and without it the game
+  finds no herbs or ore. It is switched on again while the sparkle is on and
+  given back when you switch the sparkle off.
+- Move / Resize Blizzard windows: also the Social (friends) window, the Calendar
+  and the Shop.
+- Professions: about 390 recipes that showed "?" as learn level now have one
+  (from public recipe lists); the level read at the trainer still replaces it.
+- Professions: the favorite star scrolls with the recipe instead of staying on
+  top of the boxes, and the "learn levels unknown" note is no longer cut off.
+
 6.1.7 - Hotfix
 ==============
 - World map: with Remove Fog our icons (quest "!" and "?", flight masters, zone

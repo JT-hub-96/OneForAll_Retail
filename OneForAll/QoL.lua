@@ -1341,6 +1341,7 @@ local MOVABLE = {
   "LFGParentFrame", -- Looking For Group (user 31.10.)
   "AddonList", -- the AddOns window (user 02.11.)
   "SettingsPanel", "HelpFrame", "GameMenuFrame", -- Options, Customer Support, Game Menu (user 02.11.)
+  "SocialUIFrame", "CalendarFrame", "CatalogShopFrame", -- Social (Friends), Calendar, Shop (Discord Stiandresius 06.11.)
 }
 -- windows whose pages cover them completely: the pages take the mouse, so they are grips as well
 local GRIPS = { LFGParentFrame = { "LFGWhoListFrame", "LFGListingFrame", "LFGBrowseFrame" } }
@@ -1429,7 +1430,10 @@ end
 local movablePending -- windows that loaded in combat (protected ones can only be changed after it), user 05.11.
 local function makeMovable(name)
   local f = _G[name]
-  if type(f) ~= "table" or f.ofaMovable or not f.HookScript or padBag(name) then return end
+  if type(f) ~= "table" then return end
+  -- windows the game closes to addons (the shop can be one): touching them would be an error - left as they are
+  if f.IsForbidden and f:IsForbidden() then return end
+  if f.ofaMovable or not f.HookScript or padBag(name) then return end
   if inCombat() and f.IsProtected and f:IsProtected() then
     movablePending = movablePending or {}; movablePending[name] = true
     return
