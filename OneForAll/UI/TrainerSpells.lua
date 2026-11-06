@@ -108,15 +108,17 @@ local function readProfTrainer(all)
   -- user 05.11.: learned recipes kept their "?" - the trainer list hides them (filter "already learned" off). On opening
   -- the trainer all filters are switched on for the read and set back right after (the restore fires TRAINER_UPDATE,
   -- which reads again without switching)
+  -- 6.1.6 (Discord BCL 06.11.: "Missing on/off parameter in SetTrainerServiceTypeFilter"): the Forever client wants
+  -- true / false, not 1 / 0; every switch is guarded - if the client refuses, the list is read as it is (like 6.1.4)
+  local db = learnDB(); if not db then return end
   local saved
   if all and GetTrainerServiceTypeFilter and SetTrainerServiceTypeFilter then
     saved = {}
     for _, t in ipairs({ "available", "unavailable", "used" }) do
-      saved[t] = GetTrainerServiceTypeFilter(t)
-      if not saved[t] then SetTrainerServiceTypeFilter(t, 1) end
+      local ok, v = pcall(GetTrainerServiceTypeFilter, t)
+      if ok and not (v == true or v == 1) and pcall(SetTrainerServiceTypeFilter, t, true) then saved[t] = true end
     end
   end
-  local db = learnDB(); if not db then return end
   local byName = {}
   for prof, list in pairs(FLT.PROFESSION_RECIPES) do for _, r in ipairs(list) do byName[prof .. "|" .. r.n] = r end end
   local got = 0
@@ -133,7 +135,8 @@ local function readProfTrainer(all)
       end
     end
   end
-  if saved then for t, v in pairs(saved) do if not v then SetTrainerServiceTypeFilter(t, 0) end end end
+  -- switch back only what was switched on above
+  if saved then for t in pairs(saved) do pcall(SetTrainerServiceTypeFilter, t, false) end end
   if got > 0 then FLT.ApplyRecipeLearnLevels(); if FLT.RefreshProfessions then FLT.RefreshProfessions() end end
 end
 

@@ -170,6 +170,11 @@ local function score(stats, slot, id, isWand)
         elseif isWand and W.dpswand then wk = "dpswand" end
       end
       local w = W[wk] or 0
+      -- Forever has one hit and one crit for melee and spells (as Gear Judge): "spell hit" / "spell crit" on an item
+      -- count at the higher weight too (6.1.6, Discord 06.11.: an Enhancement Shaman's spell crit counted 5.3 instead
+      -- of 40.5 per 1 %; also for own weights)
+      if s == "hit" or s == "shit" then w = math.max(W.hit or 0, W.shit or 0)
+      elseif s == "crit" or s == "scrit" then w = math.max(W.crit or 0, W.scrit or 0) end
       -- spell power also heals: it counts with the higher of the two weights, not with both (Discord Nimair 05.11.:
       -- the leveling healer weights have both, and spell power counted 43.6 + 20)
       if k == "ITEM_MOD_SPELL_POWER_SHORT" then w = math.max(w, W.heal or 0) end

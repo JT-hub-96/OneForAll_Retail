@@ -72,8 +72,9 @@ end
 
 -- the quest log: in the log / finished (reused tables)
 local inLog, complete, titles = {}, {}, {}
+local bagHas = {} -- [itemID] = in the bags (Library Book quests below), per refresh - wiped with the quest log
 local function readLog()
-  wipe(inLog); wipe(complete); wipe(titles)
+  wipe(inLog); wipe(complete); wipe(titles); wipe(bagHas)
   if C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo then
     for i = 1, C_QuestLog.GetNumQuestLogEntries() or 0 do
       local info = C_QuestLog.GetInfo(i)
@@ -96,6 +97,28 @@ local function readLog()
 end
 
 local function done(id) return FLT.IsQuestDone and FLT:IsQuestDone(id) end
+-- Library Book quests (6.1.6, user 06.11.: "dutzende" ! at Owen Thadd, who had none): QuestieDB names the librarians as
+-- givers, but they offer a book quest only while you carry that book (the Friend of the Library quests: any book)
+local bookOf -- [questID] = itemID of its book (FLT.BOOKS), built on first use
+local FRIEND = { [78150] = true, [79536] = true, [82208] = true }
+local function inBags(item)
+  local v = bagHas[item]
+  if v == nil then
+    local n = (C_Item and C_Item.GetItemCount and C_Item.GetItemCount(item)) or (GetItemCount and GetItemCount(item)) or 0
+    v = n > 0; bagHas[item] = v
+  end
+  return v
+end
+local function bookOK(id)
+  if not bookOf then
+    bookOf = {}
+    for _, b in ipairs(FLT.BOOKS or {}) do if b.questId and b.itemId then bookOf[b.questId] = b.itemId end end
+  end
+  local item = bookOf[id]
+  if item then return inBags(item) end
+  if FRIEND[id] then for _, it in pairs(bookOf) do if inBags(it) then return true end end return false end
+  return true
+end
 local function bit(mask, n) return math.floor(mask / 2 ^ (n - 1)) % 2 == 1 end -- masks go past 32 bits (Skyborne)
 
 local me = {}
@@ -120,6 +143,7 @@ local function available(q)
   if q.race and me.race and not bit(q.race, me.race) then return false end
   if q.class > 0 and me.class and not bit(q.class, me.class) then return false end
   if inLog[q.id] or done(q.id) then return false end
+  if not bookOK(q.id) then return false end
   if q.excl then for _, e in ipairs(q.excl) do if inLog[e] or done(e) then return false end end end
   if q.bc and (inLog[q.bc] or done(q.bc)) then return false end -- breadcrumb: its target is already on the way
   if q.preAll then for _, p in ipairs(q.preAll) do if not done(p) then return false end end end
@@ -169,6 +193,12 @@ end
 
 -- Pins -----------------------------------------------------------------------------------------------------------------
 local pool, used = {}, 0
+-- the mouse only for the tooltip: clicks go through to the map below (GitHub #38: our "?" sat on Blizzard's own
+-- turn-in icon and took the click that opens the quest in the quest log)
+local function hoverOnly(f)
+  f:EnableMouse(true)
+  if f.SetMouseClickEnabled then f:SetMouseClickEnabled(false) end
+end
 local spots = {} -- reused per refresh: key "x,y" -> { x, y, name, avail = {}, turnin = {} }
 local spotList = {}
 
@@ -218,7 +248,7 @@ local function showRoute(route, child, w, h, scale, level, s)
           nHits = nHits + 1
           local hf = hits[nHits]
           if not hf then
-            hf = CreateFrame("Frame", nil, routeFrame); hf:EnableMouse(true)
+            hf = CreateFrame("Frame", nil, routeFrame); hoverOnly(hf)
             hf:SetScript("OnEnter", hitEnter); hf:SetScript("OnLeave", hitLeave)
             hits[nHits] = hf
           end
@@ -255,7 +285,7 @@ local function acquire(parent)
   if not pin then
     pin = CreateFrame("Frame", nil, parent)
     pin.tex = pin:CreateTexture(nil, "OVERLAY"); pin.tex:SetAllPoints()
-    pin:EnableMouse(true)
+    hoverOnly(pin)
     pin:SetScript("OnEnter", onEnter); pin:SetScript("OnLeave", onLeave)
     pool[used] = pin
   end
@@ -379,7 +409,7 @@ function MQ.Apply()
 end
 MQ.QuestieLoaded = questieLoaded
 MQ._mapData, MQ._available, MQ._pool, MQ._xpRange = mapData, available, pool, xpRange -- for tools/tests/t_mapquests.lua
-function MQ._me(t) for k, v in pairs(t) do me[k] = v end end
+function MQ._me(t) for k, v in pairs(t) do me[k] = v end wipe(bagHas) end
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")

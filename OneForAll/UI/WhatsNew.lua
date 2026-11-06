@@ -8,22 +8,22 @@ local makeTexture, makeButton = UI.makeTexture, UI.makeButton
 -- 6.0.2 (user 01.11.): World Map, dungeon quests, Gear Planner filters, talent import - not shown automatically.
 
 local NEWS_AUTO = false -- set true (and a new NEWS_ID) for the next release with news
--- 6.1.5 (agreed with the user 06.11.): reagent sources and flights, not shown automatically; /ofa news and Settings >
--- Window show them (the 6.0.2 entries before: World Map, dungeon quests, Gear Planner filters, talent import)
-local NEWS_ID = "6.1.5"
+-- 6.1.6 (agreed with the user 06.11.): more reagent sources and more quest "!" on the world map, not shown automatically;
+-- /ofa news and Settings > Window show them (6.1.5 before: reagent sources, flights)
+local NEWS_ID = "6.1.6"
 
 -- images (optional): pictures in a row under the lines, each { tex, shown width, shown height, texcoord right,
 -- texcoord bottom } (made by tools/art/proc_news.py from the user's screenshots in source_images/news)
 local NEWS = {
-  { icon = "Interface\\Icons\\INV_Misc_Bag_10", title = "Professions - where to get reagents", tab = "professions", button = "Open Professions",
+  { icon = "Interface\\Icons\\INV_Misc_Bag_10", title = "Professions - more reagent sources", tab = "professions", button = "Open Professions",
     lines = {
-      "Click a reagent in the recipe details: made with a profession, the nearest vendors, herbs, ore and fishing, or the nearest mobs that drop it.",
-      "The map button outlines the area where the mob or herb spawns.",
+      "Click a reagent in the recipe details: now also smelted bars, skinned leather and scales, the best fishing zones and disenchanting.",
+      "Mobs and vendors inside a dungeon or raid show too - the map button points to its entrance.",
     } },
-  { icon = "Interface\\Icons\\Ability_Mount_Wyvern_01", title = "Flights", tab = "qol", button = "Open Quality of Life",
+  { icon = "Interface\\Icons\\INV_Misc_Map_01", title = "World map - more quest icons",
     lines = {
-      "The flight map opens at once at a flight master, and the flight map tooltip shows the flight time.",
-      "While flying a small window shows the time left; the times get more exact with every flight.",
+      "The quest data now comes with every correction of QuestieDB: about 370 more WoW Forever quests show their \"!\" at the right giver.",
+      "Class quests only show for their class, and clicks on a quest icon reach the game's own icon below.",
     } },
 }
 

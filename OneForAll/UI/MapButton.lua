@@ -34,7 +34,9 @@ local ROWS = {
 local function value(r) if r.get then return r.get() end return Q().Get(r.key) and true or false end
 
 local function redraw()
-  if WorldMapFrame and WorldMapFrame.RefreshAllDataProviders then pcall(WorldMapFrame.RefreshAllDataProviders, WorldMapFrame) end
+  -- only our own layers: refreshing the map's data providers from addon code made its pins count as addon code
+  -- (ADDON_ACTION_BLOCKED SetPassThroughButtons when the map opened in combat, user 06.11.)
+  if FLT.MapQuests and FLT.MapQuests.Refresh then FLT.MapQuests.Refresh() end
   if FLT.MapLandmarks then FLT.MapLandmarks.Apply() end
   if FLT.RefreshMapFog then FLT.RefreshMapFog() end
 end

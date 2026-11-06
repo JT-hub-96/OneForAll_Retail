@@ -1349,7 +1349,15 @@ local function positions()
   d.windowPos = d.windowPos or {}
   return d.windowPos
 end
+-- with a controller connected the bags stay where the game puts them (Discord 06.11.: the controller's cursor jumped
+-- between the bag slots while the bag was moved / resized); GamePadEnable alone is 1 also without one (user 06.11.)
+local function padBag(name)
+  if name ~= "ContainerFrameCombinedBags" or not GetCVar or GetCVar("GamePadEnable") ~= "1" then return false end
+  local ok, ids = pcall(function() return C_GamePad and C_GamePad.GetAllDeviceIDs and C_GamePad.GetAllDeviceIDs() end)
+  return ok and type(ids) == "table" and #ids > 0
+end
 local function applyPos(f, name)
+  if padBag(name) then return end
   local p = positions()[name]
   if not p or not QoL.Get("moveWindows") then return end
   if inCombat() and f:IsProtected() then return end
@@ -1364,6 +1372,7 @@ local function scales()
   return d.windowScale
 end
 local function applyScale(f, name)
+  if padBag(name) then return end
   local sc = scales()[name]
   if not sc or not QoL.Get("resizeWindows") then return end
   if inCombat() and f:IsProtected() then return end
@@ -1420,7 +1429,7 @@ end
 local movablePending -- windows that loaded in combat (protected ones can only be changed after it), user 05.11.
 local function makeMovable(name)
   local f = _G[name]
-  if type(f) ~= "table" or f.ofaMovable or not f.HookScript then return end
+  if type(f) ~= "table" or f.ofaMovable or not f.HookScript or padBag(name) then return end
   if inCombat() and f.IsProtected and f:IsProtected() then
     movablePending = movablePending or {}; movablePending[name] = true
     return
@@ -2137,6 +2146,9 @@ local function histPush(eb)
   local text = eb.ofaTyped
   eb.ofaTyped = nil
   if not text or not text:find("%S") then return end
+  -- no commands (user 06.11., Discord /focus): a recalled "/focus" counts as addon code for the game and is blocked
+  -- (ADDON_ACTION_FORBIDDEN FocusUnit) - only messages come back
+  if text:find("^%s*/") then return end
   for i = #chatHist, 1, -1 do if chatHist[i].text == text then table.remove(chatHist, i) end end
   table.insert(chatHist, 1, { text = text, type = eb.ofaType, tell = eb.ofaTell, chan = eb.ofaChan })
   chatHist[6] = nil
@@ -2309,6 +2321,7 @@ end
 
 -- window ---------------------------------------------------------------------
 local helper, pendingLoot
+local lootSeq = 0 -- counts loot windows opened (the delayed hide on LOOT_CLOSED skips when a new one opened)
 local W, CARD_W, CARD_H = 372, 162, 80
 local function qcolor(q) local c = QUALITY_RGB[q or 1] or QUALITY_RGB[1]; return c[1], c[2], c[3] end
 
@@ -2360,6 +2373,7 @@ local function helperFrame()
   local UI = FLT.UI
   local f = CreateFrame("Frame", "OneForAllBagsFull", UIParent)
   f:SetSize(W, 172); f:SetFrameStrata("FULLSCREEN_DIALOG"); f:EnableMouse(true)
+  f:SetClampedToScreen(true) -- next to a loot window at the right edge it was cut off (user 06.11. video)
   f.left, f.ti, f.cands, f.ci = {}, 1, {}, 1
   UI.FramedPanel(f)
   -- header: alert icon, title, subtitle, close
@@ -2478,7 +2492,12 @@ function QoL.CheckBagsFull(force, fromError)
     for i, l in ipairs(left) do if l.slot == f.left[f.ti].slot then ti = i end end
   end
   f.left, f.ti = left, ti
+  -- keep the item browsed to while it is still in the same place (CurseForge comment 06.11.: every re-show went back to 1/N)
+  local keep = f.cands and f.cands[f.ci]
   f.cands, f.ci = QoL.FindCandidates(), 1
+  if keep then
+    for i, c in ipairs(f.cands) do if c.bag == keep.bag and c.slot == keep.slot and c.link == keep.link then f.ci = i; break end end
+  end
   f:Paint()
   f:ClearAllPoints()
   if type(LootFrame) == "table" and LootFrame:IsShown() then f:SetPoint("TOPLEFT", LootFrame, "TOPRIGHT", 6, 0)
@@ -2622,7 +2641,14 @@ local function onEventSafe(_, event, ...)
   elseif event == "ADDON_LOADED" then
     setupMovable()
   elseif event == "LOOT_READY" or event == "LOOT_OPENED" then
+    lootSeq = lootSeq + 1
     quickLoot()
+    -- the helper still shown from the last loot (a right-click on the open corpse reopens it): checked again at once,
+    -- so it stays, sits at the new loot window and shows the loot (user 06.11. video: it blinked, and an early
+    -- "Inventory is full" had switched it to "loot again" while the loot was open)
+    if event == "LOOT_OPENED" and helper and helper:IsShown() and C_Timer and C_Timer.After then
+      C_Timer.After(0.05, function() QoL.CheckBagsFull() end)
+    end
   elseif event == "MERCHANT_SHOW" then
     autoRepair(); sellJunk()
   elseif event == "QUEST_DETAIL" then questDetail()
@@ -2639,7 +2665,21 @@ local function onEventSafe(_, event, ...)
   elseif event == "WEAPON_ENCHANT_CHANGED" or event == "UNIT_INVENTORY_CHANGED" then buffAura(true)
   elseif event == "UNIT_SPELLCAST_SUCCEEDED" then QoL.BuffCast(select(3, ...))
   elseif event == "UI_ERROR_MESSAGE" then errorMessage(...)
-  elseif event == "LOOT_CLOSED" then if helper and not helper.noLoot then helper:Hide() end; pendingLoot = nil
+  elseif event == "LOOT_CLOSED" then
+    pendingLoot = nil
+    -- 6.1.6 (CurseForge comment 06.11.): a right-click on an open corpse closes and reopens the loot, and the "Inventory
+    -- is full" error showed the helper again - it blinked. Hidden a moment later, and not when the loot is open again
+    -- (user 06.11. video: 0.3 s was too short - the server reopens the loot later; now 1.5 s and only when no loot
+    -- window opened in between)
+    if helper and not helper.noLoot then
+      if C_Timer and C_Timer.After then
+        local seq = lootSeq
+        C_Timer.After(1.5, function()
+          local open = (GetNumLootItems and (GetNumLootItems() or 0) > 0) or (type(LootFrame) == "table" and LootFrame:IsShown())
+          if helper and not helper.noLoot and not open and seq == lootSeq then helper:Hide() end
+        end)
+      else helper:Hide() end
+    end
   elseif event == "CVAR_UPDATE" then cvarChanged(...)
   elseif event == "PLAYER_REGEN_ENABLED" then if sparklePending then applySparkles() end; if QoL.Get("buffReminder") then checkBuffs() end
     if movablePending then local l = movablePending; movablePending = nil; for name in pairs(l) do makeMovable(name) end end

@@ -4,6 +4,16 @@ local _, FLT = ...
 -- Steps are required unless marked optional = true (breadcrumbs / story lead-ins);
 -- optional steps are displayed but never block the quest status.
 FLT.QUEST_PREREQ_CHAINS = {
+  -- Ruins of Lordaeron (Horde): new on the live servers, not in QuestieDB yet (Wowhead news 05.11., user 06.11.)
+  [92422] = { -- The Wrath of Rath'mael (Deathguard Kristof): the level 13 chain at Deathguard Linnea, Tirisfal 65.4 60.2
+    { id = 356, name = "Rear Guard Patrol" },
+    { id = 99156, name = "Rear Guard Patrol" },
+  },
+  [95216] = { -- The New Plague
+    { id = 447, name = "A Recipe For Death" },
+    { id = 450, name = "A Recipe For Death" },
+    { id = 451, name = "A Recipe For Death" },
+  },
   -- quests of the first 14 dungeons (QuestieDB Forever)
   [1275] = {
     { id = 3765, name = "The Corruption Abroad", optional = true },

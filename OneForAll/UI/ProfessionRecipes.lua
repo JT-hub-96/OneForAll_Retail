@@ -652,7 +652,8 @@ function UI.CreateRecipeBrowser(parent)
   end
 
   -- where to get a reagent (6.1.5): made with a profession (our recipe data), vendors of your side (nearest map first),
-  -- the objects it comes from (herbs, veins, fishing schools) or the mobs that drop it (Data/ReagentSources.lua)
+  -- the objects it comes from (herbs, veins, fishing schools) or the mobs that drop it (Data/ReagentSources.lua); 6.1.6:
+  -- also smelting, skinning, fishing zones, disenchanting and containers (Wowhead item pages, where QuestieDB has nothing)
   local function mapName(id)
     local i = id and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(id)
     return i and i.name or "?"
@@ -673,6 +674,10 @@ function UI.CreateRecipeBrowser(parent)
       end
     end
     local src = FLT.REAGENT_SOURCES and FLT.REAGENT_SOURCES[item]
+    if src and src.c then
+      -- made by a spell (6.1.6): smelting, or combining smaller ones
+      sub("|cffffd100" .. (src.c[1] == 186 and "Smelted with Mining from:" or "Made from:") .. "|r " .. src.c[2]); any = true
+    end
     if src then
       local side = UnitFactionGroup and UnitFactionGroup("player")
       side = side == "Alliance" and "A" or (side == "Horde" and "H" or nil)
@@ -710,19 +715,36 @@ function UI.CreateRecipeBrowser(parent)
       end
       if src.oz then
         sub("|cffffd100From " .. src.o .. "|r"); any = true
-        for i = 1, math.min(3, #src.oz) do local z = src.oz[i]; npcRow({ 0, mapName(z[1]), "", z[1], z[2], z[3], area = z[4] }, ry, b); ry = ry - 24 end
-      elseif src.d then
-        -- the 3 nearest, "Show all" lists every one we have (up to 2 per zone; user 05.11.)
-        local l = nearest(src.d, FLT.REAGENT_MOBS)
-        local total, all = src.dn or #l, allDrops[item]
+        for i = 1, math.min(3, #src.oz) do
+          local z = src.oz[i]
+          npcRow({ 0, z[5] and (z[5] .. " (entrance)") or mapName(z[1]), "", z[1], z[2], z[3], area = z[4] }, ry, b); ry = ry - 24
+        end
+      end
+      -- mobs (drops, skinning): the 3 nearest, "Show all" lists every one we have (up to 2 per zone; user 05.11.); in a
+      -- dungeon or raid the map shows its entrance (6.1.6)
+      local function mobList(ids, total, title, key)
+        local l = nearest(ids, FLT.REAGENT_MOBS)
+        local all = allDrops[key]
         local n = all and #l or math.min(3, #l)
-        sub("|cffffd100Drops from|r" .. (total > n and string.format("  |cff9d9d9d(the nearest %d of %d mobs)|r", n, total) or "")); any = true
+        total = total or #l
+        sub("|cffffd100" .. title .. "|r" .. (total > n and string.format("  |cff9d9d9d(the nearest %d of %d mobs)|r", n, total) or "")); any = true
         if #l > 3 then
           local sb = UI.GoldButton(b, all and "Fewer" or "Show all", 74, 18); sb:SetPoint("TOPRIGHT", -14, ry + 21)
-          sb:SetScript("OnClick", function() allDrops[item] = not all or nil; if redrawDetail then redrawDetail() end end)
+          sb:SetScript("OnClick", function() allDrops[key] = not all or nil; if redrawDetail then redrawDetail() end end)
         end
-        for i = 1, n do local v = l[i][2]; npcRow({ l[i][1], v[1], mapName(v[2]), v[2], v[3], v[4], area = v[5] }, ry, b); ry = ry - 24 end
+        for i = 1, n do
+          local v = l[i][2]
+          npcRow({ l[i][1], v[1], v[6] and (v[6] .. " (entrance)") or mapName(v[2]), v[2], v[3], v[4], area = v[5] }, ry, b); ry = ry - 24
+        end
       end
+      if src.d then mobList(src.d, src.dn, "Drops from", item) end
+      if src.sk then mobList(src.sk, src.skn, "Skinned from (Skinning)", -item) end
+      -- from the Wowhead item pages (6.1.6): fishing, disenchanting, containers
+      if src.f then sub("|cffffd100Fished in:|r " .. src.f); any = true end
+      if src.de then
+        sub("|cffffd100Disenchanting|r" .. (src.de[1] and string.format(" items of item level %d-%d", src.de[1], src.de[2]) or " items") .. " (Enchanting)"); any = true
+      end
+      if src.ci then sub("|cffffd100Found in:|r " .. src.ci); any = true end
     end
     if not any then sub("Where to get it is not known.") end
     return ry - 4

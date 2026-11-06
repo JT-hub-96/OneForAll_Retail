@@ -494,7 +494,7 @@ local function createQoLPanel(parent)
     refreshers[#refreshers + 1] = show
   end
   g = group(c, "Gathering")
-  local r = check(g, "Sparkle on herbs & ore", "The herb or ore vein near you sparkles.", "Only for professions you have. Uses the game's soft targeting (interaction target): one object at a time, the nearest one around you. Vendors and other NPCs get nothing. Works only close up (about 15 yards) - a limit of the game. Changes a few game settings and gives them back when you switch this off. Idea and sparkle from the addon Lueur (MIT).", "nodeGlow")
+  local r = check(g, "Sparkle on herbs & ore", "The herb or ore vein near you sparkles.", "Only for professions you have. Uses the game's soft targeting (interaction target): one object at a time, the nearest one around you. Vendors and other NPCs get nothing. Works only close up (about 15 yards) - a limit of the game. Changes a few game settings and gives them back when you switch this off; the game's \"Enable Interact Key\" stays as you set it. Not with a controller. Idea and sparkle from the addon Lueur (MIT).", "nodeGlow")
   do -- red warning sign behind the name: it changes soft targeting (user 25.10.)
     local w = CreateFrame("Frame", nil, r); w:SetSize(22, 22); w:SetPoint("LEFT", r.label, "RIGHT", 32, 0) -- right of the preview spyglass
     local x = w:CreateTexture(nil, "ARTWORK"); x:SetAllPoints(); FLT.SetTex(x, UI.ASSET_ROOT .. "icon_warning") -- as in the gear planner

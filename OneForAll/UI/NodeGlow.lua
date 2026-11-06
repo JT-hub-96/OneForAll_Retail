@@ -27,7 +27,8 @@ local MANAGED = { "SoftTargetInteract", "SoftTargetNameplateInteract", "SoftTarg
   "SoftTargetInteractOnlyInRange", "SoftTargetInteractRangeIsHard", "SoftTargetIconInteract", "SoftTargetIconGameObject",
   "nameplateGameObjectMaxDistance" }
 local function getCVar(n) return call(C_CVar and C_CVar.GetCVar or GetCVar, n) end
-local function setCVar(n, v) if getCVar(n) ~= nil then pcall(C_CVar and C_CVar.SetCVar or SetCVar, n, tostring(v)) end end
+-- only when it differs: every change fires CVAR_UPDATE for Blizzard's frames too
+local function setCVar(n, v) local c = getCVar(n); if c ~= nil and c ~= tostring(v) then pcall(C_CVar and C_CVar.SetCVar or SetCVar, n, tostring(v)) end end
 local function saved()
   if type(OneForAllDB) ~= "table" then return nil end
   OneForAllDB.qol = OneForAllDB.qol or {}
@@ -35,14 +36,28 @@ local function saved()
 end
 local pending, gate -- "apply" / "restore" after combat; nameplate switch state (nil = set it again)
 
+-- with a controller the game runs its own interact target (gamepad action bar); our settings changes made Blizzard's
+-- bar run as addon code there (Discord 06.11.: "SetPreferredGamepadInteractTarget() blocked") - no sparkle then
+-- (user 06.11.: GamePadEnable is 1 also without a controller - a controller has to be connected too)
+local function pad()
+  if getCVar("GamePadEnable") ~= "1" then return false end
+  local ids = C_GamePad and call(C_GamePad.GetAllDeviceIDs)
+  return type(ids) == "table" and #ids > 0
+end
+local restore
 local function apply()
   if inCombat() then pending = "apply"; return end
+  if pad() then restore(); return end
   local d = saved(); if not d then return end
   if not d.nodeGlowCVars then
     d.nodeGlowCVars = {}
     for _, n in ipairs(MANAGED) do d.nodeGlowCVars[n] = getCVar(n) or false end
+    -- the Interact Key is only given back when we raised it from 0; otherwise it is the player's (user 06.11.)
+    if d.nodeGlowCVars.SoftTargetInteract ~= "0" then d.nodeGlowCVars.SoftTargetInteract = false end
   end
-  setCVar("SoftTargetInteract", 3)              -- always pick an interaction target
+  -- "Enable Interact Key" stays as the player set it (GitHub #40: we set 3 = the box on; user 06.11.: the sparkle works
+  -- with 1 = the box off too); only 0 (soft targeting off) is raised to 1
+  if getCVar("SoftTargetInteract") == "0" then setCVar("SoftTargetInteract", 1) end
   setCVar("SoftTargetInteractRange", 15)
   setCVar("SoftTargetInteractArc", 2)           -- all around you
   setCVar("SoftTargetInteractOnlyInRange", 0)   -- also before you are in reach
@@ -52,7 +67,7 @@ local function apply()
   setCVar("nameplateGameObjectMaxDistance", max(tonumber(d.nodeGlowCVars.nameplateGameObjectMaxDistance) or 0, 20))
   gate = nil
 end
-local function restore()
+restore = function()
   if inCombat() then pending = "restore"; return end
   local d = saved(); if not (d and d.nodeGlowCVars) then return end
   for n, v in pairs(d.nodeGlowCVars) do if v ~= false then setCVar(n, v) end end
@@ -183,7 +198,7 @@ local EVENTS = { "PLAYER_SOFT_INTERACT_CHANGED", "NAME_PLATE_UNIT_ADDED", "NAME_
 -- the client may set its own values again some time after logging in (user 26.10.: SoftTargetInteract back at 1,
 -- SoftTargetIconGameObject at 0): put ours back, at most once every 5 seconds so we never fight another addon
 local lastFix = 0
-local function ours() return getCVar("SoftTargetInteract") == "3" and getCVar("SoftTargetIconGameObject") == "1" end
+local function ours() return getCVar("SoftTargetInteract") ~= "0" and getCVar("SoftTargetIconGameObject") == "1" end
 local function fixLater()
   if not (C_Timer and C_Timer.After) then return end
   C_Timer.After(3, function()
@@ -195,7 +210,10 @@ local function fixLater()
 end
 ev:SetScript("OnEvent", function(_, event, unit)
   if event == "PLAYER_LOGOUT" then release(); restore(); return end -- the game keeps its own values
-  if event == "CVAR_UPDATE" then if not ours() then fixLater() end return end
+  if event == "CVAR_UPDATE" then
+    if not ours() and not pad() then fixLater() end
+    return
+  end
   if event == "PLAYER_ENTERING_WORLD" then apply(); fixLater()
   elseif event == "PLAYER_REGEN_ENABLED" then
     if pending == "apply" then apply() elseif pending == "restore" then restore() end
