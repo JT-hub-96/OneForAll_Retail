@@ -387,10 +387,12 @@ function FLT.LeaveStaleChannels(quiet)
     local left = {}
     for _, c in ipairs(STALE) do if channelID(c) then left[#left + 1] = "/leave " .. c end end
     if CHANNEL_OFF and channelID(CHANNEL) then left[#left + 1] = "/leave " .. CHANNEL end
+    -- no hint at login any more (Discord 06.11.: /leave does nothing - the game keeps the blocked channels; they are
+    -- harmless, OneForAll sends nothing there); only when asked by hand
+    if quiet then return end
     if #left > 0 and FLT.Msg then
-      FLT.Msg((CHANNEL_OFF and "OneForAll no longer uses chat channels (the game blocks them). You can leave them: "
-        or "Could not leave old OneForAll channels. Please type: ") .. table.concat(left, "  "))
-    elseif not quiet and FLT.Msg then
+      FLT.Msg("The game keeps the old OneForAll channels (it blocks them, /leave does nothing). They are harmless - OneForAll does not use them any more.")
+    elseif FLT.Msg then
       FLT.Msg("Old OneForAll channels left.")
     end
   end)

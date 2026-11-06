@@ -8,6 +8,7 @@ local H = UI.DungeonHelpers
 local QUEST_STATUS_LABELS = H.QUEST_STATUS_LABELS
 local getDungeonQuestStatus = H.getDungeonQuestStatus
 local getQuestLogInfo = H.getQuestLogInfo
+local questLogButton = H.questLogButton
 local getChainProgress = H.getChainProgress
 local dungeonSideColor = H.dungeonSideColor
 local normalizeDungeonItem = H.normalizeDungeonItem
@@ -1378,10 +1379,9 @@ local function createDungeonPanel(parent)
       questSelection[d.key]=newIdx
       for i,row in ipairs(rows) do
         for _,o in ipairs(row.orn or {}) do o:SetShown(i==newIdx) end
-        if i==newIdx then
-          row.bg:SetColorTexture(FLT.SkinC(0.22,0.155,0.055,0.98,true))
-          row.name:SetTextColor(FLT.SkinC(1,0.82,0.20))
-        elseif row.status == "inlog" then
+        -- the name keeps its status colour when selected (6.1.6, Discord Stole Ton 06.11.: the yellow of the selected
+        -- quest looked like a higher-level quest); the plate and the gold corners show the selection
+        if row.status == "inlog" then
           row.bg:SetColorTexture(FLT.SkinC(0.035,0.16,0.055,0.90))
           row.name:SetTextColor(FLT.SkinC(0.25,1,0.35))
         elseif row.status == "completed" then
@@ -1394,6 +1394,7 @@ local function createDungeonPanel(parent)
           row.bg:SetColorTexture(FLT.SkinC(0.068,0.070,0.080,0.95))
           row.name:SetTextColor(FLT.SkinC(0.92,0.90,0.84))
         end
+        if i==newIdx then row.bg:SetColorTexture(FLT.SkinC(0.22,0.155,0.055,0.98,true)) end
       end
 
       for i,pane in pairs(detailPanes) do if i~=newIdx then pane:Hide() end end
@@ -1448,6 +1449,8 @@ local function createDungeonPanel(parent)
       if q.turnin and q.turnin~="" then ry=infoRow(rchild,ry,"Turn in",q.turnin) end
       ry=infoRow(rchild,ry,"Dungeon",d.name)
       ry,statusValue=infoRow(rchild,ry,"Status","")
+      -- next to "In log": open the quest in the quest log (user 06.11.; chain quests have it per step below)
+      local statusLog=questLogButton(rchild); statusLog:SetQuest(q.id,q.name)
       local chain=q.id and FLT.QUEST_PREREQ_CHAINS and FLT.QUEST_PREREQ_CHAINS[q.id]
       if q.prereq and q.prereq~="" and not (chain and #chain>0) then ry=infoRow(rchild,ry,"Prerequisite",q.prereq) end
       local sdv=rchild:CreateTexture(nil,"ARTWORK"); FLT.SetTex(sdv, ASSET_ROOT.."divider_ornate"); sdv:SetPoint("TOPLEFT",4,ry+2); sdv:SetPoint("TOPRIGHT",rchild,"TOPLEFT",448,ry+2); sdv:SetHeight(14)
@@ -1489,7 +1492,8 @@ local function createDungeonPanel(parent)
             stepMapBtn:SetScript("OnLeave",function() GameTooltip:Hide() end)
           end
           local stp=FLT.NewFS(row, nil,"OVERLAY","GameFontDisableSmall"); stp:SetPoint("RIGHT",-8,0); stp:SetWidth(stepLoc and 82 or 110); stp:SetJustifyH("RIGHT")
-          chainRows[#chainRows+1]={id=step.id,isCurrent=isCurrent,optional=step.optional,bg=bg,name=nm,state=stp}
+          local stepLog=questLogButton(row); stepLog:SetPoint("RIGHT",stp,"RIGHT",-(stp:GetWidth()+4),0); stepLog:SetQuest(step.id,step.name)
+          chainRows[#chainRows+1]={id=step.id,isCurrent=isCurrent,optional=step.optional,bg=bg,name=nm,state=stp,logBtn=stepLog}
           local detail=step.id and FLT.QUEST_PREREQ_DETAILS and FLT.QUEST_PREREQ_DETAILS[step.id]
           row:SetScript("OnEnter",function(self)
             GameTooltip:SetOwner(self,"ANCHOR_RIGHT")
@@ -1557,8 +1561,12 @@ local function createDungeonPanel(parent)
         local stepIdx, stepTotal = getChainProgress(q)
         local col=STATUS_COLOR[questStatus] or STATUS_COLOR.available
         statusChip:Set(statusLabel,col); layoutChips(chips,18,-44)
+
         if questStatus=="inlog" and stepIdx then statusLabel=statusLabel.." - chain step "..stepIdx.." of "..stepTotal end
         statusValue:SetText(statusLabel); statusValue:SetTextColor(FLT.SkinC(col[1],col[2],col[3]))
+        local ownInLog=questStatus=="inlog" and not stepIdx and getQuestLogInfo(q)
+        statusLog:ClearAllPoints(); statusLog:SetPoint("LEFT",statusValue,"LEFT",(statusValue:GetStringWidth() or 40)+8,0)
+        statusLog:SetShown(ownInLog and true or false)
         for _,cr in ipairs(chainRows) do
           local done=(cr.id and FLT:IsQuestDone(cr.id)) or false
           local inLog=(not done and cr.id and getQuestLogInfo({ id = cr.id })) or false
@@ -1570,6 +1578,8 @@ local function createDungeonPanel(parent)
           local stateText = done and "Done" or (inLog and "In log" or (cr.optional and "Optional" or "Required"))
           if cr.isCurrent and not done and not inLog then stateText = "Dungeon quest" end
           cr.state:SetText(stateText)
+          cr.logBtn:ClearAllPoints(); cr.logBtn:SetPoint("RIGHT",cr.state,"RIGHT",-((cr.state:GetStringWidth() or 30)+6),0)
+          cr.logBtn:SetShown(inLog and true or false)
           if cr.isCurrent then cr.state:SetTextColor(FLT.SkinC(1,0.82,0.20)) elseif done or inLog then cr.state:SetTextColor(FLT.SkinC(0.35,1,0.45)) else cr.state:SetTextColor(FLT.SkinC(0.66,0.66,0.66)) end
         end
         refreshItemVisuals(pane.items)

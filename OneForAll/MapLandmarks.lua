@@ -198,14 +198,11 @@ function LM.Canvas()
   local scale = 1
   local sc = WorldMapFrame.ScrollContainer
   if sc.GetCanvasScale then scale = 1 / math.max(0.1, sc:GetCanvasScale() or 1) end
-  -- frame level: the map's own top pin level when the client has the manager, at least child + 500; in the
-  -- Barrens the icons were hidden under the map's area highlight although they got the mouse (5.6.3)
-  local level = child:GetFrameLevel() + 500
-  local mgr = WorldMapFrame.GetPinFrameLevelsManager and WorldMapFrame:GetPinFrameLevelsManager()
-  if mgr and mgr.GetValidFrameLevel then
-    local ok, l = pcall(mgr.GetValidFrameLevel, mgr, "PIN_FRAME_LEVEL_TOPMOST")
-    if ok and type(l) == "number" and l > level then level = l end
-  end
+  -- frame level: above all of the map's own pins (in the Barrens the icons were hidden under the map's area highlight
+  -- although they got the mouse, 5.6.3). A fixed distance, not the map's pin level manager: asking it fills its cache
+  -- from addon code, and the map's own pins then counted as addon code - "Button:SetPassThroughButtons() blocked" when
+  -- the map opened in combat (user 06.11.)
+  local level = math.min(child:GetFrameLevel() + 1000, 9000)
   return child, w, h, scale, level
 end
 

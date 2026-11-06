@@ -403,6 +403,51 @@ local function dungeonItemIcon(item)
 end
 
 
+-- Opens the quest log at a quest of the log (6.1.6, user 06.11.: "In log" in the dungeon quests and quest chains should
+-- open it). Returns true when it was found.
+local function openQuestInLog(id, name)
+  id = tonumber(id)
+  local index
+  if C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo then
+    for i = 1, C_QuestLog.GetNumQuestLogEntries() or 0 do
+      local info = C_QuestLog.GetInfo(i)
+      if info and not info.isHeader and logEntryMatches(id, name, info.questID, info.title) then index = i; break end
+    end
+  elseif GetNumQuestLogEntries and GetQuestLogTitle then
+    for i = 1, GetNumQuestLogEntries() or 0 do
+      local t, _, _, isHeader, _, _, _, qid = GetQuestLogTitle(i)
+      if not isHeader and logEntryMatches(id, name, qid, t) then index = i; break end
+    end
+  end
+  if not index then if FLT.Msg then FLT.Msg((name or "This quest") .. " is not in your quest log.") end return false end
+  if QuestLog_SetSelection and QuestLogFrame and ShowUIPanel then
+    ShowUIPanel(QuestLogFrame); QuestLog_SetSelection(index)
+    if QuestLog_Update then pcall(QuestLog_Update) end
+  elseif QuestMapFrame_OpenToQuestDetails and id then
+    QuestMapFrame_OpenToQuestDetails(id)
+  elseif ToggleQuestLog then
+    ToggleQuestLog()
+  end
+  return true
+end
+FLT.OpenQuestInLog = openQuestInLog
+-- a small quest log button (open scroll), hidden until shown for a quest in the log
+local function questLogButton(parent)
+  local b = CreateFrame("Button", nil, parent); b:SetSize(18, 18)
+  local t = b:CreateTexture(nil, "ARTWORK"); t:SetAllPoints(); FLT.SetTex(t, "Interface\\Icons\\INV_Scroll_03"); t:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+  local h = b:CreateTexture(nil, "HIGHLIGHT"); h:SetAllPoints(); FLT.SetTex(h, "Interface\\Buttons\\ButtonHilight-Square"); h:SetBlendMode("ADD")
+  b:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:SetText("Open in quest log", 1, 0.82, 0.20)
+    if self.questName then GameTooltip:AddLine(self.questName, 0.92, 0.90, 0.84, true) end
+    GameTooltip:Show()
+  end)
+  b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  b:SetScript("OnClick", function(self) openQuestInLog(self.questID, self.questName) end)
+  function b:SetQuest(id, name) self.questID, self.questName = id, name end
+  b:Hide()
+  return b
+end
+H.questLogButton = questLogButton
 H.QUEST_STATUS_LABELS = QUEST_STATUS_LABELS
 H.getDungeonQuestStatus = getDungeonQuestStatus
 H.getQuestLogInfo = getQuestLogInfo

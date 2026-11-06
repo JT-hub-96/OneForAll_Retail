@@ -70,6 +70,61 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.1.6 - More reagent sources, more quest icons, bug fixes
+==========================================================
+Professions
+- Reagent sources also for the reagents that had none: smelted bars ("Smelted
+  with Mining from"), leather and scales ("Skinned from"), fish ("Fished in" with
+  the best zones), enchanting materials ("Disenchanting items of item level
+  ..."), raid materials and containers like clams (data from the WoW Forever
+  item pages of Wowhead). Mobs, vendors and objects inside a dungeon or raid show
+  too, their map button points to its entrance.
+- Profession trainer: no more "Missing on/off parameter in
+  SetTrainerServiceTypeFilter" error when you open it, and the learn levels of
+  recipes are read again.
+- Nearest trainers: the new junior gathering trainers of WoW Forever (e.g.
+  Fanorran Stilloak in Teldrassil) and other trainers that were missing.
+World map and quests
+- Quest data read through QuestieDB itself, with every one of its corrections:
+  about 370 more WoW Forever quests show their "!" at the right giver,
+  repeatable quests no longer do, Children's Week quests only belong to the
+  event, quest givers of one faction no longer show an icon in the other
+  faction's lands; Map Landmarks, Gear Planner quest rewards, class quests and
+  vendor reagents updated too.
+- Library Book quests show their "!" at the librarian only while you carry the
+  book (Friend of the Library: any book) - the new quest data listed them for
+  everyone.
+- Class quests the quest data had for every class (e.g. the priest quest Divine
+  Grace for a paladin, GitHub #41) show only for their class - each one checked
+  against Wowhead.
+- Quest icons let clicks through, so the game's own "?" of a finished quest
+  below ours opens the quest again (GitHub #38).
+- Ruins of Lordaeron: The Wrath of Rath'mael now needs Rear Guard Patrol and The
+  New Plague needs A Recipe For Death first, as on the live servers.
+- Dungeon quests: a quest log button next to "In log" in the quest details and on
+  each step of a quest chain that is in your log; the selected quest in the list
+  keeps its colour (green = in your log, white = not taken) - the yellow looked
+  like a higher-level quest.
+Bug fixes
+- Message history (arrow up in the chat box): commands like /focus or /target
+  are no longer brought back - a recalled command counted as addon code and the
+  game blocked it ("OneForAll tried to call the protected function FocusUnit()").
+- World map: opening it in combat no longer gives "OneForAll tried to call the
+  protected function Button:SetPassThroughButtons()".
+- Sparkle on herbs & ore no longer switches the game's "Enable Interact Key" on -
+  it stays as you set it. With a controller connected the sparkle changes no game
+  settings (it caused "SetPreferredGamepadInteractTarget() blocked" errors), and
+  "Move / Resize Blizzard windows" leave the bags alone (the controller's cursor
+  jumped between the bag slots).
+- Bags full helper: no more blinking when you right-click an open corpse again,
+  it stays in the loot mode when the loot opens again, keeps the item you browsed
+  to while it is still in your bags and no longer reaches off the screen.
+- Gear Planner Value: "spell hit" and "spell crit" on an item count like hit and
+  crit (WoW Forever has one of each) - they counted far too little for melee,
+  e.g. for an Enhancement Shaman.
+- No more login note asking you to /leave the old OFAShare channels - the game
+  keeps them and /leave does nothing; they are harmless.
+
 6.1.5 - Reagent sources, flight times, recipe learn levels, gear value fixes
 ============================================================================
 Professions
