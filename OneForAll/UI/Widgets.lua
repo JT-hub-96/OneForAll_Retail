@@ -1038,7 +1038,9 @@ function UI.Confirm(text, onYes, yesLabel, secureMacro)
   local combat = InCombatLockdown and InCombatLockdown()
   if secureMacro and not combat and not f.secureYes then
     local sy = CreateFrame("Button", "OneForAllConfirmSecure", f, "SecureActionButtonTemplate")
-    sy:SetAllPoints(f.yes); sy:SetFrameLevel(f.yes:GetFrameLevel() + 5)
+    -- on the parent at the "Yes" spot, not anchored to the button (6.1.5: the live client does not let a secure
+    -- button hang on a normal one - "Cannot anchor protected frames to regions")
+    sy:SetSize(110, 26); sy:SetPoint("BOTTOMRIGHT", f, "BOTTOM", -8, 18); sy:SetFrameLevel(f.yes:GetFrameLevel() + 5)
     sy:RegisterForClicks("AnyUp", "AnyDown")
     sy:SetAttribute("type", "macro")
     UI.Plate(sy, 26)

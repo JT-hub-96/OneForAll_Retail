@@ -250,7 +250,8 @@ local function abilityFits(a, fams)
 end
 
 local function npcIDFromGUID(guid)
-  if type(guid) ~= "string" then return nil end
+  -- GUIDs can be secret (e.g. nameplates in dungeons, Discord 05.11.: Hall of Thanes): nothing to read then
+  if type(guid) ~= "string" or FLT.IsSecret(guid) then return nil end
   local kind, _, _, _, _, id = strsplit("-", guid)
   if kind ~= "Creature" then return nil end
   return tonumber(id)
@@ -312,6 +313,7 @@ local function checkTeacher(unit)
   if not FLT:IsPetTeachAlertsEnabled() or not FLT.ShowAlert then return end
   if (GetTime and GetTime() or 0) < snoozeUntil then return end
   if not canHavePet() or hasTamingRod() then return end
+  if IsInInstance and IsInInstance() then return end -- no pet teachers in dungeons
   if not (UnitExists and UnitExists(unit)) or (UnitIsDead and UnitIsDead(unit)) then return end
   local npcID = npcIDFromGUID(UnitGUID and UnitGUID(unit))
   if not npcID then return end
@@ -377,6 +379,7 @@ do
       scanStable()
     elseif event == "UNIT_SPELLCAST_START" then
       local spellID = arg3
+      if FLT.IsSecret(spellID) then return end
       local name = GetSpellInfo and spellID and GetSpellInfo(spellID)
       if spellID == 1515 or name == "Tame Beast" then lastTamedNpc = npcIDFromGUID(UnitGUID and UnitGUID("target")) end
     elseif event == "NAME_PLATE_UNIT_ADDED" then

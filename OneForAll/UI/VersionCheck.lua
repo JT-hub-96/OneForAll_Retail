@@ -81,6 +81,7 @@ local function send(msg, dist, target)
 end
 
 local function channelID()
+  if FLT.RecipeChannelOff then return end -- 6.1.4: no channel any more
   local id = GetChannelName and GetChannelName(FLT.RecipeChannelName and FLT.RecipeChannelName() or "OFAShare3")
   if id and id > 0 then return id end
 end

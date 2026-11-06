@@ -11,7 +11,9 @@ local openDropDown -- below
 -- Yellow "!" (tooltip "New") next to options added since the last live release.
 -- Kept for all versions of a minor line (5.7.0 ... 5.7.x); emptied when the next minor line
 -- (5.8.0) starts (TODO.md "Neu-Markierungen").
-local NEW_TAGS = {} -- all marks removed for 6.0.0, a clean start (user 27.10.); new ones from 6.1.0 on
+local NEW_TAGS = { -- all marks removed for 6.0.0, a clean start (user 27.10.); new ones from 6.1.0 on (user 06.11.)
+  buffFlash = "6.1.4", buffSnoozeBtn = "6.1.4", flightMapNow = "6.1.5", flightTimes = "6.1.5",
+}
 -- placed left of the checkbox (or of the label when there is none), user 16.10.
 local function newTag(parent, anchor, key, dx)
   if not NEW_TAGS[key] then return end
@@ -327,6 +329,23 @@ local function createQoLPanel(parent)
     switch(r, g, key, get, set)
     return r
   end
+  -- two switches in one row (user 05.11.: the sub-options took too much room): a = left, b = right half;
+  -- each { label, desc, tip, key }
+  local function check2(g, a, b, indent)
+    local r = check(g, a[1], a[2], a[3], a[4], indent)
+    local half = math.floor((ROW_W - (indent or 0)) / 2)
+    r.rightW = ROW_W - half - (indent or 0) -- the left text ends at the middle
+    local h = CreateFrame("Button", nil, r); h:SetSize(ROW_W - half - (indent or 0), 34); h:SetPoint("TOPLEFT", half + (indent or 0), 0)
+    h.indent = 0
+    h.label = FLT.NewFS(h, nil, "OVERLAY", "GameFontHighlight"); h.label:SetPoint("TOPLEFT", 60, -3); h.label:SetText(b[1])
+    h.desc = FLT.NewFS(h, nil, "OVERLAY", "GameFontDisableSmall"); h.desc:SetPoint("TOPLEFT", h.label, "BOTTOMLEFT", 0, -3)
+    h.desc:SetJustifyH("LEFT"); h.desc:SetWordWrap(false); h.desc:SetText(b[2] or ""); h.desc:SetWidth(h:GetWidth() - 76)
+    h.name, h.tip = b[1], b[3]
+    if b[3] then hint(h, b[1], b[3], h.label) end
+    r.find = r.find .. " " .. (b[1] .. " " .. (b[2] or "") .. " " .. (b[3] or "")):lower()
+    switch(h, g, b[4])
+    return r
+  end
   -- drop-down on the right; onKey: optional switch in front, the drop-down is greyed out while it is off
   local function choice(g, label, desc, tip, key, options, onKey, indent)
     local r = row(g, label, desc, tip, indent)
@@ -533,11 +552,13 @@ local function createQoLPanel(parent)
   end
   g = group(c, "Duels")
   choice(g, "Allow duels from", "Duel requests from everyone else are declined.", "Off: OneForAll does nothing with duels.", "duelMode", Q.DUEL_OPTIONS, "duelOn")
+  if not FLT.RecipeChannelOff then -- 6.1.4: the channel search is off
   g = group(c, "Recipes")
   check(g, "Share recipes with other OneForAll users", "Finds OneForAll users outside your guild who know a recipe.",
     "The Search button of a recipe in Professions > All recipes asks the other OneForAll users who know it (blue marker); only a few of them answer, so it stays fast with many players. When off, you are not asked and do not search either. Guild members are always shared. Moved here from Settings in 6.1.0.",
     nil, nil, function() return FLT.IsRecipeShareEnabled and FLT.IsRecipeShareEnabled() end,
     function(v) if FLT.SetRecipeShareEnabled then FLT.SetRecipeShareEnabled(v) end end)
+  end
   g = group(c, "Buffs")
   check(g, "Thank players who buff you", "Sends a /thank to players outside your group who buff you.", "For buffs that last longer than 2 minutes. It comes 1 second later, not in combat, at most once every 5 minutes per player. Your target is not changed. /ofa thanks shows the last buffs.", "thanksBuff")
 
@@ -545,12 +566,12 @@ local function createQoLPanel(parent)
   c = category("map", "World Map", "Interface\\Icons\\INV_Misc_Map_01", "Icons on the world map.")
   g = group(c, "Map Landmarks")
   check(g, "Map Landmarks", "Dungeon entrances, flight masters, ships, the tram and Library Books on the map.", "Your faction and neutral ones. Click an entrance to open that dungeon in OneForAll. Zeppelins, ships, the tram and flight masters show where they go.", "mapLandmarks")
-  check(g, "Dungeon & raid entrances", "Click to open the dungeon in OneForAll.", nil, "lmDungeons", 24)
-  check(g, "Flight masters", "Shows where they fly to.", nil, "lmFlight", 24)
-  check(g, "Zeppelins, ships & tram", "Shows where they go.", nil, "lmTransport", 24)
-  check(g, "Zone transitions", "A signpost where a road leads into the next zone.", "The tooltip names the other zone; a click shows it on the map. Places from the addon Carbonite (GPL).", "lmTransitions", 24)
-  check(g, "Library Books", "A book icon where each Library Book you still need lies.", "Books in your bags or bank, turned in or marked by you are not shown. Click a book to see it in the Library Books tab.", "mapBooks", 24)
-  check(g, "Skyborne: Ley Lines & Convergences", "For Skyborne: where to charge your racial for an hour.", "High Order (Alliance) see the Ley Lines for Read Leyline (Attuned: 100% regeneration for 1 hour), Windshapers (Horde) the Elemental Convergences for Skysight (Charged: 30% movement speed for 1 hour). On by default for Skyborne; other races see the spots of their faction when they switch it on. Locations from the addon \"Skyborne Leyline & Convergence Marker\" by tr0tsky.", "lmSkyborne", 24)
+  check2(g, { "Dungeon & raid entrances", "Click to open the dungeon in OneForAll.", nil, "lmDungeons" },
+    { "Flight masters", "Shows where they fly to.", nil, "lmFlight" }, 24)
+  check2(g, { "Zeppelins, ships & tram", "Shows where they go.", nil, "lmTransport" },
+    { "Zone transitions", "A signpost where a road leads into the next zone.", "The tooltip names the other zone; a click shows it on the map. Places from the addon Carbonite (GPL).", "lmTransitions" }, 24)
+  check2(g, { "Library Books", "A book icon where each Library Book you still need lies.", "Books in your bags or bank, turned in or marked by you are not shown. Click a book to see it in the Library Books tab.", "mapBooks" },
+    { "Skyborne: Ley Lines & Convergences", "For Skyborne: where to charge your racial for an hour.", "High Order (Alliance) see the Ley Lines for Read Leyline (Attuned: 100% regeneration for 1 hour), Windshapers (Horde) the Elemental Convergences for Skysight (Charged: 30% movement speed for 1 hour). On by default for Skyborne; other races see the spots of their faction when they switch it on. Locations from the addon \"Skyborne Leyline & Convergence Marker\" by tr0tsky.", "lmSkyborne" }, 24)
   g = group(c, "Quests")
   check(g, "Quest icons", "A yellow ! at quest givers with quests for your level, a ? where you turn in finished quests.", "Only quests you can take now: your level (no grey ones, none too high), your side and class, pre-quests done. Hover an icon for the quests and their levels. Hidden while Questie is loaded, it shows its own. Quest data from QuestieDB (GPL); the new Forever zones are not in it yet.", "mapQuests")
   check(g, "Also on the continent map", "The quest icons also when you zoom out of a zone.", "All zones of the continent at once, a little smaller, without the routes of walking quest givers. Needs \"Quest icons\".", "mapQuestsContinent", 24)
@@ -575,6 +596,9 @@ local function createQoLPanel(parent)
     r.cb:HookScript("OnClick", show) -- greyed out while Remove Fog is off
   end
   check(g, "Zone level range", "The zone's level range at the top right of the world map and when you hover a zone.", "At the top right of a zone map, and behind the zone name when you hover a zone on the continent map. Gold: your level, red: still too low, grey: you are above it.", "mapZoneLevel")
+  g = group(c, "Flights")
+  check2(g, { "Open flight map at once", "At a flight master, straight to the flight map.", "Not when the flight master also has quests for you. Hold Shift to talk normally.", "flightMapNow" },
+    { "Flight times", "A bar with the time left while you fly.", "The time also shows in the tooltip of the destinations on the flight map. OneForAll measures your flights; routes you never flew are estimated (\"about\").", "flightTimes" })
   g = group(c, "Dungeons")
   -- moved from Settings (5.6.8, user 22.10.); on by default: only an explicit "off" turns it off
   check(g, "Dungeon map on M", "Inside a dungeon, M opens OneForAll's dungeon map.", "Inside a dungeon that has a map, the world map key (M) opens OneForAll's dungeon map instead of the world map. Press it again to close. Takes effect outside combat.", nil, nil,
@@ -622,8 +646,10 @@ local function createQoLPanel(parent)
   c = category("alerts", "Popups & Alerts", "Interface\\Icons\\INV_Misc_Bell_01", "Popups that come up on their own while you play.")
   g = group(c, "Buff reminder")
   check(g, "Buff reminder", "A small popup when one of your buffs runs out.", "Add your own buffs below (e.g. Demon Skin) with the time in seconds. When the buff has less time left, or has run out, a small popup says so; click its icon to cast the buff again (not in combat - there it only shows). It goes away by itself once you renew the buff. Drag the popup to move it.", "buffReminder")
-  check(g, "Sleep in cities", "No buff reminder in the capitals.", "Stormwind, Ironforge, Darnassus, Orgrimmar, Thunder Bluff and Undercity. Buffs that ran out there are shown once you leave.", "buffSleepCities", 24)
-  check(g, "Show icon only", "Only the buff's icon with the time left on it, no name.", "The time bar under it is as wide as the icon. Several icons sit next to each other.", "buffIconOnly", 24)
+  check2(g, { "Sleep in cities", "No buff reminder in the capitals.", "Stormwind, Ironforge, Darnassus, Orgrimmar, Thunder Bluff and Undercity. Buffs that ran out there are shown once you leave.", "buffSleepCities" },
+    { "Show icon only", "Only the icon with the time left on it.", "The time bar under it is as wide as the icon. Several icons sit next to each other.", "buffIconOnly" }, 24)
+  check2(g, { "Flash cards", "The cards glow so you notice them.", "Only while a card is shown.", "buffFlash" },
+    { "Snooze button (Zz)", "On each card: quiet until you cast it again.", "Right-click on a card snoozes it too.", "buffSnoozeBtn" }, 24)
   do -- size slider and Test (user 01.11.): Test shows the reminder for 10 seconds to set its size and drag it
     local r = row(g, "Size", "How large the reminder is. Test shows it for 10 seconds.", nil, 24)
     button(r, "Test", 50, "Shows the reminder for 10 seconds, so you can see its size and drag it where you want it.", function() Q.BuffTest() end)
@@ -663,7 +689,7 @@ local function createQoLPanel(parent)
       if not self:HasFocus() then return end
       local opts = {}
       for _, e in ipairs(Q.BuffSuggestions(self:GetText())) do
-        opts[#opts + 1] = { key = e.label or e.name, label = "|T" .. Q.BuffIcon(e.name) .. ":14:14|t " .. (e.label or e.name) .. (e.preset and "  |cff9d9d9d(class buff)|r" or (e.notInBags and "  |cff9d9d9d(none in bags)|r" or "")) }
+        opts[#opts + 1] = { key = e.label or e.name, label = "|T" .. Q.BuffIcon(e.name) .. ":14:14|t " .. (e.label or e.name) .. (e.active and "  |cff9d9d9d(active now)|r" or (e.preset and "  |cff9d9d9d(class buff)|r" or (e.notInBags and "  |cff9d9d9d(none in bags)|r" or ""))) }
       end
       -- no suggestion: say that any name works (user 03.11.: players thought they could only pick from the list)
       if #opts == 0 and self:GetText() ~= "" then

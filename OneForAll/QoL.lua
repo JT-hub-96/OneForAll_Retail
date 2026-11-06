@@ -23,6 +23,10 @@ local DEFAULTS = {
   hideAppearance = false, -- hide "You haven't collected this appearance" in item tooltips: off (user 01.11.)
   questSellCoin = true, -- gold coin on the quest reward with the best sell price: on (user 02.11.)
   buffScale = 100, buffIconOnly = false, -- buff reminder size in % and icon only (6.0.3, user 01.11.)
+  flightMapNow = true, -- open the flight map at once at a flight master (6.1.5): on (user 05.11.)
+  flightTimes = true, -- flight times: bar while flying, times on the flight map (6.1.5): on (user 05.11.)
+  buffFlash = true, -- buff reminder cards glow (6.1.4, Discord 05.11.): on (user 05.11.)
+  buffSnoozeBtn = false, -- "Zz" snooze button on the cards (6.1.4): off (user 05.11.)
   mapZoneLevel = true, -- level range of the zone on the world map: on (user 01.11.)
   mapQuests = true, -- quest icons on the world map: on (user 01.11., first off)
   mapQuestsContinent = true, -- quest icons also on the continent map: on (user 04.11.)
@@ -324,11 +328,32 @@ end
 -- ---------------------------------------------------------------------------
 -- Quests
 -- ---------------------------------------------------------------------------
+-- grey quests are not accepted by themselves (6.1.5, user 05.11.)
+local function grey(id, level, trivial)
+  if trivial then return true end
+  return FLT.IsQuestGrey and FLT.IsQuestGrey(id, level) or false
+end
 local function questDetail()
-  if QoL.Get("autoAccept") and not paused() and AcceptQuest then AcceptQuest() end
+  if not (QoL.Get("autoAccept") and not paused() and AcceptQuest) then return end
+  if grey(GetQuestID and GetQuestID()) then return end
+  AcceptQuest()
+end
+-- quests that take battleground marks (Warsong Gulch, Arathi Basin, Alterac Valley) are not turned in by themselves:
+-- the marks are worth keeping for other rewards (user 05.11.)
+local MARKS = { [20558] = true, [20559] = true, [20560] = true }
+local function takesMarks()
+  if not (GetNumQuestItems and GetQuestItemLink) then return false end
+  for i = 1, GetNumQuestItems() or 0 do
+    local link = GetQuestItemLink("required", i)
+    local id = type(link) == "string" and tonumber(link:match("item:(%d+)"))
+    if id and MARKS[id] then return true end
+  end
+  return false
 end
 local function questProgress()
-  if QoL.Get("autoTurnIn") and not paused() and IsQuestCompletable and IsQuestCompletable() and CompleteQuest then CompleteQuest() end
+  if not (QoL.Get("autoTurnIn") and not paused() and IsQuestCompletable and IsQuestCompletable() and CompleteQuest) then return end
+  if takesMarks() then msg("Not turned in automatically: this quest takes your battleground marks."); return end
+  CompleteQuest()
 end
 local function questComplete()
   if not QoL.Get("autoTurnIn") or paused() or not GetQuestReward then return end
@@ -343,18 +368,39 @@ local function questGreeting()
       if complete then SelectActiveQuest(i); return end
     end
   end
-  if QoL.Get("autoAccept") and GetNumAvailableQuests and (GetNumAvailableQuests() or 0) > 0 then SelectAvailableQuest(1) end
+  if QoL.Get("autoAccept") and GetNumAvailableQuests then
+    for i = 1, GetNumAvailableQuests() or 0 do
+      local trivial, _, _, _, id = nil, nil, nil, nil, nil
+      if GetAvailableQuestInfo then trivial, _, _, _, id = GetAvailableQuestInfo(i) end
+      if not grey(id, nil, trivial) then SelectAvailableQuest(i); return end
+    end
+  end
+end
+-- flight master: straight to the flight map (6.1.5, user 05.11.) - not when it also has quests, not with Shift
+local function taxiOption()
+  if not (C_GossipInfo and C_GossipInfo.GetOptions) then return nil end
+  if #(C_GossipInfo.GetAvailableQuests and C_GossipInfo.GetAvailableQuests() or {}) > 0 then return nil end
+  if #(C_GossipInfo.GetActiveQuests and C_GossipInfo.GetActiveQuests() or {}) > 0 then return nil end
+  for _, o in ipairs(C_GossipInfo.GetOptions() or {}) do
+    local icon = o.icon
+    if o.type == "taxi" or icon == 132057 or (type(icon) == "string" and icon:lower():find("taxi")) then return o end
+  end
 end
 local function gossipShow()
   if paused() or not C_GossipInfo then return end
+  if QoL.Get("flightMapNow") then
+    local o = taxiOption()
+    if o and o.gossipOptionID and C_GossipInfo.SelectOption then C_GossipInfo.SelectOption(o.gossipOptionID); return end
+  end
   if QoL.Get("autoTurnIn") and C_GossipInfo.GetActiveQuests then
     for _, q in ipairs(C_GossipInfo.GetActiveQuests() or {}) do
       if q.isComplete and q.questID then C_GossipInfo.SelectActiveQuest(q.questID); return end
     end
   end
   if QoL.Get("autoAccept") and C_GossipInfo.GetAvailableQuests then
-    local q = (C_GossipInfo.GetAvailableQuests() or {})[1]
-    if q and q.questID then C_GossipInfo.SelectAvailableQuest(q.questID) end
+    for _, q in ipairs(C_GossipInfo.GetAvailableQuests() or {}) do
+      if q.questID and not grey(q.questID, q.questLevel, q.isTrivial) then C_GossipInfo.SelectAvailableQuest(q.questID); return end
+    end
   end
 end
 
@@ -524,7 +570,7 @@ QoL._thanks = { consider = considerAura, fire = fireThanks, settle = thanksSettl
 -- Checks: UNIT_AURA (player, short debounce) plus ONE timer to the next moment a buff reaches its time; the 1 s
 -- countdown only runs while the popup is shown. The list lives in qol.buffReminders = { [spell name] = seconds }.
 -- ---------------------------------------------------------------------------
-local checkBuffs, buffAura, syncBuffButton, inCapital, layoutCard -- set in the block below (keeps the file under 200 locals)
+local checkBuffs, buffAura, syncBuffButton, inCapital, layoutCard, noteRanks -- set in the block below (keeps the file under 200 locals)
 do
   local function buffList()
     local d = db(); if not d then return {} end
@@ -550,6 +596,14 @@ do
     table.sort(out, function(a, b) return a.name < b.name end)
     return out
   end
+  -- icons of buffs that are no spell of yours (Well Fed, flasks, buffs from others; user 05.11.: question mark):
+  -- taken from the aura when it is up, kept in OneForAllDB.qol.buffIcons
+  local function noteIcon(name, icon)
+    if not icon or FLT.IsSecret(icon) then return end
+    local d = db(); if not d then return end
+    d.buffIcons = d.buffIcons or {}
+    if d.buffIcons[name] ~= icon then d.buffIcons[name] = icon end
+  end
   local function spellIcon(name)
     local item, slot = weapon(name)
     if item then
@@ -564,14 +618,33 @@ do
       if C_Spell and C_Spell.GetSpellTexture then return C_Spell.GetSpellTexture(name) end
       return GetSpellTexture and GetSpellTexture(name)
     end)
-    return ok and tex or "Interface\\Icons\\INV_Misc_QuestionMark"
+    if ok and tex then return tex end
+    local d = db()
+    return d and d.buffIcons and d.buffIcons[name] or "Interface\\Icons\\INV_Misc_QuestionMark"
   end
   QoL.BuffIcon = spellIcon
   -- expiration time (0 = no duration) and duration; nil when not on you; false when the game does not tell (in combat
   -- newer clients may keep aura data secret - then the card keeps its state, see checkBuffs)
   local weaponDur = {} -- the longest time seen per weapon key = the full duration for the bar
+  -- shaman weapon imbues (user 05.11., Discord "Flametongue Weapon"): the spell puts an enchant on the main hand weapon,
+  -- not a buff on you - read like an oil on the main hand
+  -- user 05.11.: matched by name in the client's language (German "Waffe der Flammenzunge"): the names of the rank 1
+  -- spells Rockbiter 8017, Flametongue 8024, Frostbrand 8033, Windfury 8232; "Weapon" / "Waffe" in the name as fallback
+  local imbueNames
+  local function imbue(name)
+    if type(name) ~= "string" or not (UnitClass and select(2, UnitClass("player")) == "SHAMAN") then return false end
+    if not imbueNames then
+      imbueNames = {}
+      for _, id in ipairs({ 8017, 8024, 8033, 8232 }) do
+        local ok, n = pcall(function() return C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id) or (GetSpellInfo and GetSpellInfo(id)) end)
+        if ok and type(n) == "string" then imbueNames[n] = true end
+      end
+    end
+    return imbueNames[name] or name:find("Weapon") or name:find("Waffe") or false
+  end
   local function findBuff(name)
     local item, slot = weapon(name)
+    if not item and imbue(name) then item, slot = name, 16 end
     if item then -- expiration, duration, charges of the temporary enchant on that weapon
       if not GetWeaponEnchantInfo then return end
       local hasMH, mhMs, mhCharges, _, hasOH, ohMs, ohCharges = GetWeaponEnchantInfo()
@@ -593,6 +666,7 @@ do
         if not a then return end
         if FLT.IsSecret(a.name) then return false end
         if a.name == name then
+          noteIcon(name, a.icon)
           if FLT.IsSecret(a.expirationTime, a.duration) then return false end
           return a.expirationTime or 0, a.duration or 0
         end
@@ -600,7 +674,8 @@ do
       return
     end
     if type(AuraUtil) == "table" and AuraUtil.FindAuraByName then
-      local ok, n, _, _, _, dur, exp = pcall(AuraUtil.FindAuraByName, name, "player", "HELPFUL")
+      local ok, n, icon, _, _, dur, exp = pcall(AuraUtil.FindAuraByName, name, "player", "HELPFUL")
+      if ok and n and not FLT.IsSecret(n) then noteIcon(name, icon) end
       if not ok or FLT.IsSecret(n) then return false end
       if n and FLT.IsSecret(exp, dur) then return false end
       if n then return exp or 0, dur or 0 end
@@ -624,6 +699,8 @@ do
   local holder, cards, secures, due = nil, {}, {}, {}
   local testUntil = 0 -- "Test" in Quality of Life shows the cards for 10 s (user 01.11.)
   local buffSeen, buffDur, buffExp = {}, {}, {}
+  -- snoozed (6.1.4, user 05.11.: Battle Shout while fishing): no card until the buff is up again or cast again
+  local snoozed = {}
   local buffToken, buffDebounce, buffTicker = 0, false, nil
   local function scheduleBuffCheck(delay)
     buffToken = buffToken + 1
@@ -638,6 +715,7 @@ do
   local function paintCard(c)
     local exp, dur, charges = findBuff(c.spell)
     if exp == false then exp, dur, charges = nil, nil, nil end
+    if not exp and buffExp[c.spell] then exp = buffExp[c.spell] end -- not readable (combat): the time we know
     local left = exp and exp > 0 and (exp - now()) or 0
     local item, _, hand = weapon(c.spell)
     local pre = item and (SLOT_LABEL[hand]:gsub("^%l", string.upper) .. "  ") or ""
@@ -680,10 +758,29 @@ do
     elseif only then c:SetPoint("TOPLEFT", cards[i - 1], "TOPRIGHT", GAP, 0)
     else c:SetPoint("TOPLEFT", cards[i - 1], "BOTTOMLEFT", 0, -GAP) end
     c.icon:ClearAllPoints(); c.icon:SetPoint("TOPLEFT", c.iconX, c.iconY)
+    if c.zz then c.zz:ClearAllPoints(); if only then c.zz:SetPoint("BOTTOMRIGHT", c, "TOPRIGHT", 0, 0) else c.zz:SetPoint("TOPRIGHT", -6, -4) end end
     c.title:SetShown(not only); c.sub:SetShown(not only); c.time:SetShown(only and true or false); c.charges:SetShown(only and true or false)
     c.barBg:ClearAllPoints()
     if only then c.barBg:SetPoint("TOPLEFT", c.icon, "BOTTOMLEFT", 0, -4); c.barBg:SetPoint("TOPRIGHT", c.icon, "BOTTOMRIGHT", 0, -4); c.barW = ICON
     else c.barBg:SetPoint("BOTTOMLEFT", 12, 6); c.barBg:SetPoint("BOTTOMRIGHT", -12, 6); c.barW = CARD_W - 24 end
+  end
+  -- proc glow of the game (ActionButtonSpellAlertManager on newer clients, ActionButton_ShowOverlayGlow on older),
+  -- else our pulsing border
+  local procShow = type(ActionButtonSpellAlertManager) == "table" and ActionButtonSpellAlertManager.ShowAlert
+    and function(f) return pcall(ActionButtonSpellAlertManager.ShowAlert, ActionButtonSpellAlertManager, f) end
+    or (type(ActionButton_ShowOverlayGlow) == "function" and function(f) return pcall(ActionButton_ShowOverlayGlow, f) end)
+  local procHide = type(ActionButtonSpellAlertManager) == "table" and ActionButtonSpellAlertManager.HideAlert
+    and function(f) return pcall(ActionButtonSpellAlertManager.HideAlert, ActionButtonSpellAlertManager, f) end
+    or (type(ActionButton_HideOverlayGlow) == "function" and function(f) return pcall(ActionButton_HideOverlayGlow, f) end)
+  local function setFlash(c, on)
+    if on == c.flashOn then return end
+    c.flashOn = on
+    local proc = procShow and procHide and not c.noProc
+    if on and proc then
+      if not procShow(c.iconBox) then c.noProc = true; proc = false end
+    elseif not on and proc then procHide(c.iconBox) end
+    c.glow:SetShown(on and not proc)
+    if on and not proc then c.pulse:Play() elseif c.pulse:IsPlaying() then c.pulse:Stop() end
   end
   local function card(i)
     if cards[i] then return cards[i] end
@@ -714,14 +811,33 @@ do
       syncBuffButton() -- the cast buttons follow
     end)
     c:SetScript("OnMouseUp", function(self, button)
-      if button == "RightButton" and self.spell then buffSeen[self.spell] = nil; checkBuffs() end -- not now: until it was up again
+      if button == "RightButton" and self.spell then QoL.SnoozeBuff(self.spell) end -- snooze: until it is up again
     end)
     c:SetScript("OnEnter", function(self)
       GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(label(self.spell or ""), 1, 0.82, 0)
       GameTooltip:AddLine("Click the icon to cast it again.", 1, 1, 1)
-      GameTooltip:AddLine("Right-click: hide it until next time. Drag: move.", 0.75, 0.75, 0.75); GameTooltip:Show()
+      GameTooltip:AddLine("Zz or right-click: snooze until you cast it again. Drag: move.", 0.75, 0.75, 0.75); GameTooltip:Show()
     end)
     c:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    -- snooze button (user 05.11.): sleeps until the buff is up again
+    c.zz = CreateFrame("Button", nil, c); c.zz:SetSize(18, 16)
+    local zt = FLT.NewFS(c.zz, nil, "OVERLAY", "GameFontNormalSmall"); zt:SetAllPoints(); zt:SetText("Zz"); zt:SetTextColor(0.75, 0.75, 0.80)
+    c.zz:SetScript("OnEnter", function(self)
+      zt:SetTextColor(1, 0.82, 0.2)
+      GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine("Snooze", 1, 0.82, 0)
+      GameTooltip:AddLine("No reminder for this buff until you cast it again (or it is up again).", 1, 1, 1, true); GameTooltip:Show()
+    end)
+    c.zz:SetScript("OnLeave", function() zt:SetTextColor(0.75, 0.75, 0.80); GameTooltip:Hide() end)
+    c.zz:SetScript("OnClick", function() if c.spell then QoL.SnoozeBuff(c.spell); GameTooltip:Hide() end end)
+    -- "Flash cards" (Discord 05.11.; user: the soft glow was hardly visible): the game's own proc glow of the action
+    -- bars around the icon when the client has it, else the bright action button border, pulsing (an animation, no
+    -- OnUpdate). c.iconBox = a frame on the icon for the proc glow.
+    c.iconBox = CreateFrame("Frame", nil, c); c.iconBox:SetPoint("TOPLEFT", c.icon); c.iconBox:SetPoint("BOTTOMRIGHT", c.icon)
+    c.glow = c:CreateTexture(nil, "OVERLAY", nil, 7); FLT.SetTex(c.glow, "Interface\\Buttons\\UI-ActionButton-Border")
+    c.glow:SetBlendMode("ADD"); c.glow:SetVertexColor(1, 0.85, 0.3, 1); c.glow:Hide()
+    c.glow:SetPoint("CENTER", c.icon); c.glow:SetSize(ICON * 1.9, ICON * 1.9)
+    c.pulse = c.glow:CreateAnimationGroup(); c.pulse:SetLooping("BOUNCE")
+    local a = c.pulse:CreateAnimation("Alpha"); a:SetFromAlpha(0.35); a:SetToAlpha(1); a:SetDuration(0.5)
     cards[i] = c
     layoutCard(c)
     return c
@@ -787,20 +903,18 @@ do
     if QoL.Get("buffReminder") and next(list) then
       local t, nextAt = now(), nil
       local fight = inCombat()
-      if not fight then wipe(renewed) end
+      if not fight then
+        for n, at in pairs(renewed) do if t - at > 5 then renewed[n] = nil end end
+        noteRanks()
+      end
       for name, sec in pairs(list) do
         local exp, dur = findBuff(name)
         sec = tonumber(sec) or 30
-        if fight and renewed[name] then -- cast again in combat: done for now
-        elseif exp == false then -- the game does not tell (combat): keep the card as it was
-          if wasDue[name] then due[#due + 1] = name end
-        elseif not exp and fight and buffExp[name] and buffExp[name] > t then
-          -- 6.1.3 (Discord 05.11.): in combat the game may not list a buff that is still up (once another aura
-          -- is added): until combat ends, go by the time it had when it was last seen
-          local left = buffExp[name] - t
-          if left <= sec then due[#due + 1] = name
-          elseif not nextAt or left - sec < nextAt then nextAt = left - sec end
+        local z = snoozed[name]
+        if z and exp and (z == true or (exp > 0 and exp > z + 1)) then snoozed[name] = nil; z = nil end -- up again / renewed
+        if z then -- snoozed (user 05.11.): no card until the buff is up again or renewed
         elseif exp then
+          renewed[name] = nil; snoozed[name] = nil
           buffSeen[name] = true
           buffExp[name] = exp > 0 and exp or nil
           if dur and dur > 0 then buffDur[name] = dur end
@@ -809,7 +923,17 @@ do
             if left <= sec then due[#due + 1] = name
             elseif not nextAt or left - sec < nextAt then nextAt = left - sec end
           end
-        elseif buffSeen[name] then due[#due + 1] = name -- ran out after it was up
+        elseif buffExp[name] and (fight or exp == false or renewed[name]) then
+          -- the game does not tell (combat, or the aura of a cast is not there yet): go by the time the buff has -
+          -- from when it was last seen, or cast time + its duration (6.1.3/6.1.4, Discord 05.11.: a Seal cast before
+          -- the pull gave no card at 10 s)
+          local left = buffExp[name] - t
+          if left <= sec then due[#due + 1] = name
+          elseif not nextAt or left - sec < nextAt then nextAt = left - sec end
+        elseif renewed[name] then -- cast again, its time not known: done for now
+        elseif fight or exp == false then -- not readable and no time known (idea from PR #36): keep the card as it was
+          if wasDue[name] then due[#due + 1] = name end
+        elseif buffSeen[name] then due[#due + 1] = name; buffExp[name] = nil -- ran out after it was up
         end
       end
       if nextAt then scheduleBuffCheck(nextAt + 0.05) end
@@ -835,17 +959,24 @@ do
         if name then
           local c = card(i)
           c.spell = name; c.title:SetText((weapon(name)) or name); FLT.SetTex(c.icon, spellIcon(name)); layoutCard(c); c:Show()
+          setFlash(c, QoL.Get("buffFlash") and true or false)
+          c.zz:SetShown(QoL.Get("buffSnoozeBtn") and true or false)
           paintCard(c)
         elseif cards[i] then
-          cards[i]:Hide(); cards[i].spell = nil
+          setFlash(cards[i], false); cards[i]:Hide(); cards[i].spell = nil
         end
       end
       holder:Show()
     end
     syncBuffButton()
   end
-  buffAura = function()
-    if buffDebounce or not QoL.Get("buffReminder") then return end -- also in combat (user 01.11.), debounced
+  buffAura = function(weaponsOnly)
+    if buffDebounce or not QoL.Get("buffReminder") then return end
+    if weaponsOnly then -- only when a weapon enchant is watched
+      local any = false
+      for name in pairs(buffList()) do if weapon(name) or imbue(name) then any = true; break end end
+      if not any then return end
+    end -- also in combat (user 01.11.), debounced
     buffDebounce = true
     C_Timer.After(0.2, function() buffDebounce = false; checkBuffs() end)
   end
@@ -879,17 +1010,54 @@ do
   function QoL.RemoveBuffReminder(name) buffList()[name] = nil; buffSeen[name] = nil; checkBuffs() end
   function QoL.ClearBuffReminders() local d = db(); if d then d.buffReminders = {} end; checkBuffs() end
   QoL.CheckBuffs = checkBuffs
+  QoL._buffCard = function(i) return cards[i] end -- tests
+  -- snooze: remember the end time it has now (a buff still running low stays quiet until it is cast again);
+  -- true = it is not up (quiet until it is up again)
+  function QoL.SnoozeBuff(name)
+    local exp = findBuff(name)
+    if not exp and buffExp[name] then exp = buffExp[name] end
+    snoozed[name] = (type(exp) == "number" and exp > 0) and exp or true
+    checkBuffs()
+  end
   -- combat starts: everything away (the secure buttons may still be hidden in this event)
   -- UNIT_SPELLCAST_SUCCEEDED (player): only in combat and only for a watched buff
+  -- 6.1.4 (seal re-cast in combat, 05.11.): the spell name can be secret in combat, so spell ID -> name of the watched
+  -- buffs is noted out of combat (own casts and the spellbook rank of each name) and used in combat
+  local castName, noted = {}, {}
+  -- the current spellbook rank of every watched buff (once per name, out of combat)
+  noteRanks = function()
+    if inCombat() or not (C_Spell and C_Spell.GetSpellInfo) then return end
+    for n in pairs(buffList()) do
+      if not noted[n] then
+        noted[n] = true
+        local ok, info = pcall(C_Spell.GetSpellInfo, n)
+        local id = ok and type(info) == "table" and info.spellID
+        if id and not FLT.IsSecret(id) then castName[id] = n end
+      end
+    end
+  end
+  local function spellName(id)
+    local n = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)) or (GetSpellInfo and GetSpellInfo(id))
+    if type(n) == "string" and not FLT.IsSecret(n) then return n end
+  end
   function QoL.BuffCast(spellID)
-    if not inCombat() or not QoL.Get("buffReminder") or not spellID or FLT.IsSecret(spellID) then return end
-    local n = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(spellID)) or (GetSpellInfo and GetSpellInfo(spellID))
-    if type(n) ~= "string" or FLT.IsSecret(n) or not buffList()[n] then return end
-    renewed[n] = true
+    if not QoL.Get("buffReminder") or not spellID or FLT.IsSecret(spellID) then return end
+    local n = castName[spellID]
+    if not inCombat() then
+      n = n or spellName(spellID)
+      if n and buffList()[n] then castName[spellID] = n end
+    end
+    n = n or spellName(spellID)
+    if not n or not buffList()[n] then return end
+    -- also out of combat (05.11.: cast and pulled at once - the aura was not read yet when combat began); with a
+    -- known duration the new end time counts, so the card still comes when it runs low in the fight
+    renewed[n] = now(); snoozed[n] = nil
+    buffExp[n] = buffDur[n] and (now() + buffDur[n]) or nil
     checkBuffs()
   end
   function QoL.BuffCombatStart()
     for _, sb in pairs(secures) do sb:Hide() end
+    noteRanks()
   end
   -- size / icon only changed: the cards and the cast buttons follow
   function QoL.BuffLayout()
@@ -925,10 +1093,28 @@ do
   function QoL.BuffSuggestions(text)
     text = (text or ""):lower()
     local out, seen = {}, {}
-    local function add(name, preset)
+    local function add(name, preset, active)
       if #out >= 8 or seen[name] or buffList()[name] then return end
       if text ~= "" and not name:lower():find(text, 1, true) then return end
-      seen[name] = true; out[#out + 1] = { name = name, preset = preset }
+      seen[name] = true; out[#out + 1] = { name = name, preset = preset, active = active }
+    end
+    -- the buffs you have right now (with a duration) come first (user 05.11.); out of combat only (secret in combat)
+    if not inCombat() then
+      local get = type(C_UnitAuras) == "table" and C_UnitAuras.GetAuraDataByIndex
+      for i = 1, 40 do
+        local n, dur
+        if get then
+          local ok, a = pcall(get, "player", i, "HELPFUL")
+          if not ok or not a then break end
+          n, dur = a.name, a.duration
+          if type(n) == "string" and not FLT.IsSecret(n) then noteIcon(n, a.icon) end
+        elseif UnitBuff then
+          local ok, bn, _, _, _, bdur = pcall(UnitBuff, "player", i)
+          if not ok or not bn then break end
+          n, dur = bn, bdur
+        else break end
+        if type(n) == "string" and not FLT.IsSecret(n, dur) and (tonumber(dur) or 0) > 0 and #out < 6 then add(n, false, true) end
+      end
     end
     local known = {}
     local book = BOOKTYPE_SPELL or "spell"
@@ -1231,9 +1417,14 @@ sizeStop = function()
   end
 end
 
+local movablePending -- windows that loaded in combat (protected ones can only be changed after it), user 05.11.
 local function makeMovable(name)
   local f = _G[name]
   if type(f) ~= "table" or f.ofaMovable or not f.HookScript then return end
+  if inCombat() and f.IsProtected and f:IsProtected() then
+    movablePending = movablePending or {}; movablePending[name] = true
+    return
+  end
   f.ofaMovable = true
   f:SetMovable(true); f:SetClampedToScreen(true)
   if f.EnableMouse then f:EnableMouse(true) end
@@ -1528,7 +1719,7 @@ local function addItemLines(tt, link)
     local drops = bossDrops(id)
     if drops then tt:AddLine("Drops from: " .. nameList(drops, 2), 0.95, 0.80, 0.45, true) end
   end
-  if QoL.Get("gearValue") and FLT.GearValue then FLT.GearValue.TooltipLine(tt, id) end
+  if QoL.Get("gearValue") and FLT.GearValue then FLT.GearValue.TooltipLine(tt, id, link) end
   -- on the wishlist (Armory > Gear Planner): always, it is the player's own choice (user 03.11.)
   if FLT.IsOnWishlist and FLT.GearValue and FLT.GearValue.WISH and FLT.IsOnWishlist(id) then tt:AddLine(FLT.GearValue.WISH, 1, 0.82, 0.25) end
   if QoL.Get("sellJunk") and junkList()[id] then tt:AddLine("On your junk list (Alt+right-click to take it off)", 0.62, 0.62, 0.62) end
@@ -2207,7 +2398,7 @@ local function helperFrame()
   f.destroy:SetScript("OnClick", function()
     local b, l = f.cands[f.ci], f.left[f.ti]
     if not b or (not l and not f.noLoot) then return end
-    if inCombat() then msg("Not possible in combat."); return end
+    -- also in combat (Discord 05.11.: the game allows destroying items in combat; the old block only got in the way)
     local link = itemInfo(b.bag, b.slot)
     if link ~= b.link then QoL.CheckBagsFull(true); return end
     -- anything better than grey needs a second click
@@ -2400,6 +2591,10 @@ local EVENTS = {
 }
 for _, e in ipairs(EVENTS) do pcall(ev.RegisterEvent, ev, e) end
 if ev.RegisterUnitEvent then pcall(ev.RegisterUnitEvent, ev, "UNIT_AURA", "player") else pcall(ev.RegisterEvent, ev, "UNIT_AURA") end
+-- buff reminder: weapon enchants are no aura (user 05.11.: Flametongue clicked off gave no card until another buff
+-- changed) - the weapon enchant / inventory events check too (debounced)
+pcall(ev.RegisterEvent, ev, "WEAPON_ENCHANT_CHANGED")
+if ev.RegisterUnitEvent then pcall(ev.RegisterUnitEvent, ev, "UNIT_INVENTORY_CHANGED", "player") end
 -- buff reminder: a watched buff cast again in combat (6.0.3)
 if ev.RegisterUnitEvent then pcall(ev.RegisterUnitEvent, ev, "UNIT_SPELLCAST_SUCCEEDED", "player") end
 
@@ -2441,11 +2636,13 @@ local function onEventSafe(_, event, ...)
   elseif event == "CHAT_MSG_WHISPER" then whisper(...)
   elseif event == "DUEL_REQUESTED" then duelRequested(...)
   elseif event == "UNIT_AURA" then playerAura(...); if (...) == "player" then buffAura() end
+  elseif event == "WEAPON_ENCHANT_CHANGED" or event == "UNIT_INVENTORY_CHANGED" then buffAura(true)
   elseif event == "UNIT_SPELLCAST_SUCCEEDED" then QoL.BuffCast(select(3, ...))
   elseif event == "UI_ERROR_MESSAGE" then errorMessage(...)
   elseif event == "LOOT_CLOSED" then if helper and not helper.noLoot then helper:Hide() end; pendingLoot = nil
   elseif event == "CVAR_UPDATE" then cvarChanged(...)
   elseif event == "PLAYER_REGEN_ENABLED" then if sparklePending then applySparkles() end; if QoL.Get("buffReminder") then checkBuffs() end
+    if movablePending then local l = movablePending; movablePending = nil; for name in pairs(l) do makeMovable(name) end end
   elseif event == "PLAYER_REGEN_DISABLED" then QoL.BuffCombatStart()
   elseif event == "ZONE_CHANGED_NEW_AREA" then if QoL.Get("buffReminder") and QoL.Get("buffSleepCities") then checkBuffs() end
   elseif event == "CHAT_MSG_LOOT" then lootMessage(...)
@@ -2475,6 +2672,8 @@ on("buffReminder", function() checkBuffs() end)
 on("buffSleepCities", function() checkBuffs() end)
 on("buffScale", function() QoL.BuffLayout() end)
 on("buffIconOnly", function() QoL.BuffLayout() end)
+on("buffFlash", function() checkBuffs() end)
+on("buffSnoozeBtn", function() checkBuffs() end) -- shown / hidden at once (user 05.11.)
 on("moveWindows", setupMovable)
 on("resizeWindows", function(v)
   setupMovable()

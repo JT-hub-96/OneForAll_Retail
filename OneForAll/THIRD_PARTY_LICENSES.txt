@@ -40,7 +40,8 @@ zeppelin masters for Map Landmarks, gear quest rewards with their quest givers a
 Gear Planner in Data/QuestRewards.lua, which reagents vendors sell for the Crafting List in
 Data/VendorReagents.lua, class quests with their givers for the trainer window in
 Data/ClassQuests.lua, quest givers and turn-ins for the quest icons on the world map in
-Data/QuestPins.lua, mobs that drop quest items for the quest marks on nameplates in Data/QuestDrops.lua)
+Data/QuestPins.lua, mobs that drop quest items for the quest marks on nameplates in Data/QuestDrops.lua,
+vendors, mobs and objects for the reagents of the profession recipes in Data/ReagentSources.lua)
 were generated
 from the QuestieDB Forever data, which is derived from Questie.
 Sources: https://github.com/Questie/questiedb and https://github.com/Questie/Questie

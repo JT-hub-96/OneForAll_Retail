@@ -86,10 +86,61 @@ local function serviceSpellID(i)
   end)
   return tonumber(id)
 end
+-- Learn level of recipes (6.1.5, user 05.11.: not in the client data, the trainer knows it): read at a profession
+-- trainer, kept in OneForAllDB.recipeLearn[profession][spellID] and filled into the recipe data (r.req) where it is missing
+local function learnDB()
+  if type(OneForAllDB) ~= "table" then return nil end
+  OneForAllDB.recipeLearn = OneForAllDB.recipeLearn or {}
+  return OneForAllDB.recipeLearn
+end
+function FLT.ApplyRecipeLearnLevels()
+  local db, all = learnDB(), FLT.PROFESSION_RECIPES
+  if not (db and all) then return end
+  for prof, levels in pairs(db) do
+    for _, r in ipairs(all[prof] or {}) do
+      local lv = levels[r.s]
+      if lv and (not r.req or r.reqSeen) then r.req, r.reqSeen = lv, true end
+    end
+  end
+end
+local function readProfTrainer(all)
+  if not (GetTrainerServiceSkillReq and FLT.PROFESSION_RECIPES) then return end
+  -- user 05.11.: learned recipes kept their "?" - the trainer list hides them (filter "already learned" off). On opening
+  -- the trainer all filters are switched on for the read and set back right after (the restore fires TRAINER_UPDATE,
+  -- which reads again without switching)
+  local saved
+  if all and GetTrainerServiceTypeFilter and SetTrainerServiceTypeFilter then
+    saved = {}
+    for _, t in ipairs({ "available", "unavailable", "used" }) do
+      saved[t] = GetTrainerServiceTypeFilter(t)
+      if not saved[t] then SetTrainerServiceTypeFilter(t, 1) end
+    end
+  end
+  local db = learnDB(); if not db then return end
+  local byName = {}
+  for prof, list in pairs(FLT.PROFESSION_RECIPES) do for _, r in ipairs(list) do byName[prof .. "|" .. r.n] = r end end
+  local got = 0
+  for i = 1, GetNumTrainerServices() do
+    local name, _, category = GetTrainerServiceInfo(i)
+    if name and category ~= "header" then
+      local skill, rank = GetTrainerServiceSkillReq(i)
+      rank = tonumber(rank)
+      if type(skill) == "string" and rank then
+        local r = byName[skill .. "|" .. name]
+        local id = serviceSpellID(i)
+        if not r and id then for _, x in ipairs(FLT.PROFESSION_RECIPES[skill] or {}) do if x.s == id then r = x; break end end end
+        if r then db[skill] = db[skill] or {}; db[skill][r.s] = rank; got = got + 1 end
+      end
+    end
+  end
+  if saved then for t, v in pairs(saved) do if not v then SetTrainerServiceTypeFilter(t, 0) end end end
+  if got > 0 then FLT.ApplyRecipeLearnLevels(); if FLT.RefreshProfessions then FLT.RefreshProfessions() end end
+end
+
 local trainerRaw = {}
-local function readTrainer()
+local function readTrainer(show)
   if not GetNumTrainerServices or not GetTrainerServiceInfo then return end
-  if IsTradeskillTrainer and IsTradeskillTrainer() then return end
+  if IsTradeskillTrainer and IsTradeskillTrainer() then readProfTrainer(show); return end
   local db = costsDB(myToken)
   trainerRaw = {}
   for i = 1, GetNumTrainerServices() do
@@ -119,11 +170,12 @@ end
 
 local ev = CreateFrame("Frame")
 -- not every event exists in every client (e.g. LEARNED_SPELL_IN_TAB is missing in Forever)
-for _, e in ipairs({ "TRAINER_SHOW", "TRAINER_UPDATE", "SPELLS_CHANGED", "LEARNED_SPELL_IN_TAB", "PLAYER_LEVEL_UP" }) do
+for _, e in ipairs({ "PLAYER_LOGIN", "TRAINER_SHOW", "TRAINER_UPDATE", "SPELLS_CHANGED", "LEARNED_SPELL_IN_TAB", "PLAYER_LEVEL_UP" }) do
   pcall(ev.RegisterEvent, ev, e)
 end
 local function onEventSafe(_, event)
-  if event == "TRAINER_SHOW" or event == "TRAINER_UPDATE" then readTrainer()
+  if event == "PLAYER_LOGIN" then FLT.ApplyRecipeLearnLevels()
+  elseif event == "TRAINER_SHOW" or event == "TRAINER_UPDATE" then readTrainer(event == "TRAINER_SHOW")
   elseif FLT.RefreshTrainerSpells then
     if C_Timer and C_Timer.After then C_Timer.After(0.3, FLT.RefreshTrainerSpells) else FLT.RefreshTrainerSpells() end
   end

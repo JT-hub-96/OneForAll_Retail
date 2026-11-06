@@ -8,30 +8,22 @@ local makeTexture, makeButton = UI.makeTexture, UI.makeButton
 -- 6.0.2 (user 01.11.): World Map, dungeon quests, Gear Planner filters, talent import - not shown automatically.
 
 local NEWS_AUTO = false -- set true (and a new NEWS_ID) for the next release with news
--- 6.0.2 (agreed with the user 01.11.): four entries, filled but NOT shown automatically (the welcome setup opens for
--- new players, both at once would be too much); /ofa news and Settings > Window show them
-local NEWS_ID = "6.0.2"
+-- 6.1.5 (agreed with the user 06.11.): reagent sources and flights, not shown automatically; /ofa news and Settings >
+-- Window show them (the 6.0.2 entries before: World Map, dungeon quests, Gear Planner filters, talent import)
+local NEWS_ID = "6.1.5"
 
 -- images (optional): pictures in a row under the lines, each { tex, shown width, shown height, texcoord right,
 -- texcoord bottom } (made by tools/art/proc_news.py from the user's screenshots in source_images/news)
 local NEWS = {
-  { icon = "Interface\\Icons\\INV_Misc_Map_01", title = "World Map", tab = "qol", button = "Open Quality of Life",
+  { icon = "Interface\\Icons\\INV_Misc_Bag_10", title = "Professions - where to get reagents", tab = "professions", button = "Open Professions",
     lines = {
-      "Quest icons: a yellow ! at quest givers with quests for your level, a ? where you turn in finished quests (hidden with Questie).",
-      "The zone's level range, zone transitions and a OneForAll button with all map switches.",
+      "Click a reagent in the recipe details: made with a profession, the nearest vendors, herbs, ore and fishing, or the nearest mobs that drop it.",
+      "The map button outlines the area where the mob or herb spawns.",
     } },
-  { icon = "Interface\\Icons\\INV_Misc_Note_02", title = "Dungeons - quests", tab = "dungeons", button = "Open Dungeons & Raids",
+  { icon = "Interface\\Icons\\Ability_Mount_Wyvern_01", title = "Flights", tab = "qol", button = "Open Quality of Life",
     lines = {
-      "Share all Quests: one click shares every dungeon quest your group still needs.",
-      "Quest marks on nameplates: a sword or bag with your progress on mobs you need (Quality of Life > Quests).",
-    } },
-  { icon = "Interface\\Icons\\INV_Chest_Chain_05", title = "Gear Planner", tab = "armory", button = "Open Armory",
-    lines = {
-      "Filter by source (dungeon, raid, quest, crafted ...), crafted items only from your professions, and a button to the recipe.",
-    } },
-  { icon = "Interface\\Icons\\Ability_Marksmanship", title = "Talent Trees - import", tab = "talents", button = "Open Talent Trees",
-    lines = {
-      "Buttons for talentsforever.com and wowforevertalents.com: copy the link, plan your build there and paste it back.",
+      "The flight map opens at once at a flight master, and the flight map tooltip shows the flight time.",
+      "While flying a small window shows the time left; the times get more exact with every flight.",
     } },
 }
 
