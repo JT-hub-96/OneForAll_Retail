@@ -190,6 +190,18 @@ local function hideAll()
 end
 
 -- the map canvas for our pins (also used by MapQuests.lua): child, width, height, pin scale, frame level
+-- the game's exploration pin (it draws the explored parts, Remove Fog draws the rest on it), found once
+local exPin
+local function explorationLevel()
+  if not exPin and type(WorldMapFrame.dataProviders) == "table" then
+    for dp in pairs(WorldMapFrame.dataProviders) do
+      local p = type(dp) == "table" and dp.pin
+      if type(p) == "table" and p.RefreshOverlays and p.GetFrameLevel then exPin = p; break end
+    end
+  end
+  return exPin and exPin:GetFrameLevel() or 0
+end
+
 function LM.Canvas()
   local child = WorldMapFrame.ScrollContainer and WorldMapFrame.ScrollContainer.Child
   if not child then return end
@@ -199,10 +211,12 @@ function LM.Canvas()
   local sc = WorldMapFrame.ScrollContainer
   if sc.GetCanvasScale then scale = 1 / math.max(0.1, sc:GetCanvasScale() or 1) end
   -- frame level: above all of the map's own pins (in the Barrens the icons were hidden under the map's area highlight
-  -- although they got the mouse, 5.6.3). A fixed distance, not the map's pin level manager: asking it fills its cache
-  -- from addon code, and the map's own pins then counted as addon code - "Button:SetPassThroughButtons() blocked" when
-  -- the map opened in combat (user 06.11.)
-  local level = math.min(child:GetFrameLevel() + 1000, 9000)
+  -- although they got the mouse, 5.6.3). Not from the map's pin level manager: asking it fills its cache from addon
+  -- code, and the map's own pins then counted as addon code - "Button:SetPassThroughButtons() blocked" when the map
+  -- opened in combat (user 06.11.). The map's pins start at about level 2000 (the exploration pin: 2002 with the map
+  -- at 3), so 1000 above the map was below them: with Remove Fog at 100 % our icons vanished under the drawn parts
+  -- (user 06.11., 6.1.7) - now 1000 above the exploration pin, its level only read
+  local level = math.min(math.max(child:GetFrameLevel(), explorationLevel()) + 1000, 9000)
   return child, w, h, scale, level
 end
 
