@@ -99,7 +99,8 @@ function FLT.ApplyRecipeLearnLevels()
   for prof, levels in pairs(db) do
     for _, r in ipairs(all[prof] or {}) do
       local lv = levels[r.s]
-      if lv and (not r.req or r.reqSeen) then r.req, r.reqSeen = lv, true end
+      -- rw = filled from web lists (6.1.8, tools/prof-sources/csv_levels.py): the trainer's value replaces it
+      if lv and (not r.req or r.reqSeen or r.rw) then r.req, r.reqSeen = lv, true end
     end
   end
 end

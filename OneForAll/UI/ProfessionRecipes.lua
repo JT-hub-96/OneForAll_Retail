@@ -521,11 +521,12 @@ function UI.CreateRecipeBrowser(parent)
       lx = lx - (t:GetStringWidth() or 60) - 34
     end
   end
-  -- hint in the second line, left-aligned with the "I know it" check
+  -- hint in the second line, right-aligned under the legend; it may reach left over the whole detail column (user
+  -- 06.11.: with only "I know it" and "Guild member" it started at the "I know it" check and was cut off: "re...")
   local scanHint = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); scanHint:SetTextColor(FLT.SkinC(1, 0.82, 0))
-  if legendFirst then scanHint:SetPoint("TOPLEFT", legendFirst, "BOTTOMLEFT", 0, -5) else scanHint:SetPoint("TOPRIGHT", -14, -32) end
-  -- stays inside the window (user 05.11.: the learn level note ran past its right edge)
-  scanHint:SetPoint("RIGHT", f, "RIGHT", -14, 0); scanHint:SetJustifyH("LEFT"); scanHint:SetWordWrap(false)
+  scanHint:SetPoint("TOPRIGHT", f, "TOPRIGHT", -14, legendFirst and -33 or -32)
+  scanHint:SetPoint("LEFT", f, "LEFT", 344, 0) -- the detail column (the list is 336 wide)
+  scanHint:SetJustifyH("RIGHT"); scanHint:SetWordWrap(false)
 
   -- filters + search
   local filters = {}
@@ -560,9 +561,10 @@ function UI.CreateRecipeBrowser(parent)
   if recipeBar then recipeBar:SetPoint("TOPRIGHT", rchild, "TOPRIGHT", -32, -100); recipeBar:Hide() end
   UI.AutoHideScrollBar(rsf)
 
-  -- favourite star (top right of the detail panel)
-  local star = CreateFrame("Button", nil, right); star:SetSize(26, 26); star:SetPoint("TOPRIGHT", -36, -16)
-  star:SetFrameLevel(rsf:GetFrameLevel() + 5)
+  -- favourite star (top right of the recipe header)
+  -- in the scrolling detail, so it moves with the recipe header (user 06.11.: it stayed put and covered the Reagents box)
+  local star = CreateFrame("Button", nil, rchild); star:SetSize(26, 26); star:SetPoint("TOPRIGHT", rchild, "TOPRIGHT", 0, -4)
+  star:SetFrameLevel(rchild:GetFrameLevel() + 5)
   star.tex = star:CreateTexture(nil, "ARTWORK"); star.tex:SetAllPoints(); FLT.SetTex(star.tex, UI.ASSET_ROOT .. "icon_star")
   local starHi = star:CreateTexture(nil, "HIGHLIGHT"); starHi:SetAllPoints(); FLT.SetTex(starHi, UI.ASSET_ROOT .. "icon_star"); starHi:SetBlendMode("ADD"); starHi:SetAlpha(0.35)
   local selectedRecipe -- forward: set below
@@ -757,7 +759,7 @@ function UI.CreateRecipeBrowser(parent)
     local y = 0
     local big = dframe("Frame"); big:SetSize(46, 46); big:SetPoint("TOPLEFT", 0, y)
     local bic = big:CreateTexture(nil, "ARTWORK"); bic:SetAllPoints(); FLT.SetTex(bic, recipeIcon(r))
-    local name = dtext("GameFontNormalLarge", 350); name:SetPoint("TOPLEFT", 56, y - 2)
+    local name = dtext("GameFontNormalLarge", 330) -- leaves room for the favourite star; name:SetPoint("TOPLEFT", 56, y - 2)
     name:SetText(r.n .. ((r.c and r.c > 1) and (" x" .. r.c) or "")); local qc = QCOL[r.q or 1] or QCOL[1]; name:SetTextColor(FLT.SkinC(qc[1], qc[2], qc[3]))
     local sub = dtext("GameFontDisableSmall", 350); sub:SetPoint("TOPLEFT", 56, y - 26)
     -- 6.1.0 (user 03.11.): no automatic search when a recipe is opened - only the "Search" button asks the channel
@@ -980,7 +982,8 @@ function UI.CreateRecipeBrowser(parent)
           sub("Sold by")
           local shown, other = 0, nil
           for _, n in ipairs(src.v) do
-            if not side or not n.fac or n.fac == side then npcRow(n, ry, b); ry = ry - 24; shown = shown + 1
+            -- "AH" = both sides (6.1.8: neutral vendors like Kzixx were hidden for everyone)
+            if not side or not n.fac or n.fac == side or n.fac == "AH" then npcRow(n, ry, b); ry = ry - 24; shown = shown + 1
             else other = n.fac end
           end
           if shown == 0 then

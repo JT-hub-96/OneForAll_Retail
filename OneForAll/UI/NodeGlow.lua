@@ -52,12 +52,13 @@ local function apply()
   if not d.nodeGlowCVars then
     d.nodeGlowCVars = {}
     for _, n in ipairs(MANAGED) do d.nodeGlowCVars[n] = getCVar(n) or false end
-    -- the Interact Key is only given back when we raised it from 0; otherwise it is the player's (user 06.11.)
-    if d.nodeGlowCVars.SoftTargetInteract ~= "0" then d.nodeGlowCVars.SoftTargetInteract = false end
   end
-  -- "Enable Interact Key" stays as the player set it (GitHub #40: we set 3 = the box on; user 06.11.: the sparkle works
-  -- with 1 = the box off too); only 0 (soft targeting off) is raised to 1
-  if getCVar("SoftTargetInteract") == "0" then setCVar("SoftTargetInteract", 1) end
+  -- saved by 6.1.6 / 6.1.7 without it (they left the player's value alone): the value now is still the player's
+  if d.nodeGlowCVars.SoftTargetInteract == false then d.nodeGlowCVars.SoftTargetInteract = getCVar("SoftTargetInteract") or false end
+  -- soft targeting for mouse & keyboard too: 0 off, 1 controller only, 2 mouse & keyboard, 3 both (= the game's "Enable
+  -- Interact Key" box). 6.1.6 left 1 alone (GitHub #40) - then the game finds no nodes without a controller and the
+  -- sparkle was gone for most players (Discord 06.11., several users). 3 again as in 6.1.5, given back when switched off
+  setCVar("SoftTargetInteract", 3)
   setCVar("SoftTargetInteractRange", 15)
   setCVar("SoftTargetInteractArc", 2)           -- all around you
   setCVar("SoftTargetInteractOnlyInRange", 0)   -- also before you are in reach
@@ -198,7 +199,7 @@ local EVENTS = { "PLAYER_SOFT_INTERACT_CHANGED", "NAME_PLATE_UNIT_ADDED", "NAME_
 -- the client may set its own values again some time after logging in (user 26.10.: SoftTargetInteract back at 1,
 -- SoftTargetIconGameObject at 0): put ours back, at most once every 5 seconds so we never fight another addon
 local lastFix = 0
-local function ours() return getCVar("SoftTargetInteract") ~= "0" and getCVar("SoftTargetIconGameObject") == "1" end
+local function ours() return getCVar("SoftTargetInteract") == "3" and getCVar("SoftTargetIconGameObject") == "1" end
 local function fixLater()
   if not (C_Timer and C_Timer.After) then return end
   C_Timer.After(3, function()
