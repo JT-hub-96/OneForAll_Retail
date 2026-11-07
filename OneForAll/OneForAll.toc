@@ -3,7 +3,7 @@
 ## Notes: All-in-one WoW Forever companion: dungeons, quests, loot, item sets and reputation rewards, Library Books, professions, talent planning, hunter pets and quality of life helpers.
 ## Author: Smoergi
 ## X-License: GPL-3.0-or-later
-## Version: 6.1.8
+## Version: 6.1.9
 ## IconTexture: Interface\AddOns\OneForAll\Assets\minimap_icon
 ## OptionalDeps: Baganator
 ## SavedVariables: OneForAllDB, ForeverCompanionDB, ForeverLibraryTrackerDB
@@ -67,6 +67,7 @@ Data\RaidAttunements.lua
 Data\DungeonDropChance.lua
 Data\BossInfo.lua
 Data\HunterPets.lua
+Data\HunterPetTames.lua
 Data\TrainerSpells.lua
 Data\WeaponTrainers.lua
 Data\ClassQuests.lua

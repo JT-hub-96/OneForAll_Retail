@@ -273,15 +273,27 @@ local function placeCluster()
   local d = type(OneForAllDB) == "table" and OneForAllDB.qol
   local pos = d and FLT.QoL.Get("mmMove") and d.mmPos
   if not move.home then move.home = {}; for i = 1, (mc:GetNumPoints() or 0) do move.home[i] = { mc:GetPoint(i) } end end
+  move.placing = true
   mc:ClearAllPoints()
   if pos then mc:SetPoint(pos[1], UIParent, pos[2], pos[3], pos[4])
   else for _, p in ipairs(move.home) do mc:SetPoint(unpack(p)) end end
+  move.placing = nil
 end
 function FLT.ApplyMinimapMove()
   local mc = cluster(); if not mc or type(Minimap) ~= "table" then return end
   if FLT.QoL.Get("mmMove") and not move.hooked then
     move.hooked = true
     mc:SetMovable(true); mc:SetClampedToScreen(true)
+    -- 6.1.9 (Discord 07.11., Viator: "seemingly randomly it will reset to the default top-right location"): the game
+    -- puts the cluster back on its own now and then (frame layout updates); then our place is set again, once, a
+    -- moment later. Only when the game moves it - our own placing and the drag do not count.
+    hooksecurefunc(mc, "SetPoint", function()
+      if move.placing or move.moving or move.queued or not FLT.QoL.Get("mmMove") then return end
+      local d = type(OneForAllDB) == "table" and OneForAllDB.qol
+      if not (d and d.mmPos) then return end
+      move.queued = true
+      C_Timer.After(0, function() move.queued = nil; placeCluster() end)
+    end)
     Minimap:RegisterForDrag("LeftButton")
     Minimap:HookScript("OnDragStart", function()
       if FLT.QoL.Get("mmMove") and IsShiftKeyDown() then move.moving = true; mc:StartMoving() end

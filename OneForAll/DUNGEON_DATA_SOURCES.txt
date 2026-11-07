@@ -51,6 +51,9 @@ Hunter pet data (Data/HunterPets.lua), updated 3 October 2026
   beasts not confirmed yet.
 - Known gaps: no known teacher for Charge rank 4 and Lightning Breath rank 1;
   Growl listed with 0 training points (single source).
+- More tameable beasts per family (Data/HunterPetTames.lua, 7 November 2026): every
+  beast wow-petopia.com/forever marks as "Can Be Tamed" (look pages), incl. Zephras
+  Isle; spawn positions from QuestieDB (Forever data). tools/hunter-pets.
 
 
 Profession recipes (Data/Professions/*.lua), extracted 5 October 2026

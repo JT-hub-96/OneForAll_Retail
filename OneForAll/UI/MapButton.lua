@@ -20,6 +20,8 @@ local ROWS = {
   { key = "mapBooks", label = "   Library Books", sub = true },
   { key = "lmSkyborne", label = "   Skyborne: Ley Lines & Convergences", sub = true },
   { key = "mapQuests", label = "Quest icons (! and ?)" },
+  { key = "mapQuestGivers", label = "   Quest givers (!)", sub = true, parent = "mapQuests" }, -- 6.1.9 (user 07.11.)
+  { key = "mapQuestTurnins", label = "   Turn-ins (?)", sub = true, parent = "mapQuests" },
   { key = "mapQuestsContinent", label = "   Also on the continent map", sub = true, parent = "mapQuests" },
   { key = "mapFog", label = "Remove Fog" },
   { key = "mapZoneLevel", label = "Zone level range" },

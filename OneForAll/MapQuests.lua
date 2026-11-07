@@ -356,12 +356,13 @@ function MQ.Refresh()
     if d then
       -- zone coordinates (0-100) -> this map's; walking routes only on the zone map itself
       local function at(x, y) return z[2] * 100 + x * z[4], z[3] * 100 + y * z[5] end
-      for _, g in ipairs(d.starts) do
+      local givers, turnins = Q("mapQuestGivers") ~= false, Q("mapQuestTurnins") ~= false -- 6.1.9: each on its own
+      for _, g in ipairs(givers and d.starts or {}) do
         for _, q in ipairs(g.quests) do
           if available(q) then local x, y = at(g.x, g.y); local s = spot(x, y, g.name, whole and g.route or nil); s.avail[#s.avail + 1] = q end
         end
       end
-      for _, e in ipairs(d.ends) do
+      for _, e in ipairs(turnins and d.ends or {}) do
         for _, id in ipairs(e.ids) do
           if complete[id] then local x, y = at(e.x, e.y); local s = spot(x, y, e.name, whole and e.route or nil); s.turnin[#s.turnin + 1] = id end
         end
@@ -415,6 +416,7 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", function(self)
   self:UnregisterAllEvents()
-  if FLT.QoL and FLT.QoL.On then FLT.QoL.On("mapQuests", MQ.Apply); FLT.QoL.On("mapQuestsContinent", MQ.Refresh) end
+  if FLT.QoL and FLT.QoL.On then FLT.QoL.On("mapQuests", MQ.Apply); FLT.QoL.On("mapQuestsContinent", MQ.Refresh)
+    FLT.QoL.On("mapQuestGivers", MQ.Refresh); FLT.QoL.On("mapQuestTurnins", MQ.Refresh) end
   if Q("mapQuests") then MQ.Apply() end
 end)
