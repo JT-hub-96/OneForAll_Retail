@@ -1,4 +1,6 @@
 local _, FLT = ...
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 local UI = FLT.UI
 
 -- Welcome setup (5.7.3, user 27.10.): shown once (WELCOME_ID) - a small setup over a few pages to switch on Quality of
@@ -18,60 +20,60 @@ local function cvar(k) return function() return Q.GetCVarSwitch(k) end, function
 -- one row = { label, short text, key (QoL) or get + set, rec = recommended (ticked by "Recommended settings"),
 -- sub = indented under the row before, kind = "logo" / "font" for the two special rows }
 local PAGES = {
-  { "Interface", {
-    { "Farther camera zoom", "Lets you zoom the camera out further.", "cameraZoom", rec = true },
-    { "Move Blizzard windows", "Drag windows like the character window anywhere.", "moveWindows", rec = true },
-    { "Resize Blizzard windows", "Drag a window with the right mouse button to change its size.", "resizeWindows" }, -- user 01.11.
-    { "Chat font size", "The same font size for every chat window.", kind = "font" },
-    { "Logo color", "The color of the OneForAll minimap button.", kind = "logo" },
-    { "Collect minimap buttons", "Puts the minimap buttons of other addons into one bar.", "mmCollect", rec = true },
-    { "Square minimap", "A square minimap with a thin black frame.", "mmSquare" },
-    { "Short green stats", "Long \"Equip:\" lines in tooltips as short stats, e.g. \"+1% Hit\".", "shortStats" }, -- user 01.11.
+  { N"Interface", {
+    { N"Farther camera zoom", N"Lets you zoom the camera out further.", "cameraZoom", rec = true },
+    { N"Move Blizzard windows", N"Drag windows like the character window anywhere.", "moveWindows", rec = true },
+    { N"Resize Blizzard windows", N"Drag a window with the right mouse button to change its size.", "resizeWindows" }, -- user 01.11.
+    { N"Chat font size", N"The same font size for every chat window.", kind = "font" },
+    { N"Logo color", N"The color of the OneForAll minimap button.", kind = "logo" },
+    { N"Collect minimap buttons", N"Puts the minimap buttons of other addons into one bar.", "mmCollect", rec = true },
+    { N"Square minimap", N"A square minimap with a thin black frame.", "mmSquare" },
+    { N"Short green stats", N"Long \"Equip:\" lines in tooltips as short stats, e.g. \"+1% Hit\".", "shortStats" }, -- user 01.11.
   } },
-  { "Loot & Vendors", {
-    { "Quicker loot", "Takes everything at once when the game auto loots.", "quickLoot", rec = true },
-    { "Auto repair", "Repairs all gear at merchants that can repair.", "autoRepair" },
-    { "Sell junk", "Sells all grey items when you open a merchant.", "sellJunk" },
-    { "Bags full helper", "When loot does not fit, offers to destroy the cheapest item.", "bagsFull", rec = true },
-    { "Show loot feed", "Looted items and money float up next to your character.", "lootFeed", rec = true },
-    { "Sparkle on herbs & ore", "Only for Herbalism and Mining: the herb or ore vein near you sparkles.", "nodeGlow" },
+  { N"Loot & Vendors", {
+    { N"Quicker loot", N"Takes everything at once when the game auto loots.", "quickLoot", rec = true },
+    { N"Auto repair", N"Repairs all gear at merchants that can repair.", "autoRepair" },
+    { N"Sell junk", N"Sells all grey items when you open a merchant.", "sellJunk" },
+    { N"Bags full helper", N"When loot does not fit, offers to destroy the cheapest item.", "bagsFull", rec = true },
+    { N"Show loot feed", N"Looted items and money float up next to your character.", "lootFeed", rec = true },
+    { N"Sparkle on herbs & ore", N"Only for Herbalism and Mining: the herb or ore vein near you sparkles.", "nodeGlow" },
   } },
-  { "Quests & Social", {
-    { "Accept quests automatically", "Hold Shift to do it by hand.", "autoAccept" },
-    { "Turn in quests automatically", "You still pick rewards yourself.", "autoTurnIn" },
-    { "Quest XP on the experience bar", "Shows the XP of your finished quests.", "questXP", rec = true },
-    { "Quest loot sparkles", "Quest items in the world sparkle again.", "questSparkles", rec = true },
-    { "Thank players who buff you", "Sends a /thank to players outside your group who buff you.", "thanksBuff", rec = true },
-    { "Quest marks on nameplates", "A sword or a bag with your progress on mobs you need for a quest.", "questMarks" }, -- 6.0.2 (user 01.11.)
+  { N"Quests & Social", {
+    { N"Accept quests automatically", N"Hold Shift to do it by hand.", "autoAccept" },
+    { N"Turn in quests automatically", N"You still pick rewards yourself.", "autoTurnIn" },
+    { N"Quest XP on the experience bar", N"Shows the XP of your finished quests.", "questXP", rec = true },
+    { N"Quest loot sparkles", N"Quest items in the world sparkle again.", "questSparkles", rec = true },
+    { N"Thank players who buff you", N"Sends a /thank to players outside your group who buff you.", "thanksBuff", rec = true },
+    { N"Quest marks on nameplates", N"A sword or a bag with your progress on mobs you need for a quest.", "questMarks" }, -- 6.0.2 (user 01.11.)
   } },
-  { "World Map", {
-    { "Map Landmarks", "Dungeon entrances, flight masters, ships and more on the map.", "mapLandmarks", rec = true },
-    { "Dungeon & raid entrances", "Click to open the dungeon in OneForAll.", "lmDungeons", sub = true, rec = true },
-    { "Flight masters", "Shows where they fly to.", "lmFlight", sub = true, rec = true },
-    { "Zeppelins, ships & tram", "Shows where they go.", "lmTransport", sub = true, rec = true },
-    { "Library Books", "A book icon where each book you still need lies.", "mapBooks", sub = true, rec = true },
-    { "Remove Fog", "Shows the parts of a zone you have not explored yet.", "mapFog", rec = true },
-    { "Dungeon map on M", "Inside a dungeon, M opens OneForAll's dungeon map.", rec = true,
+  { N"World Map", {
+    { N"Map Landmarks", N"Dungeon entrances, flight masters, ships and more on the map.", "mapLandmarks", rec = true },
+    { N"Dungeon & raid entrances", N"Click to open the dungeon in OneForAll.", "lmDungeons", sub = true, rec = true },
+    { N"Flight masters", N"Shows where they fly to.", "lmFlight", sub = true, rec = true },
+    { N"Zeppelins, ships & tram", N"Shows where they go.", "lmTransport", sub = true, rec = true },
+    { N"Library Books", N"A book icon where each book you still need lies.", "mapBooks", sub = true, rec = true },
+    { N"Remove Fog", N"Shows the parts of a zone you have not explored yet.", "mapFog", rec = true },
+    { N"Dungeon map on M", N"Inside a dungeon, M opens OneForAll's dungeon map.", rec = true,
       get = function() return db().dungeonMapKey ~= false end,
       set = function(v) if type(OneForAllDB) == "table" then OneForAllDB.dungeonMapKey = v and true or false end
         if FLT.ApplyDungeonMapKey then FLT.ApplyDungeonMapKey() end end },
   } },
-  { "Unit Frames & Spells", {
-    { "Class colors", "Health bars of players in their class color.", "classColors", rec = true },
-    { "Class colors: raid frames", "The game's own setting.", cvar = "raidClassColor" },
-    { "Power bars: raid frames", "Mana, rage and energy bars in the raid frames.", cvar = "raidPowerBars" },
-    { "Check low spell ranks", "Offers the highest rank for spells on your bars.", "lowRank", rec = true },
-    { "Trainer button in the spellbook", "Opens the trainer window: spells and weapon skills.", "spellbookTrainer", rec = true },
+  { N"Unit Frames & Spells", {
+    { N"Class colors", N"Health bars of players in their class color.", "classColors", rec = true },
+    { N"Class colors: raid frames", N"The game's own setting.", cvar = "raidClassColor" },
+    { N"Power bars: raid frames", N"Mana, rage and energy bars in the raid frames.", cvar = "raidPowerBars" },
+    { N"Check low spell ranks", N"Offers the highest rank for spells on your bars.", "lowRank", rec = true },
+    { N"Trainer button in the spellbook", N"Opens the trainer window: spells and weapon skills.", "spellbookTrainer", rec = true },
   } },
-  { "Popups & Alerts", {
-    { "Durability warning", "Warns when your gear drops to 20% durability.", "durability", rec = true },
-    { "Nearby Library Book alerts", "Popup when you are close to a missing library book.", rec = true,
+  { N"Popups & Alerts", {
+    { N"Durability warning", N"Warns when your gear drops to 20% durability.", "durability", rec = true },
+    { N"Nearby Library Book alerts", N"Popup when you are close to a missing library book.", rec = true,
       get = function() return FLT.IsNearbyAlertsEnabled and FLT:IsNearbyAlertsEnabled() and true or false end,
       set = function(v) if FLT.SetNearbyAlertsEnabled then FLT:SetNearbyAlertsEnabled(v) end end },
-    { "Pet ability alerts", "Popup when a beast nearby teaches a higher rank your pets can learn.", rec = true, hunter = true,
+    { N"Pet ability alerts", N"Popup when a beast nearby teaches a higher rank your pets can learn.", rec = true, hunter = true,
       get = function() return FLT.IsPetTeachAlertsEnabled and FLT:IsPetTeachAlertsEnabled() and true or false end,
       set = function(v) if FLT.SetPetTeachAlertsEnabled then FLT:SetPetTeachAlertsEnabled(v) end end },
-    { "Quest share popup in dungeons", "When a group member can still accept one of your dungeon quests.", rec = true,
+    { N"Quest share popup in dungeons", N"When a group member can still accept one of your dungeon quests.", rec = true,
       get = function() local s = db().questShare; return not (type(s) == "table" and s.popup == false) end,
       set = function(v) if type(OneForAllDB) == "table" then OneForAllDB.questShare = OneForAllDB.questShare or {}
         OneForAllDB.questShare.popup = v and true or false end end },
@@ -102,21 +104,21 @@ local function switchRow(parent, it, y)
   local x = it.sub and 44 or 20
   local cb = FLT.SkinBlizz(CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")); cb:SetSize(24, 24)
   cb:SetPoint("TOPLEFT", x, y)
-  local l = FLT.NewFS(parent, nil, "OVERLAY", "GameFontHighlight"); l:SetPoint("TOPLEFT", cb, "TOPRIGHT", 4, -1); l:SetText(it[1])
-  local d = FLT.NewFS(parent, nil, "OVERLAY", "GameFontDisableSmall"); d:SetPoint("TOPLEFT", l, "BOTTOMLEFT", 0, -2); d:SetText(it[2])
+  local l = FLT.NewFS(parent, nil, "OVERLAY", "GameFontHighlight"); l:SetPoint("TOPLEFT", cb, "TOPRIGHT", 4, -1); l:SetText(L[it[1]])
+  local d = FLT.NewFS(parent, nil, "OVERLAY", "GameFontDisableSmall"); d:SetPoint("TOPLEFT", l, "BOTTOMLEFT", 0, -2); d:SetText(L[it[2]])
   if it.rec then
     local r = FLT.NewFS(parent, nil, "OVERLAY", "GameFontNormalSmall"); r:SetPoint("LEFT", l, "RIGHT", 8, 0)
-    r:SetText("Recommended"); r:SetTextColor(0.45, 0.85, 0.40)
+    r:SetText(L["Recommended"]); r:SetTextColor(0.45, 0.85, 0.40)
   end
   cb:SetScript("OnClick", function(b) setItem(it, b:GetChecked() and true or false) end)
   return function() cb:SetChecked(it.get()) end
 end
 
 -- the five logo colors as pictures (user 27.10.)
-local LOGOS = { { "teal", "Turquoise" }, { "red", "Red" }, { "blue", "Blue" }, { "green", "Green" }, { "violet", "Violet" }, { "bronze", "Bronze" } }
+local LOGOS = { { "teal", N"Turquoise" }, { "red", N"Red" }, { "blue", N"Blue" }, { "green", N"Green" }, { "violet", N"Violet" }, { "bronze", N"Bronze" } }
 local function logoRow(parent, it, y)
-  local l = FLT.NewFS(parent, nil, "OVERLAY", "GameFontHighlight"); l:SetPoint("TOPLEFT", 48, y - 1); l:SetText(it[1])
-  local d = FLT.NewFS(parent, nil, "OVERLAY", "GameFontDisableSmall"); d:SetPoint("TOPLEFT", l, "BOTTOMLEFT", 0, -2); d:SetText(it[2])
+  local l = FLT.NewFS(parent, nil, "OVERLAY", "GameFontHighlight"); l:SetPoint("TOPLEFT", 48, y - 1); l:SetText(L[it[1]])
+  local d = FLT.NewFS(parent, nil, "OVERLAY", "GameFontDisableSmall"); d:SetPoint("TOPLEFT", l, "BOTTOMLEFT", 0, -2); d:SetText(L[it[2]])
   local marks = {}
   for i, c in ipairs(LOGOS) do
     local b = CreateFrame("Button", nil, parent); b:SetSize(30, 30); b:SetPoint("TOPLEFT", 330 + (i - 1) * 40, y + 2)
@@ -126,7 +128,7 @@ local function logoRow(parent, it, y)
     sel:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight"); sel:SetBlendMode("ADD")
     b:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight", "ADD")
     b:SetScript("OnClick", function() Q.Set("logoColor", c[1]); refresh() end)
-    b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(c[2]); GameTooltip:Show() end)
+    b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(L[c[2]]); GameTooltip:Show() end)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
     marks[c[1]] = sel
   end
@@ -135,8 +137,8 @@ end
 
 -- chat font size: - 14 + (below 10 = the game's own setting)
 local function fontRow(parent, it, y)
-  local l = FLT.NewFS(parent, nil, "OVERLAY", "GameFontHighlight"); l:SetPoint("TOPLEFT", 48, y - 1); l:SetText(it[1])
-  local d = FLT.NewFS(parent, nil, "OVERLAY", "GameFontDisableSmall"); d:SetPoint("TOPLEFT", l, "BOTTOMLEFT", 0, -2); d:SetText(it[2])
+  local l = FLT.NewFS(parent, nil, "OVERLAY", "GameFontHighlight"); l:SetPoint("TOPLEFT", 48, y - 1); l:SetText(L[it[1]])
+  local d = FLT.NewFS(parent, nil, "OVERLAY", "GameFontDisableSmall"); d:SetPoint("TOPLEFT", l, "BOTTOMLEFT", 0, -2); d:SetText(L[it[2]])
   local val = FLT.NewFS(parent, nil, "OVERLAY", "GameFontNormal"); val:SetPoint("TOPLEFT", 386, y - 4); val:SetWidth(70); val:SetJustifyH("CENTER")
   local function step(dv)
     local v = tonumber(Q.Get("chatFont"))
@@ -146,12 +148,12 @@ local function fontRow(parent, it, y)
   end
   local minus = UI.GoldButton(parent, "-", 26, 22, nil, 13); minus:SetPoint("TOPLEFT", 356, y); minus:SetScript("OnClick", function() step(-1) end)
   local plus = UI.GoldButton(parent, "+", 26, 22, nil, 13); plus:SetPoint("TOPLEFT", 460, y); plus:SetScript("OnClick", function() step(1) end)
-  return function() local v = tonumber(Q.Get("chatFont")); val:SetText(v and tostring(v) or "|cff9d9d9dgame|r") end
+  return function() local v = tonumber(Q.Get("chatFont")); val:SetText(v and tostring(v) or "|cff9d9d9d" .. L["game"] .. "|r") end
 end
 
 local function optionPage(parent, p)
   local f = CreateFrame("Frame", nil, parent); f:SetAllPoints(); f:Hide()
-  local t = UI.SectionTitle(f, p[1], 16, -6)
+  local t = UI.SectionTitle(f, L[p[1]], 16, -6)
   local class = UnitClass and select(2, UnitClass("player"))
   local y, upd = -40, {}
   for _, it in ipairs(p[2]) do
@@ -178,19 +180,19 @@ local function textPage(parent, first)
   local b = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlight"); b:SetPoint("TOP", h, "BOTTOM", 0, -12); b:SetWidth(W - 120)
   b:SetJustifyH("CENTER"); b:SetSpacing(3)
   if first then
-    h:SetText("Welcome to OneForAll")
-    b:SetText("Set up a few Quality of Life helpers now - one page per topic.\n\n"
-      .. "|cffd9a63aRecommended settings|r switches on what OneForAll suggests. "
-      .. "You can also skip this: everything can be changed later in OneForAll > Quality of Life.")
+    h:SetText(L["Welcome to OneForAll"])
+    b:SetText(L["Set up a few Quality of Life helpers now - one page per topic."] .. "\n\n"
+      .. string.format(L["%s switches on what OneForAll suggests. You can also skip this: everything can be changed later in OneForAll > Quality of Life."],
+        "|cffd9a63a" .. L["Recommended settings"] .. "|r"))
   else
     -- the author's waving warrior (user 27.10.) on the left, the text on the right
     local pic = f:CreateTexture(nil, "ARTWORK"); pic:SetSize(272, 272); pic:SetPoint("BOTTOMLEFT", 6, -4)
     pic:SetTexture(UI.ASSET_ROOT .. "welcome_warrior")
     h:ClearAllPoints(); h:SetPoint("TOP", f, "TOPLEFT", 420, -40)
     b:SetWidth(270)
-    h:SetText("All set!")
-    b:SetText("Thank you for using OneForAll! Everything can be changed later in OneForAll > Quality of Life.\n\n"
-      .. "Have fun in Azeroth!\n|cffd9a63a- Smoergi|r") -- greeting from the author (user 27.10.)
+    h:SetText(L["All set!"])
+    b:SetText(L["Thank you for using OneForAll! Everything can be changed later in OneForAll > Quality of Life."] .. "\n\n"
+      .. L["Have fun in Azeroth!"] .. "\n|cffd9a63a- Smoergi|r") -- greeting from the author (user 27.10.)
   end
   return f
 end
@@ -205,7 +207,7 @@ local function create()
   for _, t in ipairs(UI.OrnateFrame(f, f, 18, 3, "OVERLAY", 4)) do t:SetVertexColor(FLT.SkinC(1, 1, 1, 1)) end
   local logo = f:CreateTexture(nil, "OVERLAY"); logo:SetSize(30, 30); logo:SetPoint("TOPLEFT", 14, -10)
   logo:SetTexture(FLT.LogoTexture and FLT.LogoTexture("round") or (UI.ASSET_ROOT .. "minimap_icon")); if FLT.TintLogo then FLT.TintLogo(logo) end
-  local title = UI.SmallCaps(f, "OneForAll - Setup", 19, 15, { 1, 0.82, 0.20 }, "GameFontNormalLarge"); title:SetPoint("TOPLEFT", 52, -14)
+  local title = UI.SmallCaps(f, L["OneForAll - Setup"], 19, 15, { 1, 0.82, 0.20 }, "GameFontNormalLarge"); title:SetPoint("TOPLEFT", 52, -14)
   -- the page number bottom right above "Next", from the first page on (user 27.10.: "1 / 7" shows there is more)
   local stepText = FLT.NewFS(f, nil, "OVERLAY", "GameFontDisableSmall"); stepText:SetPoint("BOTTOMRIGHT", -20, 44)
   local close = UI.CloseButton(f); close:SetPoint("TOPRIGHT", -12, -12)
@@ -215,14 +217,14 @@ local function create()
   for _, p in ipairs(PAGES) do pages[#pages + 1] = optionPage(body, p) end
   pages[#pages + 1] = textPage(body, false)
 
-  local back = UI.GoldButton(f, "Back", 160, 26, nil, 13); back:SetPoint("BOTTOMLEFT", 16, 14); back:SetArrow("prev")
-  local skip = UI.GoldButton(f, "Skip", 160, 26, nil, 13); skip:SetPoint("BOTTOMLEFT", 16, 14)
-  local rec = UI.GoldButton(f, "Recommended settings", 190, 26, nil, 13); rec:SetPoint("BOTTOM", 0, 14)
-  local nextB = UI.GoldButton(f, "Next", 160, 26, nil, 13); nextB:SetPoint("BOTTOMRIGHT", -16, 14)
-  local openQ = UI.GoldButton(f, "Open Quality of Life", 190, 26, nil, 13); openQ:SetPoint("BOTTOM", 0, 14)
+  local back = UI.GoldButton(f, L["Back"], 160, 26, nil, 13); back:SetPoint("BOTTOMLEFT", 16, 14); back:SetArrow("prev")
+  local skip = UI.GoldButton(f, L["Skip"], 160, 26, nil, 13); skip:SetPoint("BOTTOMLEFT", 16, 14)
+  local rec = UI.GoldButton(f, L["Recommended settings"], 190, 26, nil, 13); rec:SetPoint("BOTTOM", 0, 14)
+  local nextB = UI.GoldButton(f, L["Next"], 160, 26, nil, 13); nextB:SetPoint("BOTTOMRIGHT", -16, 14)
+  local openQ = UI.GoldButton(f, L["Open Quality of Life"], 190, 26, nil, 13); openQ:SetPoint("BOTTOM", 0, 14)
   rec:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine("Recommended settings", 1, 0.82, 0)
-    GameTooltip:AddLine("Switches on everything marked \"Recommended\". Nothing else is switched off.", 1, 1, 1, true); GameTooltip:Show()
+    GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L["Recommended settings"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["Switches on everything marked \"Recommended\". Nothing else is switched off."], 1, 1, 1, true); GameTooltip:Show()
   end)
   rec:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
@@ -232,7 +234,7 @@ local function create()
     stepText:SetText(last and "" or string.format("%d / %d", page, #pages - 1))
     back:SetShown(not first and not last); skip:SetShown(first)
     rec:SetShown(not last); openQ:SetShown(last)
-    nextB:SetLabel(first and "Choose myself" or (last and "Done" or "Next")); nextB:SetArrow(not last and "next" or nil)
+    nextB:SetLabel(first and L["Choose myself"] or (last and L["Done"] or L["Next"])); nextB:SetArrow(not last and "next" or nil)
   end
   back:SetScript("OnClick", function() page = math.max(1, page - 1); refresh() end)
   nextB:SetScript("OnClick", function() if page == #pages then f:Hide() else page = page + 1; refresh() end end)

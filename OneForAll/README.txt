@@ -70,6 +70,28 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.2.0 - OneForAll speaks German, French and Spanish
+====================================================
+- Languages: Settings > General > Language - English (default), Deutsch, Français, Español, in every game client
+  (a Mexican Spanish client uses Español). In a game client of the same language the names of quests, NPCs, bosses,
+  objects, items, zones and dungeons come in that language too (from the game and from QuestieDB).
+- Professions: a filter (funnel) next to the recipe search - all recipes, my recipes, guild, mine or guild.
+- Dungeon quests: quests in your log with every objective done show "Ready to turn in" (the row green up to the
+  middle); in a quest chain the quest of the page turns green when done; long titles stay on one line.
+- Dungeon loot: the wishlist star sits at the right edge, the drop chance left of it.
+- Quest XP on the experience bar: the tooltip lists every finished quest with its XP.
+- Buff reminder: no cards while you are dead or a ghost; watched buffs keep their spell / item ID, so they still work
+  after switching the game client to another language.
+- Minimap: "Move the minimap" is gone - it fought with the game's Edit Mode (the minimap jumped back and could lock).
+  Move it with Game Menu > Edit Mode; if you had moved it with OneForAll, it is back at the top right once.
+- Bug button and settings footer: our Discord only (CurseForge comments are closed).
+- Data: quests from the newest QuestieDB (07.11.); class quest chains start with their lead-in quests again; 8 dungeon
+  quests no longer show for both factions (Excavation Site, Hall of Thanes, Dalaran); Arcane mages level with arcane
+  spell damage weighted in the Gear Planner.
+- Quest loot sparkles: the option says that the outline around players and targets goes off while it is on.
+- Layout: buttons, side lists and table heads make room for longer texts.
+- The "New" marks of the 6.1 versions are gone.
+
 6.1.9 - Class trainer fix, all tameable beasts, minimap position, quest icons
 ============================================================================
 - Class trainer (book button in the spellbook): lower ranks of spells you know

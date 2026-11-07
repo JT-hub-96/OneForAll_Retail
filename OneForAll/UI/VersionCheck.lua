@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 -- New version notice, shown only right after logging in.
 -- About 20 s after login the addon asks the guild, the group and the hidden
@@ -48,7 +49,7 @@ local function announce(v)
   if told[v] then return end
   told[v] = true
   if FLT.Msg then
-    FLT.Msg("|cffffd100A newer version (" .. v .. ") is available on CurseForge. You are using " .. myVersion() .. ".|r")
+    FLT.Msg("|cffffd100" .. string.format(L["A newer version (%s) is available on CurseForge. You are using %s."], v, myVersion()) .. "|r")
   end
 end
 

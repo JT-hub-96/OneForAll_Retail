@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 local button
 
@@ -126,9 +127,9 @@ function FLT:CreateMinimapButton()
   button:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine(FLT.DISPLAY_NAME or "OneForAll", 1, 0.82, 0)
-    GameTooltip:AddLine("Left-click: Open / close", 1, 1, 1)
-    GameTooltip:AddLine("Shift-right-click: Crafting List", 1, 1, 1)
-    GameTooltip:AddLine("Drag: Move around the minimap", 0.75, 0.75, 0.75)
+    GameTooltip:AddLine(L["Left-click: Open / close"], 1, 1, 1)
+    GameTooltip:AddLine(L["Shift-right-click: Crafting List"], 1, 1, 1)
+    GameTooltip:AddLine(L["Drag: Move around the minimap"], 0.75, 0.75, 0.75)
     GameTooltip:Show()
   end)
   button:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -142,7 +143,7 @@ function FLT:CreateMinimapButton()
       func = function() if FLT.ToggleUI then FLT:ToggleUI() end end,
       funcOnEnter = function(b)
         GameTooltip:SetOwner(b, "ANCHOR_LEFT"); GameTooltip:AddLine(FLT.DISPLAY_NAME or "OneForAll", 1, 0.82, 0)
-        GameTooltip:AddLine("Click: Open / close", 1, 1, 1); GameTooltip:Show()
+        GameTooltip:AddLine(L["Click: Open / close"], 1, 1, 1); GameTooltip:Show()
       end,
       funcOnLeave = function() GameTooltip:Hide() end,
     })
@@ -263,66 +264,19 @@ function FLT.ApplySquareMinimap()
   if LDBI and LDBI.objects and LDBI.Refresh then for name in pairs(LDBI.objects) do pcall(LDBI.Refresh, LDBI, name) end end
 end
 
--- QoL "mmMove" (5.7.3, user 25.10., off by default): Shift-drag the minimap to move it (with its zone text and
--- buttons, the whole MinimapCluster). Position: OneForAllDB.qol.mmPos; "Reset" puts it back.
-local move = {}
-local unpack = unpack or table.unpack
-local function cluster() return type(MinimapCluster) == "table" and MinimapCluster.StartMoving and MinimapCluster or nil end
-local function placeCluster()
-  local mc = cluster(); if not mc then return end
-  local d = type(OneForAllDB) == "table" and OneForAllDB.qol
-  local pos = d and FLT.QoL.Get("mmMove") and d.mmPos
-  if not move.home then move.home = {}; for i = 1, (mc:GetNumPoints() or 0) do move.home[i] = { mc:GetPoint(i) } end end
-  move.placing = true
-  mc:ClearAllPoints()
-  if pos then mc:SetPoint(pos[1], UIParent, pos[2], pos[3], pos[4])
-  else for _, p in ipairs(move.home) do mc:SetPoint(unpack(p)) end end
-  move.placing = nil
-end
-function FLT.ApplyMinimapMove()
-  local mc = cluster(); if not mc or type(Minimap) ~= "table" then return end
-  if FLT.QoL.Get("mmMove") and not move.hooked then
-    move.hooked = true
-    mc:SetMovable(true); mc:SetClampedToScreen(true)
-    -- 6.1.9 (Discord 07.11., Viator: "seemingly randomly it will reset to the default top-right location"): the game
-    -- puts the cluster back on its own now and then (frame layout updates); then our place is set again, once, a
-    -- moment later. Only when the game moves it - our own placing and the drag do not count.
-    hooksecurefunc(mc, "SetPoint", function()
-      if move.placing or move.moving or move.queued or not FLT.QoL.Get("mmMove") then return end
-      local d = type(OneForAllDB) == "table" and OneForAllDB.qol
-      if not (d and d.mmPos) then return end
-      move.queued = true
-      C_Timer.After(0, function() move.queued = nil; placeCluster() end)
-    end)
-    Minimap:RegisterForDrag("LeftButton")
-    Minimap:HookScript("OnDragStart", function()
-      if FLT.QoL.Get("mmMove") and IsShiftKeyDown() then move.moving = true; mc:StartMoving() end
-    end)
-    Minimap:HookScript("OnDragStop", function()
-      if not move.moving then return end
-      move.moving = nil; mc:StopMovingOrSizing()
-      if mc.SetUserPlaced then mc:SetUserPlaced(false) end -- our own saved place, not the client's layout file
-      local p, _, rp, x, y = mc:GetPoint(1)
-      if type(OneForAllDB) == "table" then OneForAllDB.qol = OneForAllDB.qol or {}; OneForAllDB.qol.mmPos = { p, rp, x, y } end
-    end)
-  end
-  placeCluster()
-end
-function FLT.ResetMinimapPosition()
-  if type(OneForAllDB) == "table" and OneForAllDB.qol then OneForAllDB.qol.mmPos = nil end
-  placeCluster()
-end
+-- QoL "mmMove" (Shift-drag moved the MinimapCluster, 5.7.3 - 6.2.0-beta43) is gone (beta44, user 07.11.): the client's
+-- Edit Mode moves the minimap, and our SetPoint hook / SetUserPlaced fought it (it jumped back and was locked, taint).
+-- The settings row only points to the Edit Mode now; the old saved values are dropped at login.
 do
   local ev = CreateFrame("Frame")
   ev:RegisterEvent("PLAYER_LOGIN")
   ev:SetScript("OnEvent", function(self)
     self:UnregisterAllEvents()
     if FLT.QoL and FLT.QoL.On then
-      FLT.QoL.On("mmSquare", FLT.ApplySquareMinimap); FLT.QoL.On("mmMove", FLT.ApplyMinimapMove); FLT.QoL.On("logoColor", FLT.ApplyLogoColor)
+      FLT.QoL.On("mmSquare", FLT.ApplySquareMinimap); FLT.QoL.On("logoColor", FLT.ApplyLogoColor)
     end
     if FLT.SafeCall then FLT.SafeCall("SquareMinimap", FLT.ApplySquareMinimap) else pcall(FLT.ApplySquareMinimap) end
-    if FLT.QoL and FLT.QoL.Get and FLT.QoL.Get("mmMove") then
-      if FLT.SafeCall then FLT.SafeCall("MoveMinimap", FLT.ApplyMinimapMove) else pcall(FLT.ApplyMinimapMove) end
-    end
+    local q = type(OneForAllDB) == "table" and OneForAllDB.qol
+    if type(q) == "table" then q.mmMove, q.mmPos = nil, nil end
   end)
 end

@@ -8,6 +8,8 @@ local _, FLT = ...
 -- Settings: OneForAllDB.qol[key].
 
 local QoL = {}
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
 FLT.QoL = QoL
 
 local DEFAULTS = {
@@ -74,13 +76,13 @@ function QoL.Set(key, value)
 end
 local function on(key, fn) listeners[key] = fn end
 QoL.On = on
-QoL.LOGO_COLORS = { { key = "red", label = "Red" }, { key = "blue", label = "Blue" }, { key = "green", label = "Green" },
-  { key = "teal", label = "Turquoise" }, { key = "violet", label = "Violet" },
-  { key = "bronze", label = "Bronze" } }
-QoL.CHAT_HIDE_OPTIONS = { { key = 0, label = "Never" }, { key = 10, label = "10 seconds" }, { key = 20, label = "20 seconds" },
-  { key = 30, label = "30 seconds" }, { key = 60, label = "1 minute" } }
-QoL.MM_DIR_OPTIONS = { { key = "auto", label = "Automatic" }, { key = "top", label = "Top" }, { key = "bottom", label = "Bottom" },
-  { key = "left", label = "Left" }, { key = "right", label = "Right" } }
+QoL.LOGO_COLORS = { { key = "red", label = N"Red" }, { key = "blue", label = N"Blue" }, { key = "green", label = N"Green" },
+  { key = "teal", label = N"Turquoise" }, { key = "violet", label = N"Violet" },
+  { key = "bronze", label = N"Bronze" } }
+QoL.CHAT_HIDE_OPTIONS = { { key = 0, label = N"Never" }, { key = 10, label = N"10 seconds" }, { key = 20, label = N"20 seconds" },
+  { key = 30, label = N"30 seconds" }, { key = 60, label = N"1 minute" } }
+QoL.MM_DIR_OPTIONS = { { key = "auto", label = N"Automatic" }, { key = "top", label = N"Top" }, { key = "bottom", label = N"Bottom" },
+  { key = "left", label = N"Left" }, { key = "right", label = N"Right" } }
 
 local function msg(text) if FLT.Msg then FLT.Msg(text) end end
 local function paused() return IsShiftKeyDown and IsShiftKeyDown() end
@@ -147,8 +149,8 @@ local function allowed(mode, name, guid)
   return false
 end
 QoL.WHO_OPTIONS = {
-  { key = "friends", label = "Friends" }, { key = "guild", label = "Guild" },
-  { key = "friendsguild", label = "Friends & guild" }, { key = "all", label = "Everyone" },
+  { key = "friends", label = N"Friends" }, { key = "guild", label = N"Guild" },
+  { key = "friendsguild", label = N"Friends & guild" }, { key = "all", label = N"Everyone" },
 }
 
 -- ---------------------------------------------------------------------------
@@ -208,9 +210,9 @@ local function autoRepair()
   if not can or not cost or cost <= 0 then return end
   if GetMoney and GetMoney() >= cost then
     RepairAllItems()
-    msg("Repaired for " .. money(cost) .. ".")
+    msg(string.format(L["Repaired for %s."], money(cost)))
   else
-    msg("Not enough money to repair (" .. money(cost) .. ").")
+    msg(string.format(L["Not enough money to repair (%s)."], money(cost)))
   end
 end
 
@@ -263,7 +265,7 @@ end
 local function junkChanged()
   local api = type(Baganator) == "table" and type(Baganator.API) == "table" and Baganator.API
   if api and api.RegisterJunkPlugin and not bgnPlugin then
-    bgnPlugin = pcall(api.RegisterJunkPlugin, "OneForAll junk list", "oneforall_junk", bgnJunk)
+    bgnPlugin = pcall(api.RegisterJunkPlugin, L["OneForAll junk list"], "oneforall_junk", bgnJunk)
   end
   if bgnPlugin and api and api.RequestItemButtonsRefresh then pcall(api.RequestItemButtonsRefresh) end
   if markBags then markBags() end
@@ -279,11 +281,11 @@ function QoL.ToggleJunk(link)
   local q = select(3, ((C_Item and C_Item.GetItemInfo) or GetItemInfo)(link))
   if q == 0 then
     l[id] = nil
-    msg(link .. " is a grey item - Sell junk always sells grey items, the junk list is for other items.")
+    msg(string.format(L["%s is a grey item - Sell junk always sells grey items, the junk list is for other items."], link))
     return junkChanged()
   end
-  if l[id] then l[id] = nil; msg(link .. " is no longer on your junk list.")
-  else l[id] = true; msg(link .. " is on your junk list now - Sell junk sells it at merchants.") end
+  if l[id] then l[id] = nil; msg(string.format(L["%s is no longer on your junk list."], link))
+  else l[id] = true; msg(string.format(L["%s is on your junk list now - Sell junk sells it at merchants."], link)) end
   junkChanged()
 end
 
@@ -306,7 +308,7 @@ local function sellJunk()
   local i, sold, gold = 0, 0, 0
   local function stop()
     if sellTicker then sellTicker:Cancel(); sellTicker = nil end
-    if sold > 0 then msg(string.format("Sold %d junk item%s for %s.", sold, sold == 1 and "" or "s", money(gold))) end
+    if sold > 0 then msg(sold == 1 and string.format(L["Sold 1 junk item for %s."], money(gold)) or string.format(L["Sold %d junk items for %s."], sold, money(gold))) end
   end
   -- each slot is checked again right before it is sold (code review 03.11.): the same item, still junk, not
   -- locked, the option still on, the merchant still open, Shift not held - items moved in between are skipped
@@ -341,19 +343,19 @@ local function questDetail()
 end
 -- quests that take battleground marks (Warsong Gulch, Arathi Basin, Alterac Valley) are not turned in by themselves:
 -- the marks are worth keeping for other rewards (user 05.11.)
-local MARKS = { [20558] = true, [20559] = true, [20560] = true }
+QoL.MARKS = { [20558] = true, [20559] = true, [20560] = true } -- (a table field: the file is at 200 locals)
 local function takesMarks()
   if not (GetNumQuestItems and GetQuestItemLink) then return false end
   for i = 1, GetNumQuestItems() or 0 do
     local link = GetQuestItemLink("required", i)
     local id = type(link) == "string" and tonumber(link:match("item:(%d+)"))
-    if id and MARKS[id] then return true end
+    if id and QoL.MARKS[id] then return true end
   end
   return false
 end
 local function questProgress()
   if not (QoL.Get("autoTurnIn") and not paused() and IsQuestCompletable and IsQuestCompletable() and CompleteQuest) then return end
-  if takesMarks() then msg("Not turned in automatically: this quest takes your battleground marks."); return end
+  if takesMarks() then msg(L["Not turned in automatically: this quest takes your battleground marks."]); return end
   CompleteQuest()
 end
 local function questComplete()
@@ -415,7 +417,7 @@ local function partyInvite(name, ...)
   if allowed(mode, name, guid) and AcceptGroup then
     AcceptGroup()
     if StaticPopup_Hide then StaticPopup_Hide("PARTY_INVITE") end
-    msg("Accepted the group invite from " .. tostring(short(name)) .. ".")
+    msg(string.format(L["Accepted the group invite from %s."], tostring(short(name))))
   end
 end
 
@@ -437,12 +439,12 @@ local function duelRequested(name)
   if not allowed(mode, name) and CancelDuel then
     CancelDuel()
     if StaticPopup_Hide then StaticPopup_Hide("DUEL_REQUESTED") end
-    msg("Declined a duel from " .. tostring(short(name)) .. ".")
+    msg(string.format(L["Declined a duel from %s."], tostring(short(name))))
   end
 end
 QoL.DUEL_OPTIONS = {
-  { key = "friendsguild", label = "Friends & guild" },
-  { key = "friends", label = "Friends" }, { key = "guild", label = "Guild" }, { key = "off", label = "No one" },
+  { key = "friendsguild", label = N"Friends & guild" },
+  { key = "friends", label = N"Friends" }, { key = "guild", label = N"Guild" }, { key = "off", label = N"No one" },
 }
 
 -- Thanks for buffs (5.6.2): a /thank emote for players outside the group who give
@@ -464,8 +466,8 @@ local function logThanks(text)
   thanksLog[9] = nil
 end
 function QoL.PrintThanksLog()
-  if #thanksLog == 0 then msg("Thanks for buffs: no buffs seen yet."); return end
-  for i = #thanksLog, 1, -1 do msg("Thanks: " .. thanksLog[i]) end
+  if #thanksLog == 0 then msg(L["Thanks for buffs: no buffs seen yet."]); return end
+  for i = #thanksLog, 1, -1 do msg(string.format(L["Thanks: %s"], thanksLog[i])) end
 end
 local function now() return GetTime and GetTime() or 0 end
 local function readable(...) return not FLT.IsSecret(...) end
@@ -511,18 +513,18 @@ local function fireThanks(guid)
     return
   end
   thanksPending[guid] = nil
-  if thanked[guid] and t - thanked[guid] < THANKS_PLAYER_CD then logThanks(p.spell .. " from " .. p.name .. ": thanked recently"); return end
+  if thanked[guid] and t - thanked[guid] < THANKS_PLAYER_CD then logThanks(string.format(L["%s from %s: thanked recently"], p.spell, p.name)); return end
   thanked[guid], lastThanks = t, t
-  if sendThank(p.name) then logThanks(p.spell .. " from " .. p.name .. ": /thank")
-  else logThanks(p.spell .. " from " .. p.name .. ": the game did not allow the emote") end
+  if sendThank(p.name) then logThanks(string.format(L["%s from %s: /thank"], p.spell, p.name))
+  else logThanks(string.format(L["%s from %s: the game did not allow the emote"], p.spell, p.name)) end
 end
 
 local function considerAura(a)
   if type(a) ~= "table" then return end
   local helpful, id, duration, expires, spell = a.isHelpful, a.auraInstanceID, a.duration, a.expirationTime, a.name
-  if not readable(helpful, id, duration, expires, spell) then logThanks("buff hidden by the game"); return end
+  if not readable(helpful, id, duration, expires, spell) then logThanks(L["buff hidden by the game"]); return end
   if not helpful or type(duration) ~= "number" or type(expires) ~= "number" then return end
-  spell = type(spell) == "string" and spell or "a buff"
+  spell = type(spell) == "string" and spell or L["a buff"]
   if duration <= THANKS_MIN_DURATION then return end -- short effects (Renew, procs ...)
   local t = now()
   if math.abs((expires - duration) - t) > THANKS_FRESH then return end -- not just applied
@@ -532,12 +534,12 @@ local function considerAura(a)
     pcall(function() guid = C_UnitAuras.GetAuraCasterGUID("player", id) end)
   end
   if not guid and type(a.sourceUnit) == "string" and readable(a.sourceUnit) and UnitGUID then guid = UnitGUID(a.sourceUnit) end
-  if not readable(guid) then logThanks(spell .. ": caster hidden by the game"); return end
-  if type(guid) ~= "string" then logThanks(spell .. ": the game gave no caster"); return end
+  if not readable(guid) then logThanks(string.format(L["%s: caster hidden by the game"], spell)); return end
+  if type(guid) ~= "string" then logThanks(string.format(L["%s: the game gave no caster"], spell)); return end
   if not guid:match("^Player%-") or (UnitGUID and guid == UnitGUID("player")) then return end
   local name = nameFromGUID(guid)
-  if not name then logThanks(spell .. ": caster name unknown"); return end
-  if inMyGroup(guid) then logThanks(spell .. " from " .. name .. ": group member, no emote"); return end
+  if not name then logThanks(string.format(L["%s: caster name unknown"], spell)); return end
+  if inMyGroup(guid) then logThanks(string.format(L["%s from %s: group member, no emote"], spell, name)); return end
   if thanksPending[guid] then return end -- several buffs from one player: one thank
   thanksPending[guid] = { name = name, spell = spell }
   if C_Timer and C_Timer.After then C_Timer.After(THANKS_DELAY, function() fireThanks(guid) end) else fireThanks(guid) end
@@ -578,9 +580,17 @@ do
     d.buffReminders = d.buffReminders or {}
     return d.buffReminders
   end
+  -- the spell / item ID of each watched buff (6.2.0, user 07.11.: after switching the client from English to German the
+  -- saved English names matched nothing): qol.buffIDs[key] = spell ID or "i<item ID>". The list keys stay names in the
+  -- client's language (the cast buttons need them); migrateBuffs() renames them when the client language changed.
+  local function buffIDs()
+    local d = db(); if not d then return {} end
+    d.buffIDs = d.buffIDs or {}
+    return d.buffIDs
+  end
   -- weapon enchants (6.0.3, user 01.11.: oils, sharpening stones, poisons): key "<item name>@mh" / "@oh"
   local SLOTS = { mh = 16, oh = 17 }
-  local SLOT_LABEL = { mh = "main hand", oh = "off hand" }
+  local SLOT_LABEL = { mh = N"main hand", oh = N"off hand" } -- shown with L[...]
   local function weapon(key) -- item name, slot id, "mh"/"oh" (nil for normal buffs)
     local item, hand = tostring(key):match("^(.+)@(%a%a)$")
     if item and SLOTS[hand] then return item, SLOTS[hand], hand end
@@ -588,7 +598,7 @@ do
   QoL.BuffWeapon = weapon
   local function label(key)
     local item, _, hand = weapon(key)
-    return item and (item .. " (" .. SLOT_LABEL[hand] .. ")") or key
+    return item and (item .. " (" .. L[SLOT_LABEL[hand]] .. ")") or key
   end
   QoL.BuffLabel = label
   function QoL.GetBuffReminders()
@@ -668,6 +678,7 @@ do
         if FLT.IsSecret(a.name) then return false end
         if a.name == name then
           noteIcon(name, a.icon)
+          if a.spellId and not FLT.IsSecret(a.spellId) and not buffIDs()[name] then buffIDs()[name] = a.spellId end
           if FLT.IsSecret(a.expirationTime, a.duration) then return false end
           return a.expirationTime or 0, a.duration or 0
         end
@@ -719,13 +730,13 @@ do
     if not exp and buffExp[c.spell] then exp = buffExp[c.spell] end -- not readable (combat): the time we know
     local left = exp and exp > 0 and (exp - now()) or 0
     local item, _, hand = weapon(c.spell)
-    local pre = item and (SLOT_LABEL[hand]:gsub("^%l", string.upper) .. "  ") or ""
-    local extra = (charges and charges > 0) and ("  |cff9d9d9d" .. charges .. " charges|r") or ""
-    if item and GetItemCount and (GetItemCount(item) or 0) == 0 then extra = extra .. "  |cffff6040none in bags|r" end
+    local pre = item and ((L[SLOT_LABEL[hand]]:gsub("^%l", string.upper)) .. "  ") or ""
+    local extra = (charges and charges > 0) and ("  |cff9d9d9d" .. string.format(L["%d charges"], charges) .. "|r") or ""
+    if item and GetItemCount and (GetItemCount(item) or 0) == 0 then extra = extra .. "  |cffff6040" .. L["none in bags"] .. "|r" end
     if left > 0 then
-      c.sub:SetText(string.format("%sRunning out  |cffffd100%d:%02d|r%s", pre, math.floor(left / 60), math.floor(left % 60), extra))
+      c.sub:SetText(pre .. L["Running out"] .. string.format("  |cffffd100%d:%02d|r", math.floor(left / 60), math.floor(left % 60)) .. extra)
     else
-      c.sub:SetText(item and (pre .. "run out" .. extra) or "Buff has run out")
+      c.sub:SetText(item and (pre .. L["run out"] .. extra) or L["Buff has run out"])
     end
     c.charges:SetText((charges and charges > 0) and tostring(charges) or "")
     if left > 0 then
@@ -816,8 +827,8 @@ do
     end)
     c:SetScript("OnEnter", function(self)
       GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(label(self.spell or ""), 1, 0.82, 0)
-      GameTooltip:AddLine("Click the icon to cast it again.", 1, 1, 1)
-      GameTooltip:AddLine("Zz or right-click: snooze until you cast it again. Drag: move.", 0.75, 0.75, 0.75); GameTooltip:Show()
+      GameTooltip:AddLine(L["Click the icon to cast it again."], 1, 1, 1)
+      GameTooltip:AddLine(L["Zz or right-click: snooze until you cast it again. Drag: move."], 0.75, 0.75, 0.75); GameTooltip:Show()
     end)
     c:SetScript("OnLeave", function() GameTooltip:Hide() end)
     -- snooze button (user 05.11.): sleeps until the buff is up again
@@ -825,8 +836,8 @@ do
     local zt = FLT.NewFS(c.zz, nil, "OVERLAY", "GameFontNormalSmall"); zt:SetAllPoints(); zt:SetText("Zz"); zt:SetTextColor(0.75, 0.75, 0.80)
     c.zz:SetScript("OnEnter", function(self)
       zt:SetTextColor(1, 0.82, 0.2)
-      GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine("Snooze", 1, 0.82, 0)
-      GameTooltip:AddLine("No reminder for this buff until you cast it again (or it is up again).", 1, 1, 1, true); GameTooltip:Show()
+      GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L["Snooze"], 1, 0.82, 0)
+      GameTooltip:AddLine(L["No reminder for this buff until you cast it again (or it is up again)."], 1, 1, 1, true); GameTooltip:Show()
     end)
     c.zz:SetScript("OnLeave", function() zt:SetTextColor(0.75, 0.75, 0.80); GameTooltip:Hide() end)
     c.zz:SetScript("OnClick", function() if c.spell then QoL.SnoozeBuff(c.spell); GameTooltip:Hide() end end)
@@ -862,7 +873,7 @@ do
         sb:SetScript("OnEnter", function(self)
           local it = self:GetAttribute("item")
           GameTooltip:SetOwner(self, "ANCHOR_TOP")
-          GameTooltip:AddLine(it and ("Click: use " .. it .. " on your " .. (self:GetAttribute("target-slot") == 17 and "off hand" or "main hand")) or ("Click: cast " .. (self:GetAttribute("spell") or "")), 1, 0.82, 0)
+          GameTooltip:AddLine(it and string.format(self:GetAttribute("target-slot") == 17 and L["Click: use %s on your off hand"] or L["Click: use %s on your main hand"], it) or string.format(L["Click: cast %s"], self:GetAttribute("spell") or ""), 1, 0.82, 0)
           GameTooltip:Show()
         end)
         sb:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -897,8 +908,58 @@ do
     end
     return false
   end
+  -- names of the watched buffs in the client's language: by the stored ID; old entries without an ID by the spellbook
+  -- name or, for an English name, by the class trainer list (Data/TrainerSpells.lua, English names + spell IDs)
+  local migrated = false
+  local function migrateBuffs()
+    local list, ids, d, again = buffList(), buffIDs(), db(), false
+    local en
+    local keys = {}
+    for key in pairs(list) do keys[#keys + 1] = key end
+    for _, key in ipairs(keys) do
+      local item, _, hand = weapon(key)
+      local id = ids[key]
+      if not id and not item then
+        local ok, info = pcall(function() return C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(key) end)
+        id = ok and type(info) == "table" and info.spellID or nil
+        if not id then
+          if not en then
+            en = {}
+            local cid = UnitClass and select(3, UnitClass("player"))
+            for _, s in ipairs(FLT.TRAINER_SPELLS and FLT.TRAINER_SPELLS[cid] or {}) do en[s[3]] = en[s[3]] or s[2] end
+          end
+          id = en[key]
+        end
+      elseif not id and item then
+        local ok, iid = pcall(function() return C_Item and C_Item.GetItemInfoInstant and C_Item.GetItemInfoInstant(item) or (GetItemInfoInstant and GetItemInfoInstant(item)) end)
+        id = ok and iid and ("i" .. iid) or nil
+      end
+      if id then
+        local cur
+        if type(id) == "string" then
+          local iid = tonumber(id:sub(2))
+          pcall(function() cur = (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(iid)) or (GetItemInfo and GetItemInfo(iid)) end)
+          if type(cur) ~= "string" then cur = nil; again = true; if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, iid) end
+          else cur = cur .. "@" .. (hand or "mh") end
+        else
+          pcall(function() cur = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)) or (GetSpellInfo and GetSpellInfo(id)) end)
+          if type(cur) ~= "string" or FLT.IsSecret(cur) then cur = nil end
+        end
+        if cur and cur ~= key and not list[cur] then
+          list[cur], list[key] = list[key], nil
+          ids[key] = nil
+          if d and d.buffIcons and d.buffIcons[key] then d.buffIcons[cur], d.buffIcons[key] = d.buffIcons[key], nil end
+          key = cur
+        end
+        if cur or not ids[key] then ids[key] = id end
+      end
+    end
+    migrated = not again
+  end
+  QoL._migrateBuffs = migrateBuffs -- tests
   checkBuffs = function()
     buffToken = buffToken + 1 -- an older timer is no longer needed
+    if not migrated and not inCombat() then migrateBuffs() end
     local list = buffList()
     for i = #due, 1, -1 do due[i] = nil end
     if QoL.Get("buffReminder") and next(list) then
@@ -951,7 +1012,9 @@ do
       for _, e in ipairs(QoL.GetBuffReminders()) do if #due < 2 then due[#due + 1] = e.name end end
       if #due == 0 then due[1] = "Example buff" end
     end
-    if #due == 0 or (not test and QoL.Get("buffSleepCities") and inCapital()) then
+    -- dead or a ghost (user 07.11.): no cards, nothing can be cast; UNIT_AURA after the resurrection checks again
+    local dead = not test and UnitIsDeadOrGhost and UnitIsDeadOrGhost("player")
+    if #due == 0 or dead or (not test and QoL.Get("buffSleepCities") and inCapital()) then
       if holder then holder:Hide() end
     else
       if not holder then makeHolder() end
@@ -959,7 +1022,7 @@ do
         local name = due[i]
         if name then
           local c = card(i)
-          c.spell = name; c.title:SetText((weapon(name)) or name); FLT.SetTex(c.icon, spellIcon(name)); layoutCard(c); c:Show()
+          c.spell = name; c.title:SetText((weapon(name)) or (name == "Example buff" and L["Example buff"]) or name); FLT.SetTex(c.icon, spellIcon(name)); layoutCard(c); c:Show()
           setFlash(c, QoL.Get("buffFlash") and true or false)
           c.zz:SetShown(QoL.Get("buffSnoozeBtn") and true or false)
           paintCard(c)
@@ -985,8 +1048,11 @@ do
     name = tostring(name or ""):match("^%s*(.-)%s*$")
     if name == "" then return end
     do -- "Superior Wizard Oil (main hand)" as typed or picked from the suggestions
-      local it, h = name:match("^(.-)%s*%((%a+) hand%)$")
-      if it and (h:lower() == "main" or h:lower() == "off") then name = it .. (h:lower() == "main" and "@mh" or "@oh") end
+      -- also in the chosen language ("(Haupthand)", 6.2.0)
+      local it, h = name:match("^(.-)%s*%((.-)%)$")
+      h = h and h:lower()
+      local mh = h == "main hand" or h == L["main hand"]:lower()
+      if it and (mh or h == "off hand" or h == L["off hand"]:lower()) then name = it .. (mh and "@mh" or "@oh") end
     end
     local item, _, hand = weapon(name)
     if item then -- an item for a weapon: the game's spelling when it knows the item
@@ -995,6 +1061,10 @@ do
         if type(n) == "string" and n ~= "" then name = n .. "@" .. hand end
       end)
       buffList()[name] = math.max(5, math.min(3600, math.floor(tonumber(sec) or 30)))
+      pcall(function()
+        local iid = C_Item and C_Item.GetItemInfoInstant and C_Item.GetItemInfoInstant(item) or (GetItemInfoInstant and GetItemInfoInstant(item))
+        if iid then buffIDs()[name] = "i" .. iid end
+      end)
       checkBuffs()
       return name
     end
@@ -1003,13 +1073,14 @@ do
       local info = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(name)
       local n = type(info) == "table" and info.name or (GetSpellInfo and GetSpellInfo(name))
       if type(n) == "string" and n ~= "" then name = n end
+      if type(info) == "table" and info.spellID then buffIDs()[name] = info.spellID end
     end)
     buffList()[name] = math.max(5, math.min(3600, math.floor(tonumber(sec) or 30)))
     checkBuffs()
     return name
   end
-  function QoL.RemoveBuffReminder(name) buffList()[name] = nil; buffSeen[name] = nil; checkBuffs() end
-  function QoL.ClearBuffReminders() local d = db(); if d then d.buffReminders = {} end; checkBuffs() end
+  function QoL.RemoveBuffReminder(name) buffList()[name] = nil; buffIDs()[name] = nil; buffSeen[name] = nil; checkBuffs() end
+  function QoL.ClearBuffReminders() local d = db(); if d then d.buffReminders = {}; d.buffIDs = {} end; checkBuffs() end
   QoL.CheckBuffs = checkBuffs
   QoL._buffCard = function(i) return cards[i] end -- tests
   -- snooze: remember the end time it has now (a buff still running low stays quiet until it is cast again);
@@ -1072,25 +1143,37 @@ do
     checkBuffs()
     C_Timer.After(10.1, checkBuffs)
   end
-  -- Suggestions for the name box (user 31.10.): the class's usual self buffs first, then the spellbook
+  -- Suggestions for the name box (user 31.10.): the class's usual self buffs first, then the spellbook. As spell IDs
+  -- (rank 1), the names come from the client in its language (6.2.0: the English names matched nothing in German)
   local PRESETS = {
-    WARLOCK = { "Demon Skin", "Demon Armor", "Shadow Ward" },
-    MAGE = { "Frost Armor", "Ice Armor", "Mage Armor", "Arcane Intellect", "Ice Barrier", "Mana Shield", "Dampen Magic", "Amplify Magic" },
-    PRIEST = { "Power Word: Fortitude", "Inner Fire", "Divine Spirit", "Shadow Protection", "Fear Ward" },
-    DRUID = { "Mark of the Wild", "Thorns", "Omen of Clarity" },
-    PALADIN = { "Righteous Fury", "Blessing of Might", "Blessing of Wisdom", "Blessing of Kings", "Blessing of Sanctuary" }, -- Light and Salvation removed in Forever (bluepost 02.11.)
-    SHAMAN = { "Lightning Shield" },
-    WARRIOR = { "Battle Shout" },
-    HUNTER = { "Trueshot Aura" },
+    WARLOCK = { 687, 706, 6229 }, -- Demon Skin, Demon Armor, Shadow Ward
+    MAGE = { 168, 7302, 6117, 1459, 11426, 1463, 604, 1008 }, -- Frost / Ice / Mage Armor, Arcane Intellect, Ice Barrier, Mana Shield, Dampen / Amplify Magic
+    PRIEST = { 1243, 588, 14752, 976, 6346 }, -- Power Word: Fortitude, Inner Fire, Divine Spirit, Shadow Protection, Fear Ward
+    DRUID = { 1126, 467, 16864 }, -- Mark of the Wild, Thorns, Omen of Clarity
+    PALADIN = { 25780, 19740, 19742, 20217, 20911 }, -- Righteous Fury, Blessing of Might / Wisdom / Kings / Sanctuary (Light and Salvation removed in Forever, bluepost 02.11.)
+    SHAMAN = { 324 }, -- Lightning Shield
+    WARRIOR = { 6673 }, -- Battle Shout
+    HUNTER = { 19506 }, -- Trueshot Aura
   }
-  -- weapon items suggested even when none is in the bags (main hand; type "(off hand)" for the other weapon)
+  -- weapon items suggested even when none is in the bags (main hand; type "(off hand)" for the other weapon); item IDs
+  -- named by the client in its language (6.2.0; IDs checked against QuestieDB)
   local WEAPON_ITEMS = {
-    "Rough Sharpening Stone", "Coarse Sharpening Stone", "Heavy Sharpening Stone", "Solid Sharpening Stone",
-    "Dense Sharpening Stone", "Elemental Sharpening Stone", "Rough Weightstone", "Coarse Weightstone", "Heavy Weightstone",
-    "Solid Weightstone", "Dense Weightstone", "Minor Wizard Oil", "Lesser Wizard Oil", "Wizard Oil", "Brilliant Wizard Oil",
-    "Minor Mana Oil", "Lesser Mana Oil", "Brilliant Mana Oil", "Shadow Oil", "Frost Oil",
+    2862, 2863, 2871, 7964, 12404, 18262, -- Rough / Coarse / Heavy / Solid / Dense / Elemental Sharpening Stone
+    3239, 3240, 3241, 7965, 12643, -- Rough / Coarse / Heavy / Solid / Dense Weightstone
+    20744, 20746, 20750, 20749, 20745, 20747, 20748, 3824, 3829, -- Wizard and Mana Oils, Shadow Oil, Frost Oil
   }
-  local POISONS = { "Instant Poison", "Deadly Poison", "Crippling Poison", "Mind-numbing Poison", "Wound Poison" }
+  local POISONS = { 6947, 2892, 3775, 5237, 10918 } -- Instant, Deadly, Crippling, Mind-numbing, Wound Poison
+  local function spellNameOf(id)
+    local n
+    pcall(function() n = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)) or (GetSpellInfo and GetSpellInfo(id)) end)
+    return type(n) == "string" and n or nil
+  end
+  local function itemNameOf(id)
+    local n
+    pcall(function() n = (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)) or (GetItemInfo and GetItemInfo(id)) end)
+    if type(n) ~= "string" and C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, id) end
+    return type(n) == "string" and n or nil
+  end
   function QoL.BuffSuggestions(text)
     text = (text or ""):lower()
     local out, seen = {}, {}
@@ -1142,7 +1225,10 @@ do
     local isKnown = {}
     for _, n in ipairs(known) do isKnown[n] = true end
     local class = UnitClass and select(2, UnitClass("player"))
-    for _, n in ipairs(PRESETS[class or ""] or {}) do if isKnown[n] or #known == 0 then add(n, true) end end
+    for _, id in ipairs(PRESETS[class or ""] or {}) do
+      local n = spellNameOf(id)
+      if n and (isKnown[n] or #known == 0) then add(n, true) end
+    end
     if text ~= "" then for _, n in ipairs(known) do add(n, false) end end
     -- usable items in the bags (oils, sharpening stones, poisons ...) for the main / off hand, from 2 letters on
     -- (user 03.11.: "sh" showed nothing); then the usual weapon items even when none is in the bags
@@ -1174,15 +1260,18 @@ do
       end
     end
     if #text >= 2 then
-      local list = WEAPON_ITEMS
-      if class == "ROGUE" then list = {} for _, n in ipairs(WEAPON_ITEMS) do list[#list + 1] = n end for _, n in ipairs(POISONS) do list[#list + 1] = n end end
-      for _, n in ipairs(list) do
-        if #out >= 8 then break end
-        if not items[n] and n:lower():find(text, 1, true) then
-          local key = n .. "@mh"
-          if not buffList()[key] then out[#out + 1] = { name = key, label = label(key), item = true, notInBags = true } end
+      local function suggest(ids)
+        for _, id in ipairs(ids) do
+          if #out >= 8 then return end
+          local n = itemNameOf(id)
+          if n and not items[n] and n:lower():find(text, 1, true) then
+            local key = n .. "@mh"
+            if not buffList()[key] then out[#out + 1] = { name = key, label = label(key), item = true, notInBags = true } end
+          end
         end
       end
+      suggest(WEAPON_ITEMS)
+      if class == "ROGUE" then suggest(POISONS) end
     end
     return out
   end
@@ -1202,7 +1291,7 @@ local function checkDurability()
   local limit = (QoL.Get("durabilityPct") or 20) / 100
   if low <= limit and not warnedDurability then
     warnedDurability = true
-    local text = string.format("Your gear is at %d%% durability - time to repair.", math.floor(low * 100 + 0.5))
+    local text = string.format(L["Your gear is at %d%% durability - time to repair."], math.floor(low * 100 + 0.5))
     if UIErrorsFrame then UIErrorsFrame:AddMessage(text, 1, 0.35, 0.3) end
     msg(text)
     if PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then pcall(PlaySound, SOUNDKIT.RAID_WARNING) end
@@ -1214,15 +1303,14 @@ end
 -- ---------------------------------------------------------------------------
 -- Camera zoom, chat font, raid frame CVars
 -- ---------------------------------------------------------------------------
-local ZOOM_CVAR = "cameraDistanceMaxZoomFactor"
 local function applyCamera(on)
   if not GetCVar or not SetCVar then return end
   local d = db(); if not d then return end
   if on then
-    if not d.cameraOrig then d.cameraOrig = GetCVar(ZOOM_CVAR) end
-    if not pcall(SetCVar, ZOOM_CVAR, "4") then pcall(SetCVar, ZOOM_CVAR, "2.6") end
+    if not d.cameraOrig then d.cameraOrig = GetCVar("cameraDistanceMaxZoomFactor") end
+    if not pcall(SetCVar, "cameraDistanceMaxZoomFactor", "4") then pcall(SetCVar, "cameraDistanceMaxZoomFactor", "2.6") end
   elseif d.cameraOrig then
-    pcall(SetCVar, ZOOM_CVAR, d.cameraOrig); d.cameraOrig = nil
+    pcall(SetCVar, "cameraDistanceMaxZoomFactor", d.cameraOrig); d.cameraOrig = nil
   end
 end
 
@@ -1256,7 +1344,7 @@ end
 function QoL.SetCVarSwitch(key, value)
   local name = QoL.CVARS[key]
   if not name or not SetCVar then return end
-  if inCombat() and key ~= "autoLoot" then msg("This can be changed after combat."); return end
+  if inCombat() and key ~= "autoLoot" then msg(L["This can be changed after combat."]); return end
   pcall(SetCVar, name, value and "1" or "0")
   if CompactUnitFrameProfiles_ApplyCurrentSettings then pcall(CompactUnitFrameProfiles_ApplyCurrentSettings) end
 end
@@ -1266,11 +1354,10 @@ end
 -- ---------------------------------------------------------------------------
 -- "Brighter colors" (5.6.8, user 22.10.): the client's health bar art is dark, desaturated and tinted it makes
 -- the class colors dull; a plain bar instead, the original art is put back when it is switched off
-local BRIGHT_BAR = "Interface\\TargetingFrame\\UI-StatusBar"
 local function plainBar(tex, on)
   if on then
     if not tex.ofaOrigTex then tex.ofaOrigTex = { tex.GetAtlas and tex:GetAtlas(), tex:GetTexture() } end
-    tex:SetTexture(BRIGHT_BAR)
+    tex:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
   elseif tex.ofaOrigTex then
     local o = tex.ofaOrigTex; tex.ofaOrigTex = nil
     if o[1] and tex.SetAtlas then tex:SetAtlas(o[1]) elseif o[2] then tex:SetTexture(o[2]) end
@@ -1514,11 +1601,11 @@ function QoL.ResetWindowSizes()
     local f = _G[name]
     if type(f) == "table" and f.ofaMovable and f.SetScale and not (inCombat() and f:IsProtected()) then f:SetScale(1) end
   end
-  msg("Window sizes reset.")
+  msg(L["Window sizes reset."])
 end
 function QoL.ResetWindowPositions()
   local d = db(); if d then d.windowPos = {} end
-  msg("Window positions reset. They return to their default place the next time they open.")
+  msg(L["Window positions reset. They return to their default place the next time they open."])
 end
 
 -- ---------------------------------------------------------------------------
@@ -1541,20 +1628,29 @@ local function rewardXP(questID, index)
   end
   return questFallbackXP(questID) or 0
 end
-function QoL.CompletedQuestXP()
+-- list (optional, 6.2.0, user 07.11.): filled with { title, xp } of each quest for the tooltip of the XP bar
+function QoL.CompletedQuestXP(list)
   local total, n = 0, 0
   if C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo then
     for i = 1, C_QuestLog.GetNumQuestLogEntries() or 0 do
       local info = C_QuestLog.GetInfo(i)
       if info and not info.isHeader and info.questID then
         local complete = C_QuestLog.IsComplete and C_QuestLog.IsComplete(info.questID)
-        if complete then total = total + rewardXP(info.questID, i); n = n + 1 end
+        if complete then
+          local xp = rewardXP(info.questID, i)
+          total = total + xp; n = n + 1
+          if list then list[#list + 1] = { info.title or "?", xp } end
+        end
       end
     end
   elseif GetNumQuestLogEntries and GetQuestLogTitle then
     for i = 1, GetNumQuestLogEntries() or 0 do
-      local _, _, _, isHeader, _, isComplete, _, questID = GetQuestLogTitle(i)
-      if not isHeader and (isComplete == 1 or isComplete == true) then total = total + rewardXP(questID, i); n = n + 1 end
+      local title, _, _, isHeader, _, isComplete, _, questID = GetQuestLogTitle(i)
+      if not isHeader and (isComplete == 1 or isComplete == true) then
+        local xp = rewardXP(questID, i)
+        total = total + xp; n = n + 1
+        if list then list[#list + 1] = { title or "?", xp } end
+      end
     end
   end
   return total, n
@@ -1587,18 +1683,27 @@ local function updateXP()
   end
   if not xpHooked then
     xpHooked = true
+    local quests = {} -- reused (only while the tooltip is built)
+    local function byXP(a, b) return a[2] > b[2] end
     local function addLine(self)
       if not QoL.Get("questXP") then return end
       local function add()
-        local xp, n = QoL.CompletedQuestXP()
+        wipe(quests)
+        local xp, n = QoL.CompletedQuestXP(quests)
         if n <= 0 or not GameTooltip:IsShown() or GameTooltip.ofaQuestXP then return end
         GameTooltip.ofaQuestXP = true
         local num = BreakUpLargeNumbers and BreakUpLargeNumbers(xp) or tostring(xp)
         local max = UnitXPMax and UnitXPMax("player") or 0
         local pct = max > 0 and string.format("  (%d%%)", math.floor(xp / max * 100 + 0.5)) or ""
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine(string.format("Finished quests: %d", n), 1, 0.82, 0.25)
-        GameTooltip:AddLine("Turn them in for +" .. num .. " XP" .. pct, 1, 1, 1)
+        GameTooltip:AddLine(string.format(L["Finished quests: %d"], n), 1, 0.82, 0.25)
+        GameTooltip:AddLine(string.format(L["Turn them in for +%s XP"], num) .. pct, 1, 1, 1)
+        -- each quest with its XP (user 07.11.: the count looked too high - a talk quest counts as done in the game)
+        table.sort(quests, byXP)
+        for i = 1, math.min(10, #quests) do
+          local q = quests[i]
+          GameTooltip:AddDoubleLine("  " .. q[1], BreakUpLargeNumbers and BreakUpLargeNumbers(q[2]) or tostring(q[2]), 0.85, 0.85, 0.85, 0.85, 0.85, 0.85)
+        end
         GameTooltip:Show()
       end
       if C_Timer and C_Timer.After then C_Timer.After(0, add) else add() end
@@ -1664,7 +1769,8 @@ local function bossDrops(id)
         for _, it in ipairs(b.loot or {}) do
           if it.id then
             dropIndex[it.id] = dropIndex[it.id] or {}
-            table.insert(dropIndex[it.id], b.name .. " (" .. d.name .. ")")
+            -- boss and dungeon in the client's language (6.2.0; the index is built at the first tooltip, after ADDON_LOADED)
+            table.insert(dropIndex[it.id], (FLT.Name and FLT.Name(b.name) or b.name) .. " (" .. (FLT.DungeonName and FLT.DungeonName(d.name) or d.name) .. ")")
           end
         end
       end
@@ -1731,25 +1837,25 @@ local function addItemLines(tt, link)
   if not id then return end
   if QoL.Get("bossDrops") then
     local drops = bossDrops(id)
-    if drops then tt:AddLine("Drops from: " .. nameList(drops, 2), 0.95, 0.80, 0.45, true) end
+    if drops then tt:AddLine(L["Drops from:"] .. " " .. nameList(drops, 2), 0.95, 0.80, 0.45, true) end
   end
   if QoL.Get("gearValue") and FLT.GearValue then FLT.GearValue.TooltipLine(tt, id, link) end
   -- on the wishlist (Armory > Gear Planner): always, it is the player's own choice (user 03.11.)
-  if FLT.IsOnWishlist and FLT.GearValue and FLT.GearValue.WISH and FLT.IsOnWishlist(id) then tt:AddLine(FLT.GearValue.WISH, 1, 0.82, 0.25) end
-  if QoL.Get("sellJunk") and junkList()[id] then tt:AddLine("On your junk list (Alt+right-click to take it off)", 0.62, 0.62, 0.62) end
+  if FLT.IsOnWishlist and FLT.GearValue and FLT.GearValue.WISH and FLT.IsOnWishlist(id) then tt:AddLine(FLT.GearValue.WISH .. L["Wishlist"], 1, 0.82, 0.25) end
+  if QoL.Get("sellJunk") and junkList()[id] then tt:AddLine(L["On your junk list (Alt+right-click to take it off)"], 0.62, 0.62, 0.62) end
   if FLT.CraftList then FLT.CraftList.TooltipLine(tt, id) end -- only while something is planned
   if QoL.Get("recipeTip") then
     local r = recipeByItem(id)
     if r then
       local me = FLT.GetProfessionState and FLT.GetProfessionState(r.prof)
-      if me and me.known and me.known[r.s] then tt:AddLine("You know this recipe", 0.45, 1, 0.45) end
+      if me and me.known and me.known[r.s] then tt:AddLine(L["You know this recipe"], 0.45, 1, 0.45) end
       local tw = twinksKnowing(r.prof, r.s)
-      if #tw > 0 then tt:AddLine("Twinks: " .. nameList(tw, 4), 0.75, 0.75, 1, true) end
+      if #tw > 0 then tt:AddLine(L["Twinks:"] .. " " .. nameList(tw, 4), 0.75, 0.75, 1, true) end
       local g = FLT.GetGuildRecipeKnowers and FLT.GetGuildRecipeKnowers(r.prof, r.s)
       if g and #g > 0 then
         local names = {}
         for _, k in ipairs(g) do names[#names + 1] = short(k[1]) end
-        tt:AddLine("Guild: " .. nameList(names, 4), 0.45, 0.85, 0.45, true)
+        tt:AddLine(L["Guild:"] .. " " .. nameList(names, 4), 0.45, 0.85, 0.45, true)
       end
     end
   end
@@ -1766,7 +1872,7 @@ local function addTargetLine(tt)
   if not name or (issecretvalue and issecretvalue(name)) then return end
   local text
   if UnitIsUnit and UnitIsUnit(tu, "player") then
-    text = "|cffff4040>> You <<|r"
+    text = "|cffff4040>> " .. L["You"] .. " <<|r"
   elseif UnitIsPlayer(tu) then
     local _, cls = UnitClass(tu)
     local c = cls and (CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS or {})[cls]
@@ -1774,7 +1880,7 @@ local function addTargetLine(tt)
   else
     text = name
   end
-  tt:AddLine("Target: " .. text, 1, 0.82, 0)
+  tt:AddLine(L["Target:"] .. " " .. text, 1, 0.82, 0)
   tt:Show()
 end
 
@@ -1807,16 +1913,43 @@ local SHORT = { -- { pattern, result } in this order; %1 %2 = captures (percent 
   { "^Increases your attack speed by ([%d%.]+)%%%.$", "+%1%% Attack Speed" },
   { "^Increased ([%a%- ]+) %+(%d+)%.$", "+%2 %1" }, -- weapon skills ("Increased Daggers +3.")
 }
+-- the game client's language (6.2.0, user 07.11.: "keine short stats auf deutsch"): German patterns made from the German
+-- item texts on Wowhead Forever (tools/locale/shortstats_fetch.py + shortstats_de.py); the short results stay German
+-- in a German client (the tooltip around them is German). Other clients: no match, lines stay as they are.
+SHORT.de = { -- (fields of SHORT: QoL.lua is at the 200 locals limit)
+--SHORT_DE_BEGIN
+    { "^Verbessert Eure Trefferchance um ([%d%.,]+)%%%.$", "+%1%% Trefferchance" },
+    { "^Erhöht durch magische Zauber und Effekte verursachten Schaden und Heilung um bis zu (%d+)%.$", "+%1 Zauberschaden und Heilung" },
+    { "^Erhöht durch sämtliche Zauber und magische Effekte verursachte Heilung um bis zu (%d+) und den verursachten Schaden um bis zu (%d+)%.$", "+%2 Zauberschaden\n+%1 Heilung" },
+    { "^Verteidigung %+(%d+)%.$", "+%1 Verteidigung" },
+    { "^Erhöht Eure kritische Trefferchance um ([%d%.,]+)%%%.$", "+%1%% kritische Treffer" },
+    { "^%+(%d+) Angriffskraft%.$", "+%1 Angriffskraft" },
+    { "^Erhöht den durch Feuerzauber und %-effekte verursachten Schaden um bis zu (%d+)%.$", "+%1 Feuerschaden" },
+    { "^Erhöht den von Schattenzaubern und %-effekten verursachten Schaden um bis zu (%d+)%.$", "+%1 Schattenschaden" },
+    { "^Erhöht den von Heiligzaubern und %-effekten verursachten Schaden um bis zu (%d+)%.$", "+%1 Heiligschaden" },
+    { "^Erhöht den durch Naturzauber und %-effekte verursachten Schaden um bis zu (%d+)%.$", "+%1 Naturschaden" },
+    { "^Erhöht den durch Frostzauber und %-effekte verursachten Schaden um bis zu (%d+)%.$", "+%1 Frostschaden" },
+    { "^Erhöht den von Arkanzaubern und %-effekten verursachten Schaden um bis zu (%d+)%.$", "+%1 Arkanschaden" },
+    { "^Erhöht die durch magische Zauber und Effekte verursachte Heilung um bis zu (%d+)%.$", "+%1 Heilung" },
+    -- by hand (user's screenshot 07.11. and samples whose wording has a word in it, see tools/locale/shortstats_de.py)
+    { "^Stellt alle 5 Sek%. (%d+) Mana wieder her%.$", "+%1 Mana alle 5 Sek." },
+    { "^Erhöht den durch magische Zauber und magische Effekte verursachten Schaden gegen (.-) um bis zu (%d+)%.$", "+%2 Zauberschaden gg. %1" },
+    { "^([^%d%+]-) %+(%d+)%.$", "+%2 %1" }, -- skills ("Kräuterkunde +2.", weapon skills)
+--SHORT_DE_END
+}
+SHORT.equip, SHORT.ench, SHORT.list = "^Equip: ", "^Enchanted: ", SHORT
+if GetLocale and GetLocale() == "deDE" then SHORT.equip, SHORT.list = "^Anlegen: ", SHORT.de end
 local function shortStat(text)
-  local body = text:match("^Equip: (.+)$")
+  local body = text:match(SHORT.equip .. "(.+)$")
   if body then
-    for i = 1, #SHORT do
-      local out, n = body:gsub(SHORT[i][1], SHORT[i][2])
+    local list = SHORT.list
+    for i = 1, #list do
+      local out, n = body:gsub(list[i][1], list[i][2])
       if n > 0 then return (out:gsub("(%d)%.0%%", "%1%%")) end -- "+1.0% Hit" -> "+1% Hit"
     end
     return
   end
-  body = text:match("^Enchanted: (.+)$")
+  body = text:match(SHORT.ench .. "(.+)$")
   if body and body:find(" %+%d") then -- "Stamina +1 and Armor +8" -> "+1 Stamina and +8 Armor"
     return "Enchanted: " .. (body .. " and "):gsub("(.-) %+(%d+%%?) and ", "+%2 %1 and "):sub(1, -6)
   end
@@ -1828,7 +1961,7 @@ local function shortenTooltip(tt)
   for i = 2, tt:NumLines() do
     local line = _G[name .. "TextLeft" .. i]
     local text = line and line:GetText()
-    if text and (text:find("^Equip: ") or text:find("^Enchanted: ")) then
+    if text and (text:find(SHORT.equip) or text:find(SHORT.ench)) then
       local out = shortStat(text)
       if out then line:SetText(out); changed = true end
     end
@@ -1884,8 +2017,8 @@ local FEED_W, FEED_H, FEED_LIFE, FEED_GAP = 260, 200, 4.5, 22
 local feed, feedPool, feedActive = nil, {}, {}
 local QUALITY_RGB = { [0]={0.62,0.62,0.62}, [1]={1,1,1}, [2]={0.12,1,0}, [3]={0,0.44,0.87}, [4]={0.64,0.21,0.93}, [5]={1,0.5,0} }
 QoL.QUALITY_OPTIONS = {
-  { key = 0, label = "Poor (grey)" }, { key = 1, label = "Common (white)" }, { key = 2, label = "Uncommon (green)" },
-  { key = 3, label = "Rare (blue)" }, { key = 4, label = "Epic (purple)" },
+  { key = 0, label = N"Poor (grey)" }, { key = 1, label = N"Common (white)" }, { key = 2, label = N"Uncommon (green)" },
+  { key = 3, label = N"Rare (blue)" }, { key = 4, label = N"Epic (purple)" },
 }
 
 local function feedPos()
@@ -1906,7 +2039,7 @@ local function feedFrame()
   local edge = feed:CreateTexture(nil, "BORDER"); edge:SetPoint("TOPLEFT", -1, 1); edge:SetPoint("BOTTOMRIGHT", 1, -1); edge:SetColorTexture(FLT.SkinC(0.85, 0.66, 0.25, 0.6))
   bg:SetDrawLayer("BACKGROUND", 1); edge:SetDrawLayer("BACKGROUND", 0)
   local label = feed:CreateFontString(nil, "OVERLAY", "GameFontNormal"); label:SetPoint("CENTER")
-  label:SetText("Loot feed\n|cffffffffDrag to move, then click Lock in the Quality of Life tab|r")
+  label:SetText(L["Loot feed"] .. "\n|cffffffff" .. L["Drag to move, then click Lock in the Quality of Life tab"] .. "|r")
   feed.mover = { bg, edge, label }
   feed:SetScript("OnMouseDown", function(self, b) if b == "LeftButton" and self.unlocked then self:StartMoving() end end)
   feed:SetScript("OnMouseUp", function(self)
@@ -2082,11 +2215,11 @@ local function copyWindow()
   f:SetMovable(true); f:RegisterForDrag("LeftButton"); f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
   if UI and UI.FramedPanel then UI.FramedPanel(f) end
   if UI and UI.OrnateFrame then for _, t in ipairs(UI.OrnateFrame(f, f, 16, 3, "OVERLAY", 4)) do t:SetVertexColor(FLT.SkinC(1, 1, 1, 1)) end end
-  local title = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalLarge"); title:SetPoint("TOPLEFT", 18, -14); title:SetText("Copy chat")
+  local title = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalLarge"); title:SetPoint("TOPLEFT", 18, -14); title:SetText(L["Copy chat"])
   title:SetTextColor(FLT.SkinC(1, 0.82, 0.2))
   local hint = FLT.NewFS(f, nil, "OVERLAY", "GameFontDisableSmall"); hint:SetPoint("LEFT", title, "RIGHT", 12, -1)
-  hint:SetText("Ctrl+C copies the selected text.  Esc closes.")
-  local close = UI and UI.GoldButton and UI.GoldButton(f, "Close", 90, 22, nil, 12)
+  hint:SetText(L["Ctrl+C copies the selected text.  Esc closes."])
+  local close = UI and UI.GoldButton and UI.GoldButton(f, L["Close"], 90, 22, nil, 12)
   if close then close:SetPoint("TOPRIGHT", -14, -12); close:SetScript("OnClick", function() f:Hide() end) end
   local sf = FLT.SkinBlizz(CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate"))
   sf:SetPoint("TOPLEFT", 16, -44); sf:SetPoint("BOTTOMRIGHT", -34, 14)
@@ -2132,7 +2265,7 @@ local function setupCopyButtons()
         local tex = b:CreateTexture(nil, "ARTWORK"); tex:SetAllPoints(); tex:SetTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up")
         b:SetHighlightTexture("Interface\\Buttons\\UI-GuildButton-PublicNote-Up", "ADD")
         b:SetAlpha(0.35)
-        b:SetScript("OnEnter", function(self) self:SetAlpha(1); GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:SetText("Copy chat"); GameTooltip:Show() end)
+        b:SetScript("OnEnter", function(self) self:SetAlpha(1); GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:SetText(L["Copy chat"]); GameTooltip:Show() end)
         b:SetScript("OnLeave", function(self) self:SetAlpha(0.35); GameTooltip:Hide() end)
         b:SetScript("OnClick", function() QoL.OpenCopyChat(cf) end)
         copyButtons[i] = b
@@ -2231,8 +2364,13 @@ local TOOLS = {
 }
 local function isTool(id, link)
   if TOOLS[id] then return true end
-  local n = type(link) == "string" and link:match("%[(.-)%]")
-  return n and (n:find("Rod$") or n:find("Fishing Pole") or n:find("Mining Pick") or n:find("Skinning Knife")) and true or false
+  -- any other fishing pole (weapon class 2, subclass 20) in every language (6.2.0: before by the English name)
+  local classID, subID
+  pcall(function()
+    local get = C_Item and C_Item.GetItemInfoInstant or GetItemInfoInstant
+    if get then classID, subID = select(6, get(id or link)) end
+  end)
+  return classID == 2 and subID == 20
 end
 
 local function neverList()
@@ -2363,7 +2501,7 @@ local function itemCard(parent, caption, captionGold)
     self.name:SetText((e.link and e.link:match("%[(.-)%]")) or e.name or "?"); self.name:SetTextColor(qr, qg, qb)
     local n = e.count or e.qty or 1
     self.count:SetText(n > 1 and n or "")
-    self.value:SetText(e.value and e.value > 0 and money(e.value) or "|cff9d9d9dno value|r")
+    self.value:SetText(e.value and e.value > 0 and money(e.value) or "|cff9d9d9d" .. L["no value"] .. "|r")
   end
   function c:SetMessage(text)
     self.link = nil
@@ -2384,7 +2522,7 @@ local function helperFrame()
   -- header: alert icon, title, subtitle, close
   local alert = f:CreateTexture(nil, "ARTWORK"); alert:SetSize(36, 36); alert:SetPoint("TOPLEFT", 10, -9)
   alert:SetTexture("Interface\\DialogFrame\\UI-Dialog-Icon-AlertNew")
-  local title = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalLarge"); title:SetPoint("TOPLEFT", 52, -11); title:SetText("Bags full!")
+  local title = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalLarge"); title:SetPoint("TOPLEFT", 52, -11); title:SetText(L["Bags full!"])
   title:SetTextColor(FLT.SkinC(1, 0.82, 0.2))
   f.sub = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); f.sub:SetPoint("TOPLEFT", 52, -30); f.sub:SetWidth(W - 90); f.sub:SetJustifyH("LEFT")
   local close = UI.GoldButton(f, "", 18, 16, UI.ASSET_ROOT .. "icon_close", 10); close:SetPoint("TOPRIGHT", -8, -8)
@@ -2392,8 +2530,8 @@ local function helperFrame()
   close:SetScript("OnClick", function() f:Hide(); pendingLoot = nil end)
 
   -- left: what gets destroyed (with browse + never), right: what you get
-  f.out = itemCard(f, "Destroy:"); f.out:SetPoint("TOPLEFT", 10, -52)
-  f.inc = itemCard(f, "You get:", true); f.inc:SetPoint("TOPRIGHT", -10, -52)
+  f.out = itemCard(f, L["Destroy:"]); f.out:SetPoint("TOPLEFT", 10, -52)
+  f.inc = itemCard(f, L["You get:"], true); f.inc:SetPoint("TOPRIGHT", -10, -52)
   f.arrow = f:CreateTexture(nil, "ARTWORK"); f.arrow:SetSize(20, 20); f.arrow:SetPoint("CENTER", f, "TOP", 0, -52 - CARD_H / 2)
   FLT.SetTex(f.arrow, UI.ASSET_ROOT .. "chevron"); f.arrow:SetTexCoord(0.5, 1, 0, 1)
   f.next = UI.GoldButton(f.out, ">", 16, 14, nil, 10); f.next:SetPoint("TOPRIGHT", -6, -5)
@@ -2401,9 +2539,9 @@ local function helperFrame()
   f.prev = UI.GoldButton(f.out, "<", 16, 14, nil, 10); f.prev:SetPoint("RIGHT", f.counter, "LEFT", -3, 0)
   f.never = UI.GoldButton(f.out, "", 18, 18, "Interface\\Buttons\\UI-GroupLoot-Pass-Up", 10); f.never:SetPoint("BOTTOMRIGHT", -6, 6)
   if f.never.icon then f.never.icon:ClearAllPoints(); f.never.icon:SetSize(12, 12); f.never.icon:SetPoint("CENTER") end
-  f.never:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:SetText("Never suggest this item"); GameTooltip:AddLine("It will not be suggested again (any character).", 1, 1, 1, true); GameTooltip:Show() end)
+  f.never:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:SetText(L["Never suggest this item"]); GameTooltip:AddLine(L["It will not be suggested again (any character)."], 1, 1, 1, true); GameTooltip:Show() end)
   f.never:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  f.destroy = UI.GoldButton(f, "Destroy & loot", 160, 24, nil, 12); f.destroy:SetPoint("BOTTOM", 0, 12)
+  f.destroy = UI.GoldButton(f, L["Destroy & loot"], 160, 24, nil, 12); f.destroy:SetPoint("BOTTOM", 0, 12)
 
   f.prev:SetScript("OnClick", function() if #f.cands > 0 then f.ci = (f.ci - 2) % #f.cands + 1; f:Paint() end end)
   f.next:SetScript("OnClick", function() if #f.cands > 0 then f.ci = f.ci % #f.cands + 1; f:Paint() end end)
@@ -2411,7 +2549,7 @@ local function helperFrame()
   f.never:SetScript("OnClick", function()
     local b = f.cands[f.ci]; if not b then return end
     neverList()[b.id] = true
-    msg(b.link .. " will not be suggested any more.")
+    msg(string.format(L["%s will not be suggested any more."], b.link))
     QoL.CheckBagsFull(true)
   end)
   f.destroy:SetScript("OnClick", function()
@@ -2422,14 +2560,14 @@ local function helperFrame()
     if link ~= b.link then QoL.CheckBagsFull(true); return end
     -- anything better than grey needs a second click
     if (b.quality or 1) >= 1 and not f.armed then
-      f.armed = true; f.destroy:SetLabel("Click again to destroy"); return
+      f.armed = true; f.destroy:SetLabel(L["Click again to destroy"]); return
     end
     ClearCursor()
     local pick = (C_Container and C_Container.PickupContainerItem) or PickupContainerItem
     pick(b.bag, b.slot)
     pendingLoot = l and l.slot or nil
     DeleteCursorItem()
-    if f.noLoot then msg("Made room - loot it again.") end
+    if f.noLoot then msg(L["Made room - loot it again."]) end
     f:Hide()
   end)
 
@@ -2439,30 +2577,30 @@ local function helperFrame()
     -- right card
     if target then
       self.inc:SetItem(target)
-      self.inc.extra = #self.left > 1 and string.format("%d items left - click for the next one", #self.left) or nil
-      self.inc.caption:SetText(#self.left > 1 and string.format("You get (%d/%d):", self.ti, #self.left) or "You get:")
+      self.inc.extra = #self.left > 1 and string.format(L["%d items left - click for the next one"], #self.left) or nil
+      self.inc.caption:SetText(#self.left > 1 and string.format(L["You get (%d/%d):"], self.ti, #self.left) or L["You get:"])
     else
-      self.inc:SetMessage("Loot it again after making room.")
-      self.inc.caption:SetText("You get:")
+      self.inc:SetMessage(L["Loot it again after making room."])
+      self.inc.caption:SetText(L["You get:"])
     end
     -- left card + button
     local notWorth = b and target and not target.prio and target.value < b.value
     local showBrowse = b and not notWorth
     for _, w in ipairs({ self.prev, self.next, self.counter, self.never }) do w:SetShown(showBrowse and true or false) end
     if notWorth then
-      self.sub:SetText("This loot is worth less than anything in your bags.")
-      self.out:SetMessage("|cffffd27fNot worth picking up.|r\nEverything in your bags is worth more.")
+      self.sub:SetText(L["This loot is worth less than anything in your bags."])
+      self.out:SetMessage("|cffffd27f" .. L["Not worth picking up."] .. "|r\n" .. L["Everything in your bags is worth more."])
       self.destroy:Hide()
     elseif b then
-      self.sub:SetText(self.noLoot and "Destroy a low-value item, then loot again." or "Destroy a low-value item to loot.")
+      self.sub:SetText(self.noLoot and L["Destroy a low-value item, then loot again."] or L["Destroy a low-value item to loot."])
       self.out:SetItem(b); self.out.extra = nil
       self.counter:SetText(self.ci .. "/" .. #self.cands)
       local many = #self.cands > 1
       self.prev:SetLook(many); self.prev:SetEnabled(many); self.next:SetLook(many); self.next:SetEnabled(many)
-      self.destroy:SetLabel(self.noLoot and "Destroy" or "Destroy & loot"); self.destroy:Show()
+      self.destroy:SetLabel(self.noLoot and L["Destroy"] or L["Destroy & loot"]); self.destroy:Show()
     else
-      self.sub:SetText("Nothing in your bags can be suggested.")
-      self.out:SetMessage("Quest items, books, recipes, tools and set pieces are kept.")
+      self.sub:SetText(L["Nothing in your bags can be suggested."])
+      self.out:SetMessage(L["Quest items, books, recipes, tools and set pieces are kept."])
       self.destroy:Hide()
     end
     self:SetHeight(self.destroy:IsShown() and 172 or 142)
@@ -2512,8 +2650,8 @@ end
 
 function QoL.PrintCheapest()
   local b = QoL.FindCheapest()
-  if b then msg("Cheapest item: " .. (b.count > 1 and (b.count .. "x ") or "") .. b.link .. " (" .. money(b.value) .. ")")
-  else msg("Nothing in your bags can be suggested.") end
+  if b then msg(L["Cheapest item:"] .. " " .. (b.count > 1 and (b.count .. "x ") or "") .. b.link .. " (" .. money(b.value) .. ")")
+  else msg(L["Nothing in your bags can be suggested."]) end
 end
 
 local function bagsChanged()
@@ -2589,10 +2727,10 @@ end
 local function sparkleSwitch(on)
   if on then applySparkles(); return end
   local d = db(); if not d or not d.sparkleOrig then return end
-  if inCombat() then msg("This can be changed after combat."); return end
+  if inCombat() then msg(L["This can be changed after combat."]); return end
   for k, v in pairs(d.sparkleOrig) do pcall(SetCVar, k, v) end
   d.sparkleOrig = nil
-  msg("Quest loot sparkles switched off. Restart the game for it to take full effect.")
+  msg(L["Quest loot sparkles switched off. Restart the game for it to take full effect."])
 end
 local function cvarChanged(name)
   if sparkleSetting or not QoL.Get("questSparkles") then return end

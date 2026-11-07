@@ -1,4 +1,6 @@
 local ADDON, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
 local UI = FLT.UI
 local makeTexture, makeButton = UI.makeTexture, UI.makeButton
 
@@ -205,8 +207,8 @@ local function shareQuestTest(c)
   local q = c.quest
   shareReplies[q.id] = shareReplies[q.id] or {}
   local first, second = c.missing[1], c.missing[2]
-  if first then shareReplies[q.id][first] = "accepted" end
-  if second then shareReplies[q.id][second] = "already done" end
+  if first then shareReplies[q.id][first] = N"accepted" end
+  if second then shareReplies[q.id][second] = N"already done" end
   -- The member who accepted no longer needs it; the other one is blocked.
   local keep = {}
   for i, name in ipairs(c.missing) do if i > 2 then keep[#keep + 1] = name end end
@@ -228,15 +230,15 @@ end
 -- Turns the game's share replies into short status texts. The patterns are
 -- built from the client's own global strings, so they work in every language.
 local REPLIES = {
-  { key = "ERR_QUEST_PUSH_ACCEPTED_S",     text = "accepted",        done = true },
-  { key = "ERR_QUEST_PUSH_ALREADY_DONE_S", text = "already done",    block = true },
-  { key = "ERR_QUEST_PUSH_INVALID_S",      text = "not eligible",    block = true },
-  { key = "ERR_QUEST_PUSH_ONQUEST_S",      text = "already has it",  done = true },
-  { key = "ERR_QUEST_PUSH_DECLINED_S",     text = "declined" },
-  { key = "ERR_QUEST_PUSH_LOG_FULL_S",     text = "quest log full" },
-  { key = "ERR_QUEST_PUSH_TOO_FAR_S",      text = "too far away" },
-  { key = "ERR_QUEST_PUSH_BUSY_S",         text = "busy" },
-  { key = "ERR_QUEST_PUSH_DEAD_S",         text = "dead" },
+  { key = "ERR_QUEST_PUSH_ACCEPTED_S",     text = N"accepted",        done = true },
+  { key = "ERR_QUEST_PUSH_ALREADY_DONE_S", text = N"already done",    block = true },
+  { key = "ERR_QUEST_PUSH_INVALID_S",      text = N"not eligible",    block = true },
+  { key = "ERR_QUEST_PUSH_ONQUEST_S",      text = N"already has it",  done = true },
+  { key = "ERR_QUEST_PUSH_DECLINED_S",     text = N"declined" },
+  { key = "ERR_QUEST_PUSH_LOG_FULL_S",     text = N"quest log full" },
+  { key = "ERR_QUEST_PUSH_TOO_FAR_S",      text = N"too far away" },
+  { key = "ERR_QUEST_PUSH_BUSY_S",         text = N"busy" },
+  { key = "ERR_QUEST_PUSH_DEAD_S",         text = N"dead" },
 }
 local replyPatterns
 local function buildPatterns()
@@ -316,7 +318,7 @@ local function createPopup()
   popup:SetClampedToScreen(true)
   popup:SetScript("OnDragStart", popup.StartMoving)
   popup:SetScript("OnDragStop", popup.StopMovingOrSizing)
-  if popup.TitleText then popup.TitleText:SetText("OneForAll - Share dungeon quests") end
+  if popup.TitleText then popup.TitleText:SetText(L["OneForAll - Share dungeon quests"]) end
   popup:HookScript("OnHide", function()
     if testMode then testMode = false; wipe(shareReplies); wipe(candidates) end
   end)
@@ -339,7 +341,7 @@ local function createPopup()
     name:SetPoint("TOPLEFT", 8, -6); name:SetWidth(320); name:SetJustifyH("LEFT")
     local info = FLT.NewFS(row, nil, "OVERLAY", "GameFontHighlightSmall")
     info:SetPoint("TOPLEFT", 8, -24); info:SetWidth(320); info:SetJustifyH("LEFT")
-    local btn = makeButton(row, "Share", 90, 26)
+    local btn = makeButton(row, L["Share"], 90, 26)
     btn:SetPoint("RIGHT", -8, 0)
     btn:SetScript("OnClick", function(self) if self.candidate then shareQuest(self.candidate) end end)
     row.name, row.info, row.button = name, info, btn
@@ -351,7 +353,7 @@ local function createPopup()
   auto:SetSize(22, 22)
   auto:SetPoint("BOTTOMLEFT", 12, 8)
   local autoLabel = FLT.NewFS(popup, nil, "OVERLAY", "GameFontHighlightSmall")
-  autoLabel:SetPoint("LEFT", auto, "RIGHT", 2, 0); autoLabel:SetText("Open automatically")
+  autoLabel:SetPoint("LEFT", auto, "RIGHT", 2, 0); autoLabel:SetText(L["Open automatically"])
   auto:SetScript("OnClick", function(self) settings().popup = self:GetChecked() and true or false end)
   popup.auto = auto
 
@@ -363,33 +365,33 @@ local function describe(c)
   local replies = shareReplies[q.id] or {}
   local parts = {}
   for _, name in ipairs(c.missing) do
-    parts[#parts + 1] = replies[name] and (name .. " (" .. replies[name] .. ")") or name
+    parts[#parts + 1] = replies[name] and (name .. " (" .. L[replies[name]] .. ")") or name
   end
   local done = {}
   for _, name in ipairs(c.shownReplies or {}) do
-    if name and replies[name] then done[#done + 1] = name .. ": " .. replies[name] end
+    if name and replies[name] then done[#done + 1] = name .. ": " .. L[replies[name]] end
   end
-  if #parts == 0 then return "Shared. " .. table.concat(done, ", ") end
-  return "Missing for: " .. table.concat(parts, ", ") .. (#done > 0 and ("   |cff9d9d9d" .. table.concat(done, ", ") .. "|r") or "")
+  if #parts == 0 then return L["Shared."] .. " " .. table.concat(done, ", ") end
+  return L["Missing for:"] .. " " .. table.concat(parts, ", ") .. (#done > 0 and ("   |cff9d9d9d" .. table.concat(done, ", ") .. "|r") or "")
 end
 
 render = function()
   if not popup then createPopup() end
   local s = settings()
   popup.auto:SetChecked(s.popup)
-  if popup.TitleText and not testMode then popup.TitleText:SetText("OneForAll - Share dungeon quests") end
+  if popup.TitleText and not testMode then popup.TitleText:SetText(L["OneForAll - Share dungeon quests"]) end
   if testMode then
-    popup.sub:SetText((currentDungeon and currentDungeon.name or "?") .. ": test mode - nothing is shared.")
+    popup.sub:SetText((currentDungeon and currentDungeon.name or "?") .. ": " .. L["test mode - nothing is shared."])
   elseif #candidates == 0 then
-    popup.sub:SetText("All shareable quests have been shared.")
+    popup.sub:SetText(L["All shareable quests have been shared."])
   else
-    popup.sub:SetText(currentDungeon and (currentDungeon.name .. ": quests your group members can still accept.") or "")
+    popup.sub:SetText(currentDungeon and (currentDungeon.name .. ": " .. L["quests your group members can still accept."]) or "")
   end
   local shown = math.min(#candidates, MAX_ROWS)
   for i = 1, MAX_ROWS do
     local row, c = rows[i], candidates[i]
     if i <= shown then
-      row.name:SetText(c.quest.name or ("Quest " .. tostring(c.quest.id)))
+      row.name:SetText(c.quest.name or (L["Quest"] .. " " .. tostring(c.quest.id)))
       row.info:SetText(describe(c))
       row.button.candidate = c
       if #c.missing > 0 then row.button:Enable() else row.button:Disable() end
@@ -437,9 +439,9 @@ local function candidatesFor(d)
   return out
 end
 function FLT.ShareAllPreview(d)
-  if #groupUnits() == 0 then return nil, "You are not in a group." end
+  if #groupUnits() == 0 then return nil, L["You are not in a group."] end
   local list = candidatesFor(d)
-  if #list == 0 then return nil, "Nothing to share: your group has all quests of this dungeon you can share, or cannot take them." end
+  if #list == 0 then return nil, L["Nothing to share: your group has all quests of this dungeon you can share, or cannot take them."] end
   return list
 end
 function FLT.ShareAllQuests(d)
@@ -447,26 +449,26 @@ function FLT.ShareAllQuests(d)
   if not list then FLT.Msg(why); return end
   local names = {}
   for i, c in ipairs(list) do
-    names[i] = c.quest.name or ("Quest " .. tostring(c.quest.id))
+    names[i] = c.quest.name or (L["Quest"] .. " " .. tostring(c.quest.id))
     if C_Timer and C_Timer.After then C_Timer.After((i - 1) * 1.5, function() shareQuest(c) end) elseif i == 1 then shareQuest(c) end
   end
-  FLT.Msg("Sharing " .. #list .. (#list == 1 and " quest: " or " quests: ") .. table.concat(names, ", "))
+  FLT.Msg((#list == 1 and L["Sharing 1 quest:"] or string.format(L["Sharing %d quests:"], #list)) .. " " .. table.concat(names, ", "))
 end
 
 function FLT:OpenQuestShare()
   currentDungeon = findCurrentDungeon()
   if not currentDungeon then
-    FLT.Msg("Quest sharing works inside a dungeon from the Dungeons tab.")
+    FLT.Msg(L["Quest sharing works inside a dungeon from the Dungeons tab."])
     return
   end
   if #groupUnits() == 0 then
-    FLT.Msg("You are not in a group.")
+    FLT.Msg(L["You are not in a group."])
     return
   end
   dismissedSignature = nil
   scan()
   if #candidates == 0 then
-    FLT.Msg("Nothing to share: your group members already have all shareable quests of " .. currentDungeon.name .. " (or cannot take them).")
+    FLT.Msg(string.format(L["Nothing to share: your group members already have all shareable quests of %s (or cannot take them)."], currentDungeon.name))
     return
   end
   render(); popup:Show()
@@ -492,7 +494,7 @@ function FLT:QuestShareTest()
       end
     end
   end
-  if not d then FLT.Msg("No dungeon quests found for a test."); return end
+  if not d then FLT.Msg(L["No dungeon quests found for a test."]); return end
   testMode = true
   currentDungeon = d
   wipe(candidates); wipe(shareReplies)
@@ -508,7 +510,7 @@ function FLT:QuestShareTest()
     candidates[#candidates + 1] = { quest = inLog[i], missing = { "Testplayer-A", "Testplayer-B" } }
   end
   render()
-  if popup.TitleText then popup.TitleText:SetText("OneForAll - Share dungeon quests (TEST)") end
+  if popup.TitleText then popup.TitleText:SetText(L["OneForAll - Share dungeon quests"] .. " (TEST)") end
   popup:Show()
 end
 

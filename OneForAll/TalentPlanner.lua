@@ -1,4 +1,6 @@
 local ADDON, FLT = ...
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 local ASSET_ROOT = FLT.ASSET_ROOT or ("Interface\\AddOns\\" .. ADDON .. "\\Assets\\")
 
@@ -119,6 +121,10 @@ end
 local function classByID(id)
   for _,c in ipairs(CLASSES) do if c.id==id then return c end end
 end
+-- shown names: the client's class names, the tree names translated (6.2.0)
+local function className(c) return c and ((type(LOCALIZED_CLASS_NAMES_MALE)=="table" and LOCALIZED_CLASS_NAMES_MALE[c.token]) or c.name) or "" end
+local function treeName(c,i) local t=c and c.trees[i]; return t and L[t] or string.format(L["Tree %d"],i) end
+local function _trees() return N"Feral Combat" end -- the other tree names are marked in UI/GearPlanner.lua
 
 local function getSpecID(classID)
   if not GetSpecializationInfoForClassID then return nil end
@@ -186,12 +192,12 @@ local function spent(st)
 end
 
 local function applyPreview(specID, st)
-  if not apiReady() then return nil,"Talent preview APIs are not available on this client." end
+  if not apiReady() then return nil,L["Talent preview APIs are not available on this client."] end
   local ok,err=pcall(C_ClassTalents.InitializeViewLoadout,specID,60)
   if not ok then return nil,tostring(err) end
   local entries=buildEntries(st)
   local ok2,res=pcall(C_ClassTalents.ViewLoadout,entries)
-  if not ok2 or res==false then return nil,not ok2 and tostring(res) or "The preview loadout was rejected." end
+  if not ok2 or res==false then return nil,not ok2 and tostring(res) or L["The preview loadout was rejected."] end
   return Constants.TraitConsts.VIEW_TRAIT_CONFIG_ID
 end
 
@@ -206,7 +212,7 @@ local function entryDetails(configID, nodeInfo, preferredEntry)
   local ei=C_Traits.GetEntryInfo and C_Traits.GetEntryInfo(configID,entryID)
   local di=ei and ei.definitionID and C_Traits.GetDefinitionInfo and C_Traits.GetDefinitionInfo(ei.definitionID)
   local sid=di and (di.spellID or di.overriddenSpellID)
-  local name=(di and di.overrideName) or spellName(sid) or ("Talent "..tostring(entryID))
+  local name=(di and di.overrideName) or spellName(sid) or (L["Talent"].." "..tostring(entryID))
   local icon=(di and di.overrideIcon) or spellIcon(sid) or "Interface\\Icons\\INV_Misc_QuestionMark"
   return entryID,di,sid,name,icon
 end
@@ -413,25 +419,25 @@ function TC.Parse(text)
     local cls, rest = text:match("talentsforever%.com/(%a+)/%d+/([%w%-]+)")
     token, codes = cls, rest
   else
-    return nil, "Paste a build link of talentsforever.com or wowforevertalents.com, or an OneForAll build string."
+    return nil, L["Paste a build link of talentsforever.com or wowforevertalents.com, or an OneForAll build string."]
   end
   local classID = classByToken(token)
-  if not classID then return nil, "Unknown class in the build." end
-  if not codes then return nil, "No talents found in the build." end
+  if not classID then return nil, L["Unknown class in the build."] end
+  if not codes then return nil, L["No talents found in the build."] end
   local parts = {}
   for p in (codes .. "-"):gmatch("([^%-]*)%-") do parts[#parts + 1] = p end
   local trees = { parts[1] or "", parts[2] or "", parts[3] or "" }
   local data, total = TC.Trees(classID), 0
   for i = 1, 3 do
-    if not trees[i]:match("^%d*$") then return nil, "The build has an unknown format." end
-    if #trees[i] > #data[i] then return nil, "The build does not fit the current talent trees (made for another game version?)." end
+    if not trees[i]:match("^%d*$") then return nil, L["The build has an unknown format."] end
+    if #trees[i] > #data[i] then return nil, L["The build does not fit the current talent trees (made for another game version?)."] end
     for k = 1, #trees[i] do
       local r = tonumber(trees[i]:sub(k, k))
-      if r > data[i][k].max then return nil, "The build does not fit the current talent trees (made for another game version?)." end
+      if r > data[i][k].max then return nil, L["The build does not fit the current talent trees (made for another game version?)."] end
       total = total + r
     end
   end
-  if total > 51 then return nil, "The build has more than 51 points." end
+  if total > 51 then return nil, L["The build has more than 51 points."] end
   return classID, trees
 end
 -- classID, { [talent key] = rank } -> our string
@@ -478,7 +484,7 @@ local function codeWindow()
   f.eb:SetScript("OnEditFocusGained", function(b) if f.readOnly then b:HighlightText() end end)
   f.eb:SetScript("OnEnterPressed", function() if not f.readOnly and f.go:IsShown() then f.go:Click() end end)
   f.msg = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); f.msg:SetPoint("TOPLEFT", 24, -102); f.msg:SetWidth(470); f.msg:SetJustifyH("LEFT")
-  f.go = UI.GoldButton(f, "Import", 120, 24, nil, 12); f.go:SetPoint("BOTTOMRIGHT", -18, 16)
+  f.go = UI.GoldButton(f, L["Import"], 120, 24, nil, 12); f.go:SetPoint("BOTTOMRIGHT", -18, 16)
   -- the two planner sites (user 01.11.): left of Import; a click puts the link into the field, selected, so Ctrl+C
   -- copies it (addons cannot write to the clipboard themselves)
   f.sites = CreateFrame("Frame", nil, f); f.sites:SetSize(340, 24); f.sites:SetPoint("BOTTOMLEFT", 18, 16)
@@ -489,7 +495,7 @@ local function codeWindow()
     prev = b
     b:SetScript("OnClick", function()
       f.eb:SetText(site[2]); f.eb:SetFocus(); f.eb:HighlightText(); f.copyLink = true
-      f.msg:SetText("|cff66ff66Selected: Ctrl+C copies the link.|r")
+      f.msg:SetText("|cff66ff66" .. L["Selected: Ctrl+C copies the link."] .. "|r")
     end)
   end
   -- after Ctrl+C on such a link: empty the field for the build link and say so (user 01.11.); a moment later, so the
@@ -497,7 +503,7 @@ local function codeWindow()
   f.eb:HookScript("OnKeyDown", function(b, key)
     if f.copyLink and key == "C" and IsControlKeyDown and IsControlKeyDown() then
       f.copyLink = false
-      C_Timer.After(0.05, function() b:SetText(""); f.msg:SetText("|cff66ff66Link copied.|r Paste your build link here when it is done.") end)
+      C_Timer.After(0.05, function() b:SetText(""); f.msg:SetText("|cff66ff66" .. L["Link copied."] .. "|r " .. L["Paste your build link here when it is done."]) end)
     end
   end)
   if UISpecialFrames then table.insert(UISpecialFrames, "OneForAllTalentCode") end
@@ -508,16 +514,16 @@ end
 function TC.ShowExport(text)
   local f = codeWindow()
   f.readOnly, f.value = true, text
-  f.title:SetText("Export build")
-  f.hint:SetText("Ctrl+C copies the build. Paste it into Import (Talent Trees) to load it again, or share it.")
+  f.title:SetText(L["Export build"])
+  f.hint:SetText(L["Ctrl+C copies the build. Paste it into Import (Talent Trees) to load it again, or share it."])
   f.eb:SetText(text); f.msg:SetText(""); f.go:Hide(); f.sites:Hide(); f.copyLink = false
   f:Show(); f:Raise(); f.eb:SetFocus(); f.eb:HighlightText()
 end
 function TC.ShowImport(onImport)
   local f = codeWindow()
   f.readOnly, f.value = false, nil
-  f.title:SetText("Import build")
-  f.hint:SetText("Paste a build link of talentsforever.com or wowforevertalents.com, or an OneForAll build string (Ctrl+V).")
+  f.title:SetText(L["Import build"])
+  f.hint:SetText(L["Paste a build link of talentsforever.com or wowforevertalents.com, or an OneForAll build string (Ctrl+V)."])
   f.eb:SetText(""); f.msg:SetText(""); f.go:Show(); f.sites:Show(); f.copyLink = false
   f.go:SetScript("OnClick", function()
     local err = onImport(f.eb:GetText())
@@ -534,7 +540,7 @@ function FLT:CreateTalentPlannerPanel(parent)
 
   -- Title band (mirrored banner art, so the mage is visible on the right).
   UI.TitleBand(panel,{ emblem=ASSET_ROOT.."emblem_talents", art=ASSET_ROOT.."talents_banner",
-    title="Talent Trees", subtitle="Plan talents for every class. See your next spells to learn.", fadeRight=60 })
+    title=L["Talent Trees"], subtitle=L["Plan talents for every class. See your next spells to learn."], fadeRight=60 })
 
   local selectedClass=select(3,UnitClass("player"))
   selectedClass=tonumber(selectedClass)
@@ -556,9 +562,9 @@ function FLT:CreateTalentPlannerPanel(parent)
   -- Class selector lives in a narrow left rail. This frees a full horizontal
   -- row and gives the talent trees more vertical room.
   -- ht8 (user 30.10.): the same side list as every tab: emblem and name, the classes, then the preset actions
-  local rail,cy=UI.SideNav(panel,-74,"emblem_talents","Talent Trees")
+  local rail,cy=UI.SideNav(panel,-74,"emblem_talents",L["Talent Trees"])
   for _,c in ipairs(CLASSES) do
-    local b; b,cy=UI.NavEntry(rail,cy,c.name,"Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES"); classButtons[c.id]=b
+    local b; b,cy=UI.NavEntry(rail,cy,className(c),"Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES"); classButtons[c.id]=b
     -- class crest from the character-creation atlas (slightly cropped)
     local tc=type(CLASS_ICON_TCOORDS)=="table" and CLASS_ICON_TCOORDS[c.token]
     if tc and b.icon then
@@ -579,7 +585,7 @@ function FLT:CreateTalentPlannerPanel(parent)
     f:SetText(label)
     return f
   end
-  summary.level=stat("Level: 9"); summary.available=stat("Available: 51"); summary.spent=stat("Spent: 0"); summary.remaining=stat("Remaining: 51")
+  summary.level=stat(string.format(L["Level: %d"],9)); summary.available=stat(string.format(L["Available: %d"],51)); summary.spent=stat(string.format(L["Spent: %d"],0)); summary.remaining=stat(string.format(L["Remaining: %d"],51))
 
   local function layoutHeaderStats()
     local w=header:GetWidth() or 0
@@ -603,7 +609,11 @@ function FLT:CreateTalentPlannerPanel(parent)
   -- the two presets as two buttons in one row (like a switch), the actions below as list entries
   local presetButtons={}
   for i=1,2 do
-    local b=UI.GoldButton(rail,"Preset "..i,75,24,nil,12); b:SetPoint("TOPLEFT",UI.NAV.entryX+(i-1)*81,cy-1); presetButtons[i]=b
+    local b=UI.GoldButton(rail,string.format(L["Preset %d"],i),75,24,nil,12); b:SetPoint("TOPLEFT",UI.NAV.entryX+(i-1)*81,cy-1); presetButtons[i]=b
+    if b:GetWidth()>75 then -- a longer name (beta42): a smaller font, both buttons still side by side
+      local fs=b._label; local font,_,flags=fs:GetFont(); if font then fs:SetFont(font,10,flags) end
+      b:SetWidth(75)
+    end
     b:SetScript("OnClick",function()
       activePreset[selectedClass]=i
       copyInto(stateFor(selectedClass),presetsFor(selectedClass)[i])
@@ -612,34 +622,34 @@ function FLT:CreateTalentPlannerPanel(parent)
   end
   cy=cy-UI.NAV.step
   local unsaved=FLT.NewFS(rail, nil,"OVERLAY","GameFontDisableSmall"); unsaved:SetWidth(200); unsaved:SetJustifyH("LEFT")
-  local save; save,cy=UI.NavEntry(rail,cy,"Save preset","Interface\\Icons\\INV_Scroll_03")
+  local save; save,cy=UI.NavEntry(rail,cy,L["Save preset"],"Interface\\Icons\\INV_Scroll_03")
   save:SetScript("OnClick",function()
     local i=presetIndex(); local class=classByID(selectedClass)
-    UI.Confirm(string.format("Save the current talents as %sPreset %d|r for %s?\nThe saved preset is replaced.",FLT.SkinHex("ffd200"),i,class and class.name or ""),function()
+    UI.Confirm(string.format(L["Save the current talents as %sPreset %d|r for %s?\nThe saved preset is replaced."],FLT.SkinHex("ffd200"),i,className(class)),function()
       copyInto(presetsFor(selectedClass)[i],stateFor(selectedClass)); panel:RefreshTalentPlanner()
-    end,"Save")
+    end,L["Save"])
   end)
-  local reset; reset,cy=UI.NavEntry(rail,cy,"Reset preset","Interface\\Icons\\INV_Misc_PocketWatch_01")
+  local reset; reset,cy=UI.NavEntry(rail,cy,L["Reset preset"],"Interface\\Icons\\INV_Misc_PocketWatch_01")
   reset:SetScript("OnClick",function()
     local i=presetIndex(); local class=classByID(selectedClass)
-    UI.Confirm(string.format("Reset %sPreset %d|r for %s?\nAll talent points of this preset are removed.",FLT.SkinHex("ffd200"),i,class and class.name or ""),function()
+    UI.Confirm(string.format(L["Reset %sPreset %d|r for %s?\nAll talent points of this preset are removed."],FLT.SkinHex("ffd200"),i,className(class)),function()
       local st=stateFor(selectedClass); wipe(st.ranks); wipe(st.entries)
       copyInto(presetsFor(selectedClass)[i],st); panel:RefreshTalentPlanner()
-    end,"Reset")
+    end,L["Reset"])
   end)
   -- Import / Export (5.7.3, user 27.10.)
-  local imp; imp,cy=UI.NavEntry(rail,cy,"Import build","Interface\\Icons\\INV_Letter_15")
-  local exp; exp,cy=UI.NavEntry(rail,cy,"Export build","Interface\\Icons\\INV_Letter_09")
+  local imp; imp,cy=UI.NavEntry(rail,cy,L["Import build"],"Interface\\Icons\\INV_Letter_15")
+  local exp; exp,cy=UI.NavEntry(rail,cy,L["Export build"],"Interface\\Icons\\INV_Letter_09")
   for _,b in ipairs({imp,exp}) do
     b:SetScript("OnLeave",function() GameTooltip:Hide() end)
   end
   imp:SetScript("OnEnter",function(self)
-    GameTooltip:SetOwner(self,"ANCHOR_RIGHT"); GameTooltip:AddLine("Import build",1,0.82,0)
-    GameTooltip:AddLine("Load a build from a talentsforever.com or wowforevertalents.com link, or an OneForAll build string.",1,1,1,true); GameTooltip:Show()
+    GameTooltip:SetOwner(self,"ANCHOR_RIGHT"); GameTooltip:AddLine(L["Import build"],1,0.82,0)
+    GameTooltip:AddLine(L["Load a build from a talentsforever.com or wowforevertalents.com link, or an OneForAll build string."],1,1,1,true); GameTooltip:Show()
   end)
   exp:SetScript("OnEnter",function(self)
-    GameTooltip:SetOwner(self,"ANCHOR_RIGHT"); GameTooltip:AddLine("Export build",1,0.82,0)
-    GameTooltip:AddLine("The talents shown here as a short text to copy and share. Import reads it again.",1,1,1,true); GameTooltip:Show()
+    GameTooltip:SetOwner(self,"ANCHOR_RIGHT"); GameTooltip:AddLine(L["Export build"],1,0.82,0)
+    GameTooltip:AddLine(L["The talents shown here as a short text to copy and share. Import reads it again."],1,1,1,true); GameTooltip:Show()
   end)
   exp:SetScript("OnClick",function()
     local st=stateFor(selectedClass); local ranks={}
@@ -660,21 +670,21 @@ function FLT:CreateTalentPlannerPanel(parent)
       local new={ranks={},entries={}}
       for key,r in pairs(want) do
         local m=byKey[key]
-        if not m then return "A talent of this build was not found in the game's talent trees." end
+        if not m then return L["A talent of this build was not found in the game's talent trees."] end
         new.ranks[m.id]=r; new.entries[m.id]=m.entryID
       end
-      if not stateIsValid(new) then return "The build skips required points or talents (made for another game version?)." end
+      if not stateIsValid(new) then return L["The build skips required points or talents (made for another game version?)."] end
       copyInto(st,new)
       panel:RefreshTalentPlanner()
       local class=classByID(classID)
-      statusText:SetText(string.format("Build imported for %s - Save Preset keeps it.",class and class.name or "?"))
+      statusText:SetText(string.format(L["Build imported for %s - Save Preset keeps it."],className(class)))
     end)
   end)
   local function updatePresetButtons()
     local i=presetIndex()
     for k,b in ipairs(presetButtons) do b:SetActive(k==i) end
     local dirty=not samePlan(stateFor(selectedClass),presetsFor(selectedClass)[i])
-    unsaved:SetText(dirty and "|cffff9933Unsaved changes|r" or "")
+    unsaved:SetText(dirty and ("|cffff9933"..L["Unsaved changes"].."|r") or "")
   end
   -- first look at a class this session: show its preset 1
   local loaded={}
@@ -691,8 +701,8 @@ function FLT:CreateTalentPlannerPanel(parent)
     p:SetPoint("TOPLEFT",182+(i-1)*TREE_STEP,treeTop); p:SetSize(TREE_W,483)
     UI.FramedPanel(p)
     treeArt(p,TREE_W-6,477,3)
-    local title=FLT.NewFS(p, nil,"OVERLAY","GameFontNormalLarge"); title:SetPoint("TOP",0,-9); title:SetText("Tree "..i); title:SetTextColor(FLT.SkinC(1,0.82,0.20)); p.title=title
-    local pts=FLT.NewFS(p, nil,"OVERLAY","GameFontNormalSmall"); pts:SetPoint("TOP",0,-31); pts:SetText("0 points"); pts:SetTextColor(FLT.SkinC(0.72,0.72,0.72)); p.points=pts
+    local title=FLT.NewFS(p, nil,"OVERLAY","GameFontNormalLarge"); title:SetPoint("TOP",0,-9); title:SetText(string.format(L["Tree %d"],i)); title:SetTextColor(FLT.SkinC(1,0.82,0.20)); p.title=title
+    local pts=FLT.NewFS(p, nil,"OVERLAY","GameFontNormalSmall"); pts:SetPoint("TOP",0,-31); pts:SetText(string.format(L["%d points"],0)); pts:SetTextColor(FLT.SkinC(0.72,0.72,0.72)); p.points=pts
   end
 
   local footer=CreateFrame("Frame",nil,panel)
@@ -702,7 +712,7 @@ function FLT:CreateTalentPlannerPanel(parent)
   statusText=FLT.NewFS(footer, nil,"OVERLAY","GameFontHighlightSmall")
   statusText:SetPoint("CENTER",-25,0); statusText:SetWidth(560); statusText:SetJustifyH("CENTER"); statusText:SetAlpha(0)
   local clickHint=FLT.NewFS(footer, nil,"OVERLAY","GameFontDisableSmall")
-  clickHint:SetPoint("RIGHT",-6,0); clickHint:SetJustifyH("RIGHT"); clickHint:SetText("Left click + / right click -")
+  clickHint:SetPoint("RIGHT",-6,0); clickHint:SetJustifyH("RIGHT"); clickHint:SetText(L["Left click + / right click -"])
   -- ht8: the preset actions moved back into the side list; "Unsaved changes" stays here, under the trees
   unsaved:SetParent(footer); unsaved:ClearAllPoints(); unsaved:SetPoint("LEFT", footer, "LEFT", 6, 0)
 
@@ -790,18 +800,18 @@ function FLT:CreateTalentPlannerPanel(parent)
   end
 
   local function requirementsMet(meta, st)
-    if not meta then return false,"Talent data unavailable" end
+    if not meta then return false,L["Talent data unavailable"] end
     local required=math.max(0,(meta.row-1)*5)
     local above=pointsAbove(st,meta.tree,meta.row)
     if above<required then
-      return false,string.format("Requires %d points in earlier rows of this tree",required)
+      return false,string.format(L["Requires %d points in earlier rows of this tree"],required)
     end
     for _,parentID in ipairs(currentPrereqs[meta.id] or {}) do
       local pm=currentMeta[parentID]
       local have=st.ranks[parentID] or 0
       local need=(pm and pm.maxRanks) or 1
       if have<need then
-        return false,string.format("Requires %s %d/%d",(pm and pm.name) or "prerequisite talent",have,need)
+        return false,string.format(L["Requires %s %d/%d"],(pm and pm.name) or L["prerequisite talent"],have,need)
       end
     end
     return true
@@ -896,19 +906,19 @@ function FLT:CreateTalentPlannerPanel(parent)
     for cid,b in pairs(classButtons) do b:SetActive(cid==selectedClass) end
     local st=stateFor(selectedClass)
     local s=spent(st)
-    summary.level:SetText("Level: "..tostring(math.min(60,9+s)))
-    summary.spent:SetText("Spent: "..s); summary.remaining:SetText("Remaining: "..math.max(0,51-s))
+    summary.level:SetText(string.format(L["Level: %d"],math.min(60,9+s)))
+    summary.spent:SetText(string.format(L["Spent: %d"],s)); summary.remaining:SetText(string.format(L["Remaining: %d"],math.max(0,51-s)))
     for i=1,3 do
-      treePanels[i].title:SetText(class.trees[i] or ("Tree "..i)); treePanels[i].points:SetText("0 points")
+      treePanels[i].title:SetText(treeName(class,i)); treePanels[i].points:SetText(string.format(L["%d points"],0))
       setTreeArt(treePanels[i],TREE_ART[class.token] and TREE_ART[class.token][i])
     end
 
     currentSpec=getSpecID(selectedClass)
-    if not currentSpec then statusText:SetText("No Forever talent specialization data was found for "..class.name.."."); return end
+    if not currentSpec then statusText:SetText(string.format(L["No Forever talent specialization data was found for %s."],className(class))); return end
     local configID,err=applyPreview(currentSpec,st)
     if not configID then configID,err=applyPreview(currentSpec,{ranks={},entries={}}) end
     currentConfig=configID
-    if not configID then statusText:SetText("Talent planner unavailable: "..tostring(err or "unknown client API error")); return end
+    if not configID then statusText:SetText(string.format(L["Talent planner unavailable: %s"],tostring(err or L["unknown client API error"]))); return end
 
     local groups,all=collectNodes(configID)
     local currentNodes={}
@@ -975,14 +985,14 @@ function FLT:CreateTalentPlannerPanel(parent)
         if mouse=="LeftButton" then
           if spent(pstate)>=51 or old>=(self.maxRanks or 1) then return end
           local ok,reason=requirementsMet(m,pstate)
-          if not ok then statusText:SetText(reason or "Requirements not yet met"); return end
+          if not ok then statusText:SetText(reason or L["Requirements not yet met"]); return end
           pstate.ranks[nodeID]=old+1; pstate.entries[nodeID]=self.entryID
         elseif mouse=="RightButton" then
           if old<=0 then return end
           pstate.ranks[nodeID]=(old-1)>0 and (old-1) or nil
           if not stateIsValid(pstate,m.tree) then
             pstate.ranks[nodeID]=old
-            statusText:SetText("Remove dependent/lower-row talent points first.")
+            statusText:SetText(L["Remove dependent/lower-row talent points first."])
             return
           end
         end
@@ -993,8 +1003,8 @@ function FLT:CreateTalentPlannerPanel(parent)
         if not currentConfig then return end
         local pstate=stateFor(selectedClass); local r=pstate.ranks[nodeID] or 0
         local ok,reason=requirementsMet(m,pstate)
-        GameTooltip:SetOwner(self,"ANCHOR_RIGHT"); GameTooltip:ClearLines(); GameTooltip:AddLine(self.name or "Talent",1,0.82,0)
-        GameTooltip:AddLine(string.format("Rank %d/%d",r,self.maxRanks or 1),0.90,0.90,0.90)
+        GameTooltip:SetOwner(self,"ANCHOR_RIGHT"); GameTooltip:ClearLines(); GameTooltip:AddLine(self.name or L["Talent"],1,0.82,0)
+        GameTooltip:AddLine(string.format(L["Rank %d/%d"],r,self.maxRanks or 1),0.90,0.90,0.90)
         local showRank=math.max(1,math.min(self.maxRanks or 1,r>0 and r or 1))
         if self.entryID and C_Traits.GetTraitDescription then
           local okd,desc=pcall(C_Traits.GetTraitDescription,self.entryID,showRank)
@@ -1021,25 +1031,25 @@ function FLT:CreateTalentPlannerPanel(parent)
           end
           if r<(self.maxRanks or 1) then
             local ok2,nextDesc=pcall(C_Traits.GetTraitDescription,self.entryID,r+1)
-            if ok2 and nextDesc and nextDesc~="" and nextDesc~=desc then GameTooltip:AddLine("Next rank:",0.65,0.85,1); GameTooltip:AddLine(nextDesc,0.75,0.82,0.92,true) end
+            if ok2 and nextDesc and nextDesc~="" and nextDesc~=desc then GameTooltip:AddLine(L["Next rank:"],0.65,0.85,1); GameTooltip:AddLine(nextDesc,0.75,0.82,0.92,true) end
           end
         end
-        if not ok and r==0 then GameTooltip:AddLine(reason or "Requirements not yet met",1,0.30,0.25) end
-        GameTooltip:AddLine(" "); GameTooltip:AddLine("Left-click: add point",0.72,0.72,0.72); GameTooltip:AddLine("Right-click: remove point",0.72,0.72,0.72)
+        if not ok and r==0 then GameTooltip:AddLine(reason or L["Requirements not yet met"],1,0.30,0.25) end
+        GameTooltip:AddLine(" "); GameTooltip:AddLine(L["Left-click: add point"],0.72,0.72,0.72); GameTooltip:AddLine(L["Right-click: remove point"],0.72,0.72,0.72)
         GameTooltip:Show()
       end)
       b:SetScript("OnLeave",function(self) self.descRetry=nil; GameTooltip:Hide() end)
     end
 
-    for i=1,3 do treePanels[i].points:SetText((perTree[i] or 0).." points") end
+    for i=1,3 do treePanels[i].points:SetText(string.format(L["%d points"],perTree[i] or 0)) end
     s=spent(st)
-    summary.level:SetText("Level: "..tostring(math.min(60,9+s)))
-    summary.spent:SetText("Spent: "..s); summary.remaining:SetText("Remaining: "..math.max(0,51-s))
-    local line=string.format("%s: %d   |   %s: %d   |   %s: %d",class.trees[1],perTree[1] or 0,class.trees[2],perTree[2] or 0,class.trees[3],perTree[3] or 0)
+    summary.level:SetText(string.format(L["Level: %d"],math.min(60,9+s)))
+    summary.spent:SetText(string.format(L["Spent: %d"],s)); summary.remaining:SetText(string.format(L["Remaining: %d"],math.max(0,51-s)))
+    local line=string.format("%s: %d   |   %s: %d   |   %s: %d",treeName(class,1),perTree[1] or 0,treeName(class,2),perTree[2] or 0,treeName(class,3),perTree[3] or 0)
     if not useReference then
-      line=line.."   |cffff8040(estimated layout: client talents did not match the reference data)|r"
+      line=line.."   |cffff8040"..L["(estimated layout: client talents did not match the reference data)"].."|r"
     elseif unmatched and unmatched>0 then
-      line=line..string.format("   |cffff8040(%d client talent%s not in reference data)|r",unmatched,unmatched==1 and "" or "s")
+      line=line.."   |cffff8040"..(unmatched==1 and L["(1 client talent not in reference data)"] or string.format(L["(%d client talents not in reference data)"],unmatched)).."|r"
     end
     statusText:SetText(line)
     updatePresetButtons()
@@ -1063,6 +1073,6 @@ function FLT:CreateTalentPlannerPanel(parent)
   return panel
 end
 
-FLT.UI.RegisterPanel({ key="talents", label="Talent Trees", order=5, tabWidth=132,
+FLT.UI.RegisterPanel({ key="talents", label=N"Talent Trees", order=5, tabWidth=132,
   create=function(parent) return FLT:CreateTalentPlannerPanel(parent) end })
 

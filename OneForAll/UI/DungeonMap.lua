@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 local UI = FLT.UI
 
 -- Dungeon maps: the game's own minimap pictures of the rooms, laid out with the
@@ -38,11 +39,10 @@ function UI.CreateDungeonMap(parent)
 
   local hint = FLT.NewFS(f, nil, "OVERLAY", "GameFontDisableSmall")
   hint:SetPoint("BOTTOMLEFT", 12, 10)
-  hint:SetText("Mouse wheel: zoom  ·  drag: move  ·  click a boss to see its loot  ·  map layout: Forever Simple World Map by Tarolg")
-  local fit = UI.GoldButton(f, "Fit", 54, 20, nil, 11); fit:SetPoint("BOTTOMRIGHT", -10, 6)
+  hint:SetText(L["Mouse wheel: zoom  ·  drag: move  ·  click a boss to see its loot  ·  map layout: Forever Simple World Map by Tarolg"])
+  local fit = UI.GoldButton(f, L["Fit"], 54, 20, nil, 11); fit:SetPoint("BOTTOMRIGHT", -10, 6)
   -- switch to the game's world map (user 05.11.: from the dungeon map on M there was no way to it)
-  local wm = UI.GoldButton(f, "World map", 90, 20, nil, 11); wm:SetPoint("RIGHT", fit, "LEFT", -6, 0)
-  do local nm = UI.NewMark(f, "New in OneForAll 6.1.4: back to the world map."); nm:SetPoint("RIGHT", wm, "LEFT", -3, 0) end
+  local wm = UI.GoldButton(f, L["World map"], 90, 20, nil, 11); wm:SetPoint("RIGHT", fit, "LEFT", -6, 0)
   wm:SetScript("OnClick", function()
     if UI.IsWindowShown and UI.IsWindowShown() then FLT:ToggleUI() end
     if ToggleWorldMap then ToggleWorldMap() elseif WorldMapFrame then WorldMapFrame:Show() end
@@ -184,7 +184,7 @@ function UI.CreateDungeonMap(parent)
       local p = pin(n); p:Show()
       local idx = order[b[1]] or i
       p.u, p.v, p.title = b[2], b[3], b[1]
-      p.tip = "Click: show its loot in Bosses & Loot."
+      p.tip = L["Click: show its loot in Bosses & Loot."]
       p.icon:Hide(); p.label:SetText(b[1])
       local boss = d and d.bosses and d.bosses[idx]
       if p.boss and boss and UI.setBossPortrait then
@@ -199,7 +199,7 @@ function UI.CreateDungeonMap(parent)
     if m.entrance then
       n = n + 1
       local p = pin(n); p:Show()
-      p.u, p.v, p.title, p.tip = m.entrance[1], m.entrance[2], "Entrance", nil
+      p.u, p.v, p.title, p.tip = m.entrance[1], m.entrance[2], L["Entrance"], nil
       -- the dungeon / raid swirl of the world map (same as Map Landmarks, user 16.10.)
       p.num:Hide(); p.label:SetText(""); p.icon:Show(); p.icon:ClearAllPoints(); p.icon:SetAllPoints(p)
       if not (p.icon.SetAtlas and pcall(p.icon.SetAtlas, p.icon, (d and d.raid) and "raid" or "dungeon")) then
@@ -209,7 +209,7 @@ function UI.CreateDungeonMap(parent)
       p.disc:Hide(); p.ring:Hide(); p:SetSize(42, 42)
       p:SetScript("OnClick", nil)
     end
-    note:SetText(#(m.bosses or {}) == 0 and "Boss positions are not known yet for this dungeon." or "")
+    note:SetText(#(m.bosses or {}) == 0 and L["Boss positions are not known yet for this dungeon."] or "")
     layout()
   end
   f.Refresh = layout

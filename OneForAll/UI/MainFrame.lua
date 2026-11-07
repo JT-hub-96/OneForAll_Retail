@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 local unpack = unpack or table.unpack
 local UI = FLT.UI
 local makeTexture, makeButton = UI.makeTexture, UI.makeButton
@@ -147,9 +148,9 @@ local function createResizeGrip()
   grip:SetScript("OnHide", stop)
   grip:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:AddLine("Resize window", 1, 0.82, 0)
-    GameTooltip:AddLine("Drag to scale the whole window. /ofa scale resets it.", 1, 1, 1, true)
-    GameTooltip:AddLine(string.format("Current size: %d%%", math.floor((frame:GetScale() or 1) * 100 + 0.5)), 0.72, 0.72, 0.72)
+    GameTooltip:AddLine(L["Resize window"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["Drag to scale the whole window. /ofa scale resets it."], 1, 1, 1, true)
+    GameTooltip:AddLine(string.format(L["Current size: %d%%"], math.floor((frame:GetScale() or 1) * 100 + 0.5)), 0.72, 0.72, 0.72)
     GameTooltip:Show()
   end)
   grip:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -208,8 +209,8 @@ local function createHeightGrip()
   grip:SetScript("OnHide", stop)
   grip:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-    GameTooltip:AddLine("Window height", 1, 0.82, 0)
-    GameTooltip:AddLine("Drag up or down to make the window taller and show more rows. /ofa scale resets it.", 1, 1, 1, true)
+    GameTooltip:AddLine(L["Window height"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["Drag up or down to make the window taller and show more rows. /ofa scale resets it."], 1, 1, 1, true)
     GameTooltip:Show()
   end)
   grip:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -523,8 +524,8 @@ local function decorateWindow()
   bugBtn:SetScript("OnClick", function() UI.ShowBugReport() end)
   bugBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Report a bug")
-    GameTooltip:AddLine("Where to report bugs and ideas (GitHub or CurseForge), with your last errors to copy.", 1, 1, 1)
+    GameTooltip:SetText(L["Report a bug"])
+    GameTooltip:AddLine(L["Where to report bugs and ideas (our Discord), with your last errors to copy."], 1, 1, 1)
     GameTooltip:Show()
   end)
   bugBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -542,7 +543,7 @@ local function decorateWindow()
   dcBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText("Discord")
-    GameTooltip:AddLine("Join the OneForAll Discord: news, questions and ideas.", 1, 1, 1)
+    GameTooltip:AddLine(L["Join the OneForAll Discord: news, questions and ideas."], 1, 1, 1)
     GameTooltip:Show()
   end)
   dcBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -578,7 +579,7 @@ local function createUI()
   createResizeGrip()
   createHeightGrip()
   applyHeight(db.height or BASE_H)
-  frame.TitleText:SetText(UI.DISPLAY_NAME .. "  |cffb8b0a0- made by Smoergi|r")
+  frame.TitleText:SetText(UI.DISPLAY_NAME .. "  |cffb8b0a0- " .. L["made by Smoergi"] .. "|r")
   frame.TitleText:SetTextColor(FLT.SkinC(1, 0.82, 0))
   -- header test: the logo with name and "FOREVER COMPANION" on the banner's dark left side; the credit small at the
   -- bottom left (instead of the title line)
@@ -596,13 +597,13 @@ local function createUI()
     do local font, _, flags = sub:GetFont(); if font then sub:SetFont(font, 10, flags) end end
     sub:SetText("FOREVER COMPANION"); sub:SetTextColor(FLT.SkinC(0.90, 0.68, 0.30))
     local credit = FLT.NewFS(frame, nil, "OVERLAY", "GameFontDisableSmall"); credit:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 22, 4)
-    credit:SetText("made by Smoergi")
+    credit:SetText(L["made by Smoergi"])
     -- the addon version at the bottom right, left of the resize grip (user 05.11.)
     local ver = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("OneForAll", "Version"))
       or (GetAddOnMetadata and GetAddOnMetadata("OneForAll", "Version"))
     if ver then
       local vfs = FLT.NewFS(frame, nil, "OVERLAY", "GameFontDisableSmall"); vfs:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -40, 4)
-      vfs:SetText("Version " .. ver)
+      vfs:SetText(L["Version"] .. " " .. ver)
     end
   end
 
@@ -622,13 +623,13 @@ local function createUI()
   -- panel's "order" value. Hidden tabs (Settings > Shown tabs) are skipped.
   for _, spec in ipairs(UI.panels) do
     local key = spec.key
-    local b = makeTab(frame, spec.icon and "" or spec.label, spec.tabWidth or 130, HDR.tabH + 1, key) -- 1 over the line
+    local b = makeTab(frame, spec.icon and "" or L[spec.label], spec.tabWidth or 130, HDR.tabH + 1, key) -- 1 over the line
     if spec.icon then
       local ic = b:CreateTexture(nil, "OVERLAY")
       if b.glyph then ic:Hide() end -- header test: the tab's own glyph
       ic:SetSize(19, 19); ic:SetPoint("CENTER"); FLT.SetTex(ic, spec.icon)
       b:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(spec.label); GameTooltip:Show()
+        GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(L[spec.label]); GameTooltip:Show()
       end)
       b:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end

@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 -- Gear marks (5.6.5, user 18.10.): small signs from the Gear Planner on the game's own frames.
 -- - Loot roll window (Need / Greed): a gold star on the item when it is on the wishlist, a green arrow up when it
@@ -137,7 +138,7 @@ local function hookBaganator()
   local api = Baganator and Baganator.API
   if baganator or not (api and api.RegisterCornerWidget) then return end
   baganator = api
-  pcall(api.RegisterCornerWidget, "OneForAll: upgrade", "oneforall_upgrade", function(t, details)
+  pcall(api.RegisterCornerWidget, L["OneForAll: upgrade"], "oneforall_upgrade", function(t, details)
     if not on() then return false end
     local id = details and (details.itemID or itemID(details.itemLink))
     if not id then return false end
@@ -288,10 +289,10 @@ end
 function GM.RollTest()
   -- Forever has the modern container (GroupLootContainer_OpenNewFrame, checked in game 18.10.), Classic the old one
   local open = GroupLootContainer_OpenNewFrame or GroupLootFrame_OpenNewFrame
-  if not open then FLT.Msg("This client has no loot roll window to test."); return end
+  if not open then FLT.Msg(L["This client has no loot roll window to test."]); return end
   local id = exampleItem()
   local name, link, quality, _, _, _, _, _, _, texture = GetItemInfo(id or 0)
-  if not name then FLT.Msg("No example item yet - try again in a moment."); return end
+  if not name then FLT.Msg(L["No example item yet - try again in a moment."]); return end
   local saved = { GetLootRollItemInfo, GetLootRollItemLink, GetLootRollTimeLeft, RollOnLoot, GetActiveLootRollIDs }
   local function restore()
     GetLootRollItemInfo, GetLootRollItemLink, GetLootRollTimeLeft, RollOnLoot = saved[1], saved[2], saved[3], saved[4]
@@ -330,8 +331,8 @@ function GM.RollTest()
       f.ofaTestLink = link
     end
   end
-  if not (ok and shown) then restore(); FLT.Msg("The test roll window could not be opened."); return end
-  FLT.Msg("Test roll window with " .. link .. " - the buttons only close it.")
+  if not (ok and shown) then restore(); FLT.Msg(L["The test roll window could not be opened."]); return end
+  FLT.Msg(string.format(L["Test roll window with %s - the buttons only close it."], link))
 end
 
 -- /ofa questtest: opens the quest log at a quest of yours whose reward is an upgrade (else any gear reward), so the
@@ -349,7 +350,7 @@ function GM.QuestTest()
     if CQ.SetSelectedQuest and qid then CQ.SetSelectedQuest(qid) elseif SelectQuestLogEntry then SelectQuestLogEntry(i) end
   end
   if not (GetQuestLogItemLink and (CQ.SetSelectedQuest or SelectQuestLogEntry) and (CQ.GetInfo or GetQuestLogTitle)) then
-    FLT.Msg("This client's quest log cannot be read."); return
+    FLT.Msg(L["This client's quest log cannot be read."]); return
   end
   local best, bestUp, title, bestQid
   for i = 1, n do
@@ -370,7 +371,7 @@ function GM.QuestTest()
       if bestUp then break end
     end
   end
-  if not best then FLT.Msg("None of your quests has gear as a reward - accept one and try again."); return end
+  if not best then FLT.Msg(L["None of your quests has gear as a reward - accept one and try again."]); return end
   if QuestLog_SetSelection and QuestLogFrame then
     ShowUIPanel(QuestLogFrame); QuestLog_SetSelection(best)
   else
@@ -378,5 +379,5 @@ function GM.QuestTest()
     if QuestMapFrame_OpenToQuestDetails and bestQid then QuestMapFrame_OpenToQuestDetails(bestQid)
     elseif ToggleQuestLog then ToggleQuestLog() end
   end
-  FLT.Msg("Quest log: " .. title .. (bestUp and " - a reward is an upgrade, it should have a green arrow." or " - no reward is an upgrade for you, so no arrow."))
+  FLT.Msg(string.format(bestUp and L["Quest log: %s - a reward is an upgrade, it should have a green arrow."] or L["Quest log: %s - no reward is an upgrade for you, so no arrow."], title))
 end

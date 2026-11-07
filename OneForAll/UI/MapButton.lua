@@ -1,4 +1,6 @@
 local ADDON, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
 
 -- OneForAll button on the world map (6.0.2, user 01.11.; the idea from RareScanner's map button): the round logo at
 -- the top left of the map opens a list with every switch of Quality of Life > World Map (Map Landmarks and its parts,
@@ -12,20 +14,20 @@ local function Q() return FLT.QoL end
 
 -- the rows: key = QoL key (or a function pair for the Dungeon map on M, which is not in qol)
 local ROWS = {
-  { key = "mapLandmarks", label = "Map Landmarks" },
-  { key = "lmDungeons", label = "   Dungeon & raid entrances", sub = true },
-  { key = "lmFlight", label = "   Flight masters", sub = true },
-  { key = "lmTransport", label = "   Zeppelins, ships & tram", sub = true },
-  { key = "lmTransitions", label = "   Zone transitions", sub = true },
-  { key = "mapBooks", label = "   Library Books", sub = true },
-  { key = "lmSkyborne", label = "   Skyborne: Ley Lines & Convergences", sub = true },
-  { key = "mapQuests", label = "Quest icons (! and ?)" },
-  { key = "mapQuestGivers", label = "   Quest givers (!)", sub = true, parent = "mapQuests" }, -- 6.1.9 (user 07.11.)
-  { key = "mapQuestTurnins", label = "   Turn-ins (?)", sub = true, parent = "mapQuests" },
-  { key = "mapQuestsContinent", label = "   Also on the continent map", sub = true, parent = "mapQuests" },
-  { key = "mapFog", label = "Remove Fog" },
-  { key = "mapZoneLevel", label = "Zone level range" },
-  { key = "dungeonMapKey", label = "Dungeon map on M",
+  { key = "mapLandmarks", label = N"Map Landmarks" },
+  { key = "lmDungeons", label = N"Dungeon & raid entrances", sub = true },
+  { key = "lmFlight", label = N"Flight masters", sub = true },
+  { key = "lmTransport", label = N"Zeppelins, ships & tram", sub = true },
+  { key = "lmTransitions", label = N"Zone transitions", sub = true },
+  { key = "mapBooks", label = N"Library Books", sub = true },
+  { key = "lmSkyborne", label = N"Skyborne: Ley Lines & Convergences", sub = true },
+  { key = "mapQuests", label = N"Quest icons (! and ?)" },
+  { key = "mapQuestGivers", label = N"Quest givers (!)", sub = true, parent = "mapQuests" }, -- 6.1.9 (user 07.11.)
+  { key = "mapQuestTurnins", label = N"Turn-ins (?)", sub = true, parent = "mapQuests" },
+  { key = "mapQuestsContinent", label = N"Also on the continent map", sub = true, parent = "mapQuests" },
+  { key = "mapFog", label = N"Remove Fog" },
+  { key = "mapZoneLevel", label = N"Zone level range" },
+  { key = "dungeonMapKey", label = N"Dungeon map on M",
     get = function() return type(OneForAllDB) == "table" and OneForAllDB.dungeonMapKey ~= false end,
     set = function(v)
       if type(OneForAllDB) == "table" then OneForAllDB.dungeonMapKey = v and true or false end
@@ -89,7 +91,7 @@ local function buildMenu()
     row.check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
     row.text = FLT.NewFS(row, nil, "OVERLAY", "GameFontHighlight")
     if r.sub then local font, _, flags = row.text:GetFont(); if font then row.text:SetFont(font, 11, flags) end end -- beta16 small font was too small (user 01.11.)
-    row.text:SetPoint("LEFT", box, "RIGHT", 4, 0); row.text:SetText((r.label:gsub("^%s+", "")))
+    row.text:SetPoint("LEFT", box, "RIGHT", 4, 0); row.text:SetText(L[r.label])
     w = math.max(w, x + 18 + (row.text:GetStringWidth() or 150) + 14)
     row.r = r
     row:SetScript("OnClick", function()
@@ -105,8 +107,8 @@ local function buildMenu()
       sl:SetPoint("TOPLEFT", 26, y - 1); y = y - ROW_H - 2
       menu.fogVal = FLT.NewFS(menu, nil, "OVERLAY", "GameFontHighlight"); menu.fogVal:SetPoint("LEFT", sl, "RIGHT", 8, 0)
       sl:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Unexplored areas", 1, 0.82, 0)
-        GameTooltip:AddLine("How visible the parts you have not explored yet are: 0 % hidden, 100 % fully shown.", 1, 1, 1, true); GameTooltip:Show()
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Unexplored areas"], 1, 0.82, 0)
+        GameTooltip:AddLine(L["How visible the parts you have not explored yet are: 0 % hidden, 100 % fully shown."], 1, 1, 1, true); GameTooltip:Show()
       end)
       sl:SetScript("OnLeave", function() GameTooltip:Hide() end)
       menu.fog = sl
@@ -167,7 +169,7 @@ local function create()
   btn:SetScript("OnClick", openList)
   btn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("OneForAll", 1, 0.82, 0)
-    GameTooltip:AddLine("Click: map icons, quest icons, Remove Fog and the dungeon map.", 1, 1, 1, true); GameTooltip:Show()
+    GameTooltip:AddLine(L["Click: map icons, quest icons, Remove Fog and the dungeon map."], 1, 1, 1, true); GameTooltip:Show()
   end)
   btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
@@ -219,7 +221,7 @@ local function zoneLevel()
     zoneText:SetPoint("TOPRIGHT"); zoneText:SetShadowOffset(1, -1)
     do local font, size = zoneText:GetFont(); if font then zoneText:SetFont(font, size or 15, "OUTLINE") end end
   end
-  zoneText:SetText("Level " .. rangeText(lo, hi))
+  zoneText:SetText(string.format(L["Level %s"], rangeText(lo, hi)))
   zoneText:SetTextColor(color(lo, hi))
   zoneText:Show()
 end

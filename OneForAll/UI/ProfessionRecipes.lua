@@ -1,4 +1,6 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
 -- Item API: newer clients only have these under C_Item.
 local GetItemInfo = GetItemInfo or (C_Item and C_Item.GetItemInfo)
 local GetItemCount = GetItemCount or (C_Item and C_Item.GetItemCount)
@@ -23,6 +25,22 @@ local QCOL = { [0]={0.62,0.62,0.62}, [1]={1,1,1}, [2]={0.12,1,0}, [3]={0,0.44,0.
 -- ---------------------------------------------------------------------------
 -- Character data (skill + known recipes)
 -- ---------------------------------------------------------------------------
+-- a recipe's name in the client's language when ClientTexts (6.2.0): the made item's name, else the craft spell's;
+-- cached once known (the item may not be loaded yet on the first call)
+local rnames = setmetatable({}, { __mode = "k" })
+local function recipeName(r)
+  if not (FLT.ClientTexts and FLT.ClientTexts()) then return r.n end
+  local n = rnames[r]
+  if n then return n end
+  if r.i then n = FLT.ItemName(r.i) end
+  if not n and r.s then pcall(function() n = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(r.s)) or (GetSpellInfo and GetSpellInfo(r.s)) end) end
+  if type(n) ~= "string" or n == "" then return r.n end
+  rnames[r] = n
+  return n
+end
+FLT.RecipeName = recipeName
+local function NM(s) return FLT.Name and FLT.Name(s) or s end -- NPC / object / item names (6.2.0 step 2b)
+local function DN(s) return FLT.DungeonName and FLT.DungeonName(s) or s end
 local function profDB(prof)
   if type(OneForAllCharDB) ~= "table" then return {known = {}} end
   OneForAllCharDB.professions = OneForAllCharDB.professions or {}
@@ -52,6 +70,7 @@ local SKILL_LINE_PROF = {
 local function profFromName(name, skillLine)
   local recipes = FLT.PROFESSION_RECIPES or {}
   if skillLine and SKILL_LINE_PROF[skillLine] and recipes[SKILL_LINE_PROF[skillLine]] then return SKILL_LINE_PROF[skillLine] end
+  name = FLT.ProfKey and FLT.ProfKey(name) or name -- in the client's language (6.2.0)
   if name and recipes[name] then return name end
   return nil
 end
@@ -476,20 +495,21 @@ function UI.CreateRecipeBrowser(parent)
     if not (ui.fs and ui.r and FLT.RecipeSearchState) then return end
     local state, ago, canAgain = FLT.RecipeSearchState(prof, ui.r.s)
     local msg = ""
-    if not state then msg = (ui.n or 0) > 0 and "" or "|cff9d9d9dClick Search to find players who know this recipe.|r"
-    elseif state == "connecting" then msg = "|cffd0c8b0Connecting to the other OneForAll users ...|r"
-    elseif state == "searching" then msg = "|cffd0c8b0Searching ...|r"
-    elseif state == "error" then msg = "|cffff9933The game did not let this character reach the other OneForAll users (low level?). Try again later.|r"
-    elseif state == "limited" then msg = "|cffff9933Many searches right now - try again in 30 s.|r"
-    elseif state == "done" and (ui.n or 0) == 0 then msg = "|cff9d9d9dNo current results received.|r"
-    elseif state == "done" and ago then msg = string.format("|cff9d9d9dSearched %s.|r", ago < 60 and "just now" or (math.floor(ago / 60) .. " min ago"))
+    if not state then msg = (ui.n or 0) > 0 and "" or "|cff9d9d9d" .. L["Click Search to find players who know this recipe."] .. "|r"
+    elseif state == "connecting" then msg = "|cffd0c8b0" .. L["Connecting to the other OneForAll users ..."] .. "|r"
+    elseif state == "searching" then msg = "|cffd0c8b0" .. L["Searching ..."] .. "|r"
+    elseif state == "error" then msg = "|cffff9933" .. L["The game did not let this character reach the other OneForAll users (low level?). Try again later."] .. "|r"
+    elseif state == "limited" then msg = "|cffff9933" .. L["Many searches right now - try again in 30 s."] .. "|r"
+    elseif state == "done" and (ui.n or 0) == 0 then msg = "|cff9d9d9d" .. L["No current results received."] .. "|r"
+    elseif state == "done" and ago then
+      msg = "|cff9d9d9d" .. (ago < 60 and L["Searched just now."] or string.format(L["Searched %d min ago."], math.floor(ago / 60))) .. "|r"
     end
     local wait = (state ~= "searching" and not canAgain and ago) and math.max(1, 30 - math.floor(ago)) or nil
-    if wait then msg = msg .. string.format("  |cff9d9d9d(search again in %d s)|r", wait) end
+    if wait then msg = msg .. "  |cff9d9d9d(" .. string.format(L["search again in %d s"], wait) .. ")|r" end
     ui.fs:SetText(msg)
     -- grey while it can't be used (plain Disable() keeps the gold look of our buttons)
     local can = (state == nil) or (state ~= "searching" and state ~= "connecting" and canAgain) or false
-    if ui.btn.SetLabel then ui.btn:SetLabel(state and state ~= "connecting" and "Search again" or "Search") end
+    if ui.btn.SetLabel then ui.btn:SetLabel(state and state ~= "connecting" and L["Search again"] or L["Search"]) end
     if can then ui.btn:Enable() else ui.btn:Disable() end
     if ui.btn.SetLook then ui.btn:SetLook(can) end
   end
@@ -508,7 +528,7 @@ function UI.CreateRecipeBrowser(parent)
   do
     local lx = -14
     local K = UI.KNOW_COLORS
-    local specs = {{"Other users |cff9d9d9d(only visible when online)|r", K.other}, {"Guild member", K.guild}, {"I know it", K.me}}
+    local specs = {{L["Other users"] .. " |cff9d9d9d(" .. L["only visible when online"] .. ")|r", K.other}, {L["Guild member"], K.guild}, {L["I know it"], K.me}}
     if FLT.RecipeChannelOff then table.remove(specs, 1) end -- 6.1.4: no search among other users
     for i, spec in ipairs(specs) do
       local t = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); t:SetPoint("TOPRIGHT", lx, -14); t:SetText(spec[1]); t:SetTextColor(FLT.SkinC(0.85, 0.82, 0.75))
@@ -532,13 +552,40 @@ function UI.CreateRecipeBrowser(parent)
   local filters = {}
   local box = FLT.SkinBlizz(CreateFrame("EditBox", nil, f, "InputBoxTemplate"))
   box:SetSize(220, 20); box:SetPoint("TOPLEFT", 18, -53); box:SetAutoFocus(false)
-  local hint = FLT.NewFS(box, nil, "OVERLAY", "GameFontDisableSmall"); hint:SetPoint("LEFT", 4, 0); hint:SetText("Search...")
+  local hint = FLT.NewFS(box, nil, "OVERLAY", "GameFontDisableSmall"); hint:SetPoint("LEFT", 4, 0); hint:SetText(L["Search..."])
   -- clear button next to the search field (only while there is text)
   local clear = UI.GoldButton(f, "X", 22, 20, nil, 11); clear:SetPoint("LEFT", box, "RIGHT", 6, 0); clear:Hide()
   clear:SetScript("OnClick", function() box:SetText(""); box:ClearFocus() end)
-  clear:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:SetText("Clear search"); GameTooltip:Show() end)
+  clear:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:SetText(L["Clear search"]); GameTooltip:Show() end)
   clear:SetScript("OnLeave", function() GameTooltip:Hide() end)
   box:SetScript("OnTextChanged", function(self) search = (self:GetText() or ""):lower(); hint:SetShown(search == ""); clear:SetShown(search ~= ""); f:Refresh() end)
+  -- who knows it (6.2.0, user 07.11.: "Meine Rezepte / Gilde / Beides" and back to "Alle"): the funnel like the source
+  -- filter of the Gear Planner; OneForAllDB.recipeKnowFilter = "mine" / "guild" / "both" (you or the guild), nil = all
+  local KNOW = { { key = "all", label = N"All recipes" }, { key = "mine", label = N"My recipes" },
+    { key = "guild", label = N"Guild" }, { key = "both", label = N"Mine or guild" } }
+  local function knowFilter() local v = type(OneForAllDB) == "table" and OneForAllDB.recipeKnowFilter; return v ~= "all" and v or nil end
+  local function knowLabel(k) for _, o in ipairs(KNOW) do if o.key == k then return L[o.label] end end end
+  local funnel = CreateFrame("Button", nil, f); funnel:SetSize(22, 22); funnel:SetPoint("LEFT", box, "RIGHT", 34, 0)
+  funnel.tex = funnel:CreateTexture(nil, "ARTWORK"); funnel.tex:SetAllPoints(); FLT.SetTex(funnel.tex, UI.ASSET_ROOT .. "icon_filter")
+  local fhl = UI.makeTexture(funnel, "HIGHLIGHT", 1, 0.82, 0.3, 0.12); fhl:SetAllPoints()
+  local function paintFunnel() funnel.tex:SetAlpha(knowFilter() and 1 or 0.5) end
+  funnel:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Recipe filter"], 1, 0.82, 0)
+    GameTooltip:AddLine(knowLabel(knowFilter() or "all"), 1, 1, 1)
+    GameTooltip:AddLine(L["Who knows the recipe: you, a guild member, or either of you."], 0.8, 0.8, 0.8, true)
+    GameTooltip:Show()
+  end)
+  funnel:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  funnel:SetScript("OnClick", function(self)
+    local opts = {}
+    for _, o in ipairs(KNOW) do opts[#opts + 1] = { key = o.key, label = L[o.label] } end
+    UI.OpenDropDown(self, opts, knowFilter() or "all", function(k)
+      if type(OneForAllDB) == "table" then OneForAllDB.recipeKnowFilter = k ~= "all" and k or nil end
+      paintFunnel(); f:Refresh()
+    end, 180)
+  end)
+  paintFunnel()
+  do local m = UI.NewMark(f, L["New in this version."]); m:SetPoint("LEFT", funnel, "RIGHT", 2, 0) end -- 6.2.x (TODO.md "Neu-Markierungen")
   box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
   box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
 
@@ -578,7 +625,7 @@ function UI.CreateRecipeBrowser(parent)
   star:SetScript("OnEnter", function(self)
     local r = selectedRecipe and selectedRecipe()
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:SetText((r and isFavorite(prof, r.s)) and "Remove from favorites" or "Add to favorites")
+    GameTooltip:SetText((r and isFavorite(prof, r.s)) and L["Remove from favorites"] or L["Add to favorites"])
     GameTooltip:Show()
   end)
   star:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -596,7 +643,7 @@ function UI.CreateRecipeBrowser(parent)
   -- hint when the favourites list is empty
   local favEmpty = FLT.NewFS(left, nil, "OVERLAY", "GameFontDisableSmall")
   favEmpty:SetPoint("TOPLEFT", 16, -16); favEmpty:SetWidth(296); favEmpty:SetJustifyH("LEFT")
-  favEmpty:SetText("No favorites yet. Open a recipe in All recipes and click the star at the top right to add it here.")
+  favEmpty:SetText(L["No favorites yet. Open a recipe in All recipes and click the star at the top right to add it here."])
   favEmpty:Hide()
   local detailWidgets = {}
 
@@ -620,7 +667,7 @@ function UI.CreateRecipeBrowser(parent)
     local b = dframe("Button", nil, parent); b:SetSize(parent and 384 or 400, 30); b:SetPoint("TOPLEFT", parent and 8 or 0, y)
     UI.CardRow(b)
     local ic = b:CreateTexture(nil, "ARTWORK"); ic:SetSize(24, 24); ic:SetPoint("LEFT", 4, 0); FLT.SetTex(ic, itemIcon(id))
-    local t = FLT.NewFS(b, nil, "OVERLAY", "GameFontHighlight"); t:SetPoint("LEFT", 36, sub and 6 or 0); t:SetWidth(300); t:SetJustifyH("LEFT"); t:SetText(label or itemName(id) or ("Item " .. id))
+    local t = FLT.NewFS(b, nil, "OVERLAY", "GameFontHighlight"); t:SetPoint("LEFT", 36, sub and 6 or 0); t:SetWidth(300); t:SetJustifyH("LEFT"); t:SetText(label or itemName(id) or (L["Item"] .. " " .. id))
     if sub then local s = FLT.NewFS(b, nil, "OVERLAY", "GameFontDisableSmall"); s:SetPoint("LEFT", 34, -8); s:SetText(sub) end
     if count then local c = FLT.NewFS(b, nil, "OVERLAY", "GameFontHighlight"); c:SetPoint("RIGHT", -6, 0); c:SetText(count) end
     b:SetScript("OnEnter", function(self) if H and H.tryShowItemTooltip then H.tryShowItemTooltip(self, {id, label or ""}) end end)
@@ -634,11 +681,11 @@ function UI.CreateRecipeBrowser(parent)
     -- thin line under each row (like the family abilities of Hunter Pets)
     local sep = UI.makeTexture(row, "BORDER", 0.72, 0.50, 0.12, 0.18); sep:SetPoint("BOTTOMLEFT", 0, -1); sep:SetPoint("BOTTOMRIGHT", 0, -1); sep:SetHeight(1)
     local t = FLT.NewFS(row, nil, "OVERLAY", "GameFontHighlightSmall"); t:SetPoint("LEFT", 0, 0); t:SetWidth(300); t:SetJustifyH("LEFT")
-    local fac = n.fac == "A" and " |cff4f9fff(Alliance)|r" or (n.fac == "H" and " |cffff5040(Horde)|r" or "")
-    t:SetText((n[2] or "?") .. (n[3] == "" and "" or ("  |cff9d9d9d- " .. (n[3] or "?") .. "|r")) .. fac)
+    local fac = n.fac == "A" and " |cff4f9fff(" .. L["Alliance"] .. ")|r" or (n.fac == "H" and " |cffff5040(" .. L["Horde"] .. ")|r" or "")
+    t:SetText((NM(n[2]) or "?") .. (n[3] == "" and "" or ("  |cff9d9d9d- " .. (n[3] or "?") .. "|r")) .. fac)
     if n[4] and n[5] then
-      local mb = UI.GoldButton(row, "Map", 62, 20, UI.ASSET_ROOT .. "icon_map", 11); mb:SetPoint("RIGHT", 0, 0)
-      mb:SetScript("OnClick", function() FLT:ShowOnMap({mapID = n[4], x = n[5], y = n[6], zone = n[3], name = n[2], area = n.area}) end)
+      local mb = UI.GoldButton(row, L["Map"], 62, 20, UI.ASSET_ROOT .. "icon_map", 11); mb:SetPoint("RIGHT", 0, 0)
+      mb:SetScript("OnClick", function() FLT:ShowOnMap({mapID = n[4], x = n[5], y = n[6], zone = n[3], name = NM(n[2]), area = n.area}) end)
     end
   end
 
@@ -672,13 +719,13 @@ function UI.CreateRecipeBrowser(parent)
     local any = false
     for prof, list in pairs(FLT.PROFESSION_RECIPES or {}) do
       for _, x in ipairs(list) do
-        if x.i == item then sub("|cffffd100Made with " .. prof .. ":|r " .. x.n); any = true; break end
+        if x.i == item then sub("|cffffd100" .. string.format(L["Made with %s:"], L[prof]) .. "|r " .. recipeName(x)); any = true; break end
       end
     end
     local src = FLT.REAGENT_SOURCES and FLT.REAGENT_SOURCES[item]
     if src and src.c then
       -- made by a spell (6.1.6): smelting, or combining smaller ones
-      sub("|cffffd100" .. (src.c[1] == 186 and "Smelted with Mining from:" or "Made from:") .. "|r " .. src.c[2]); any = true
+      sub("|cffffd100" .. (src.c[1] == 186 and L["Smelted with Mining from:"] or L["Made from:"]) .. "|r " .. src.c[2]); any = true
     end
     if src then
       local side = UnitFactionGroup and UnitFactionGroup("player")
@@ -711,15 +758,15 @@ function UI.CreateRecipeBrowser(parent)
       if src.v then
         local l = nearest(src.v, FLT.REAGENT_VENDORS, function(v) return not side or not v[5] or v[5] == side end)
         if #l > 0 then
-          sub("|cffffd100Sold by|r" .. (#l > 3 and string.format("  |cff9d9d9d(the nearest of %d vendors)|r", #l) or "")); any = true
+          sub("|cffffd100" .. L["Sold by"] .. "|r" .. (#l > 3 and "  |cff9d9d9d(" .. string.format(L["the nearest of %d vendors"], #l) .. ")|r" or "")); any = true
           for i = 1, math.min(3, #l) do local v = l[i][2]; npcRow({ l[i][1], v[1], mapName(v[2]), v[2], v[3], v[4] }, ry, b); ry = ry - 24 end
         end
       end
       if src.oz then
-        sub("|cffffd100From " .. src.o .. "|r"); any = true
+        sub("|cffffd100" .. string.format(L["From %s"], NM(src.o)) .. "|r"); any = true
         for i = 1, math.min(3, #src.oz) do
           local z = src.oz[i]
-          npcRow({ 0, z[5] and (z[5] .. " (entrance)") or mapName(z[1]), "", z[1], z[2], z[3], area = z[4] }, ry, b); ry = ry - 24
+          npcRow({ 0, z[5] and (DN(z[5]) .. " (" .. L["entrance"] .. ")") or mapName(z[1]), "", z[1], z[2], z[3], area = z[4] }, ry, b); ry = ry - 24
         end
       end
       -- mobs (drops, skinning): the 3 nearest, "Show all" lists every one we have (up to 2 per zone; user 05.11.); in a
@@ -729,26 +776,26 @@ function UI.CreateRecipeBrowser(parent)
         local all = allDrops[key]
         local n = all and #l or math.min(3, #l)
         total = total or #l
-        sub("|cffffd100" .. title .. "|r" .. (total > n and string.format("  |cff9d9d9d(the nearest %d of %d mobs)|r", n, total) or "")); any = true
+        sub("|cffffd100" .. title .. "|r" .. (total > n and "  |cff9d9d9d(" .. string.format(L["the nearest %d of %d mobs"], n, total) .. ")|r" or "")); any = true
         if #l > 3 then
-          local sb = UI.GoldButton(b, all and "Fewer" or "Show all", 74, 18); sb:SetPoint("TOPRIGHT", -14, ry + 21)
+          local sb = UI.GoldButton(b, all and L["Fewer"] or L["Show all"], 74, 18); sb:SetPoint("TOPRIGHT", -14, ry + 21)
           sb:SetScript("OnClick", function() allDrops[key] = not all or nil; if redrawDetail then redrawDetail() end end)
         end
         for i = 1, n do
           local v = l[i][2]
-          npcRow({ l[i][1], v[1], v[6] and (v[6] .. " (entrance)") or mapName(v[2]), v[2], v[3], v[4], area = v[5] }, ry, b); ry = ry - 24
+          npcRow({ l[i][1], v[1], v[6] and (DN(v[6]) .. " (" .. L["entrance"] .. ")") or mapName(v[2]), v[2], v[3], v[4], area = v[5] }, ry, b); ry = ry - 24
         end
       end
-      if src.d then mobList(src.d, src.dn, "Drops from", item) end
-      if src.sk then mobList(src.sk, src.skn, "Skinned from (Skinning)", -item) end
+      if src.d then mobList(src.d, src.dn, L["Drops from"], item) end
+      if src.sk then mobList(src.sk, src.skn, L["Skinned from"] .. " (" .. L["Skinning"] .. ")", -item) end
       -- from the Wowhead item pages (6.1.6): fishing, disenchanting, containers
-      if src.f then sub("|cffffd100Fished in:|r " .. src.f); any = true end
+      if src.f then sub("|cffffd100" .. L["Fished in:"] .. "|r " .. (FLT.ZoneName and src.f:gsub("[^,]+", function(z) local lead, zz = z:match("^(%s*)(.-)$"); return lead .. FLT.ZoneName(zz) end) or src.f)); any = true end
       if src.de then
-        sub("|cffffd100Disenchanting|r" .. (src.de[1] and string.format(" items of item level %d-%d", src.de[1], src.de[2]) or " items") .. " (Enchanting)"); any = true
+        sub("|cffffd100" .. L["Disenchanting"] .. "|r " .. (src.de[1] and string.format(L["items of item level %d-%d"], src.de[1], src.de[2]) or L["items"]) .. " (" .. L["Enchanting"] .. ")"); any = true
       end
-      if src.ci then sub("|cffffd100Found in:|r " .. src.ci); any = true end
+      if src.ci then sub("|cffffd100" .. L["Found in:"] .. "|r " .. NM(src.ci)); any = true end
     end
-    if not any then sub("Where to get it is not known.") end
+    if not any then sub(L["Where to get it is not known."]) end
     return ry - 4
   end
   local function showDetail(r, keepScroll)
@@ -759,13 +806,15 @@ function UI.CreateRecipeBrowser(parent)
     local y = 0
     local big = dframe("Frame"); big:SetSize(46, 46); big:SetPoint("TOPLEFT", 0, y)
     local bic = big:CreateTexture(nil, "ARTWORK"); bic:SetAllPoints(); FLT.SetTex(bic, recipeIcon(r))
-    local name = dtext("GameFontNormalLarge", 330) -- leaves room for the favourite star; name:SetPoint("TOPLEFT", 56, y - 2)
-    name:SetText(r.n .. ((r.c and r.c > 1) and (" x" .. r.c) or "")); local qc = QCOL[r.q or 1] or QCOL[1]; name:SetTextColor(FLT.SkinC(qc[1], qc[2], qc[3]))
+    -- 330 wide: leaves room for the favourite star (beta7: the SetPoint stood behind this comment on the same line, so
+    -- the recipe name never showed - user screenshot 07.11.)
+    local name = dtext("GameFontNormalLarge", 330); name:SetPoint("TOPLEFT", 56, y - 2)
+    name:SetText(recipeName(r) .. ((r.c and r.c > 1) and (" x" .. r.c) or "")); local qc = QCOL[r.q or 1] or QCOL[1]; name:SetTextColor(FLT.SkinC(qc[1], qc[2], qc[3]))
     local sub = dtext("GameFontDisableSmall", 350); sub:SetPoint("TOPLEFT", 56, y - 26)
     -- 6.1.0 (user 03.11.): no automatic search when a recipe is opened - only the "Search" button asks the channel
     local guild = FLT.GetGuildRecipeKnowers and FLT.GetGuildRecipeKnowers(prof, r.s)
     local others = onlineOthers(prof, r.s)
-    sub:SetText((r.cat or "") .. (p.known[r.s] and "   " .. FLT.SkinHex("ffd926") .. "Known|r" or (guild and "   |cff59ff73Known in your guild|r" or (others and "   |cff5ab3ffKnown by other players|r" or ""))))
+    sub:SetText((r.cat or "") .. (p.known[r.s] and "   " .. FLT.SkinHex("ffd926") .. L["Known"] .. "|r" or (guild and "   |cff59ff73" .. L["Known in your guild"] .. "|r" or (others and "   |cff5ab3ff" .. L["Known by other players"] .. "|r" or ""))))
     big:EnableMouse(true)
     big:SetScript("OnMouseUp", function(_, button)
       if button == "LeftButton" and IsShiftKeyDown and IsShiftKeyDown() then linkRecipe(r, button, H) end
@@ -792,42 +841,41 @@ function UI.CreateRecipeBrowser(parent)
       by = by - math.max(18, (b:GetStringHeight() or 14) + 6)
     end
     local function c(col, v) local k = DIFF[col]; return string.format("|cff%02x%02x%02x%s|r", math.floor(k[1] * 255), math.floor(k[2] * 255), math.floor(k[3] * 255), tostring(v)) end
-    y = section("Details", y, function(b, y1) box, by = b, y1
-    line("Skill", (r.req and ("learn at " .. r.req .. "   ") or ((not r.ri and not r.fav and not r.start) and "|cff9d9d9dlearn level: visit a trainer|r   " or "")) .. c("yellow", r.y) .. "  " .. c("green", r.g) .. "  " .. c("gray", r.gr))
+    y = section(L["Details"], y, function(b, y1) box, by = b, y1
+    line(L["Skill"], (r.req and (string.format(L["learn at %s"], r.req) .. "   ") or ((not r.ri and not r.fav and not r.start) and "|cff9d9d9d" .. L["learn level: visit a trainer"] .. "|r   " or "")) .. c("yellow", r.y) .. "  " .. c("green", r.g) .. "  " .. c("gray", r.gr))
     do -- chance of a skill-up at your skill (yellow / green only)
       local d = difficulty(r, p.skill)
       local pct = skillUpChance(r, d, p.skill)
-      if pct then line("Skill-up", c(d, pct .. "% chance") .. "  |cff9d9d9d(at skill " .. p.skill .. ")|r") end
+      if pct then line(L["Skill-up"], c(d, string.format(L["%s%% chance"], pct)) .. "  |cff9d9d9d(" .. string.format(L["at skill %s"], p.skill) .. ")|r") end
     end
     if r.lv then
       local pl = UnitLevel and UnitLevel("player") or 0
-      line("Use", (pl < r.lv and "|cffff6060" or "") .. "Requires level " .. r.lv .. (pl < r.lv and "|r" or ""))
+      line(L["Use"], (pl < r.lv and "|cffff6060" or "") .. string.format(L["Requires level %s"], r.lv) .. (pl < r.lv and "|r" or ""))
     end
     local learn
-    if r.start then learn = "Known when you learn " .. prof
+    if r.start then learn = string.format(L["Known when you learn %s"], L[prof])
     elseif r.ri then
       -- How to get the recipe item: vendor, world drop, specific mobs, quest, Favor.
       local src, how = r.src or {}, {}
-      if r.fav then how[#how + 1] = FLT.SkinHex("ffd200") .. "Merchant's Favor|r" end
+      if r.fav then how[#how + 1] = FLT.SkinHex("ffd200") .. L["Merchant's Favor"] .. "|r" end
       if src.v then
         local fa, fh = false, false
         for _, n in ipairs(src.v) do if n.fac == "A" then fa = true elseif n.fac == "H" then fh = true else fa, fh = true, true end end
-        how[#how + 1] = "|cff59ff73Vendor|r" .. ((fa and not fh) and " (Alliance)" or ((fh and not fa) and " (Horde)" or ""))
+        how[#how + 1] = "|cff59ff73" .. L["Vendor"] .. "|r" .. ((fa and not fh) and " (" .. L["Alliance"] .. ")" or ((fh and not fa) and " (" .. L["Horde"] .. ")" or ""))
       end
       if src.d then
         local n = src.dn or #src.d
-        how[#how + 1] = (n >= 10) and "|cffff9933World drop|r" or string.format("|cffff9933Drop|r (%d %s)", n, n == 1 and "mob" or "mobs")
+        how[#how + 1] = (n >= 10) and "|cffff9933" .. L["World drop"] .. "|r" or "|cffff9933" .. L["Drop"] .. "|r (" .. (n == 1 and L["1 mob"] or string.format(L["%d mobs"], n)) .. ")"
       end
-      if src.qs then how[#how + 1] = "|cff7fbfffQuest reward|r" end
-      learn = (r.rn or "Recipe item") .. "\n" .. (#how > 0 and table.concat(how, "  +  ") or "|cff9d9d9dSource not known yet|r")
-    else learn = "Profession trainer" end
-    line("Learned from", learn)
+      if src.qs then how[#how + 1] = "|cff7fbfff" .. L["Quest reward"] .. "|r" end
+      learn = (r.rn or L["Recipe item"]) .. "\n" .. (#how > 0 and table.concat(how, "  +  ") or "|cff9d9d9d" .. L["Source not known yet"] .. "|r")
+    else learn = L["Profession trainer"] end
+    line(L["Learned from"], learn)
     -- the Crafting List / Craft stack (anchored in rchild at y -100) must fit into the box
     if recipeBar and recipeBar:IsShown() then by = math.min(by, -30 - recipeBar:UsedHeight()) end
     return by + 4 end)
 
-    y = section("Reagents", y, function(b, ry)
-      do local nm = UI.NewMark(b, "New in OneForAll 6.1.5: click a reagent to see where to get it - vendors, herbs and ore, mobs that drop it, with a map button."); nm:SetPoint("TOPRIGHT", -12, -8) end
+    y = section(L["Reagents"], y, function(b, ry)
       for _, rg in ipairs(r.r or {}) do
         local have = GetItemCount and GetItemCount(rg[1], true) or 0
         local col = have >= rg[2] and "|cff59ff73" or "|cffff6060"
@@ -845,7 +893,7 @@ function UI.CreateRecipeBrowser(parent)
     end) + 10
 
     -- Who else can craft it: online first, with zone and a whisper button.
-    local INST = { raid = "in a raid", party = "in a dungeon", pvp = "in a battleground", arena = "in an arena", scenario = "in a scenario" }
+    local INST = { raid = N"in a raid", party = N"in a dungeon", pvp = N"in a battleground", arena = N"in an arena", scenario = N"in a scenario" }
     -- Guild: online members, offline ones with "Show offline".
     -- Other players: only those online right now.
     local function knowers(label, list, col, isGuild)
@@ -879,11 +927,8 @@ function UI.CreateRecipeBrowser(parent)
       local hk = dtext("GameFontNormal"); hk:SetPoint("TOPLEFT", 10, y); hk:SetText(label); hk:SetTextColor(FLT.SkinC(unpack(GOLD)))
       if not isGuild then
         -- "Search again" (at most every 30 s) and the state of the search
-        local nm = UI.NewMark(rchild, "Now you need to click \"Search\" to see who knows this recipe. Had to make it this way to get no lags and stay fast. Players near you are preferred to show up.")
-        nm:SetPoint("LEFT", hk, "RIGHT", 4, 0)
-        detailWidgets[#detailWidgets + 1] = nm
         local holder = dframe("Frame"); holder:SetSize(104, 22); holder:SetPoint("TOPLEFT", 286, y + 2)
-        local sb = UI.GoldButton(holder, state and "Search again" or "Search", 100, 20, nil, 11); sb:SetPoint("RIGHT", 0, 0)
+        local sb = UI.GoldButton(holder, state and L["Search again"] or L["Search"], 100, 20, nil, 11); sb:SetPoint("RIGHT", 0, 0)
         sb:SetScript("OnClick", function()
           if FLT.SearchRecipe then FLT.SearchRecipe(prof, r.s, true); f:Refresh(true) end
         end)
@@ -891,8 +936,8 @@ function UI.CreateRecipeBrowser(parent)
         if sb.SetMotionScriptsWhileDisabled then sb:SetMotionScriptsWhileDisabled(true) end
         sb:SetScript("OnEnter", function(self)
           GameTooltip:SetOwner(self, "ANCHOR_TOP")
-          GameTooltip:AddLine("Search", 1, 0.82, 0)
-          GameTooltip:AddLine("Asks the other OneForAll users who know this recipe. Only a few of them answer, and you can search again 30 seconds after the last search - so the channel stays quiet and fast with many players.", 1, 1, 1, true)
+          GameTooltip:AddLine(L["Search"], 1, 0.82, 0)
+          GameTooltip:AddLine(L["Asks the other OneForAll users who know this recipe. Only a few of them answer, and you can search again 30 seconds after the last search - so the channel stays quiet and fast with many players."], 1, 1, 1, true)
           GameTooltip:Show()
         end)
         sb:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -906,7 +951,7 @@ function UI.CreateRecipeBrowser(parent)
         -- "Show offline" next to the guild heading (off by default)
         local cb = dframe("CheckButton", "UICheckButtonTemplate"); cb:SetSize(22, 22)
         cb:SetPoint("LEFT", hk, "RIGHT", 14, 0); cb:SetChecked(showOffline())
-        local cl = dtext("GameFontHighlightSmall"); cl:SetPoint("LEFT", cb, "RIGHT", 2, 0); cl:SetText("Show offline")
+        local cl = dtext("GameFontHighlightSmall"); cl:SetPoint("LEFT", cb, "RIGHT", 2, 0); cl:SetText(L["Show offline"])
         cb:SetScript("OnClick", function(self)
           if type(OneForAllDB) == "table" then OneForAllDB.recipeShowOffline = self:GetChecked() and true or false end
           f:Refresh(true)
@@ -916,23 +961,23 @@ function UI.CreateRecipeBrowser(parent)
       for k, g in ipairs(list) do
         if k > 8 then
           local more = dtext("GameFontDisableSmall"); more:SetPoint("TOPLEFT", 12, y)
-          more:SetText(string.format("+%d more", #list - 8)); y = y - 18; break
+          more:SetText(string.format(L["+%d more"], #list - 8)); y = y - 18; break
         end
         local row = dframe("Frame"); row:SetSize(396, 22); row:SetPoint("TOPLEFT", 12, y)
         local t = FLT.NewFS(row, nil, "OVERLAY", "GameFontHighlightSmall"); t:SetPoint("LEFT", 0, 0); t:SetWidth(300); t:SetJustifyH("LEFT"); t:SetWordWrap(false)
         local where
         if g[2] then
-          where = g[3] and ("|cffd0c8b0" .. g[3] .. "|r") or "|cffd0c8b0online|r"
-          if g[4] and INST[g[4]] then where = where .. "  |cffff9933(" .. INST[g[4]] .. ")|r" end
+          where = g[3] and ("|cffd0c8b0" .. g[3] .. "|r") or "|cffd0c8b0" .. L["online"] .. "|r"
+          if g[4] and INST[g[4]] then where = where .. "  |cffff9933(" .. L[INST[g[4]]] .. ")|r" end
         else
-          where = "|cff7f7f7foffline|r"
+          where = "|cff7f7f7f" .. L["offline"] .. "|r"
         end
         -- "Name, lvl 23 Priest - Zone" (level and class in grey)
         local who = ""
         if g.level or g.class then
           local cls = g.class and ((LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[g.class]) or (g.class:sub(1, 1) .. g.class:sub(2):lower())) or nil
           local parts = {}
-          if g.level and g.level > 0 then parts[#parts + 1] = "lvl " .. g.level end
+          if g.level and g.level > 0 then parts[#parts + 1] = string.format(L["lvl %s"], g.level) end
           if cls then parts[#parts + 1] = cls end
           if #parts > 0 then who = "|cff9d9d9d, " .. table.concat(parts, " ") .. "|r" end
         end
@@ -943,13 +988,13 @@ function UI.CreateRecipeBrowser(parent)
           row:SetScript("OnEnter", function(self)
             local m = math.max(0, math.floor(((time and time() or 0) - seen) / 60))
             GameTooltip:SetOwner(self, "ANCHOR_TOP")
-            GameTooltip:AddLine(m < 1 and "Last heard just now" or ("Last heard " .. m .. " min ago"), 1, 1, 1)
+            GameTooltip:AddLine(m < 1 and L["Last heard just now"] or string.format(L["Last heard %d min ago"], m), 1, 1, 1)
             GameTooltip:Show()
           end)
           row:SetScript("OnLeave", function() GameTooltip:Hide() end)
         end
         if g[2] then
-          local wb = UI.GoldButton(row, "Whisper", 70, 20, nil, 11); wb:SetPoint("RIGHT", -10, 0)
+          local wb = UI.GoldButton(row, L["Whisper"], 70, 20, nil, 11); wb:SetPoint("RIGHT", -10, 0)
           local who = g[1]
           wb:SetScript("OnClick", function()
             if ChatFrame_SendTell then ChatFrame_SendTell(who)
@@ -960,16 +1005,16 @@ function UI.CreateRecipeBrowser(parent)
       end
       if hidden > 0 then
         local hn = dtext("GameFontDisableSmall", 390); hn:SetPoint("TOPLEFT", 12, y)
-        hn:SetText(string.format("%s%d offline", #list > 0 and "+ " or "", hidden)); y = y - 18
+        hn:SetText((#list > 0 and "+ " or "") .. string.format(L["%d offline"], hidden)); y = y - 18
       end
       y = y - 6
       box:SetPoint("TOPLEFT", 0, top); box:SetSize(400, top - y)
     end
-    knowers("Guild members who know it", guild, "|cff59ff73", true)
-    knowers("Other OneForAll users online who know it", others or {}, "|cff5ab3ff", false)
+    knowers(L["Guild members who know it"], guild, "|cff59ff73", true)
+    knowers(L["Other OneForAll users online who know it"], others or {}, "|cff5ab3ff", false)
 
     if r.ri then
-      y = section("Recipe", y - 10, function(b, ry)
+      y = section(L["Recipe"], y - 10, function(b, ry)
         itemRow(r.ri, ry, r.rn, nil, nil, b); ry = ry - 38
         local src = r.src or {}
         local function sub(text)
@@ -979,7 +1024,7 @@ function UI.CreateRecipeBrowser(parent)
           -- only vendors of the own side (and neutral ones), user 05.11.
           local side = UnitFactionGroup and UnitFactionGroup("player")
           side = side == "Alliance" and "A" or (side == "Horde" and "H" or nil)
-          sub("Sold by")
+          sub(L["Sold by"])
           local shown, other = 0, nil
           for _, n in ipairs(src.v) do
             -- "AH" = both sides (6.1.8: neutral vendors like Kzixx were hidden for everyone)
@@ -988,22 +1033,22 @@ function UI.CreateRecipeBrowser(parent)
           end
           if shown == 0 then
             local t = dtext("GameFontDisableSmall", 370, b); t:SetPoint("TOPLEFT", 14, ry)
-            t:SetText("Only sold by " .. (other == "A" and "Alliance" or "Horde") .. " vendors."); ry = ry - 18
+            t:SetText(other == "A" and L["Only sold by Alliance vendors."] or L["Only sold by Horde vendors."]); ry = ry - 18
           end
           ry = ry - 6
         end
         if src.d then
-          sub("Drops from" .. ((src.dn and src.dn > #src.d) and string.format("  |cff9d9d9d(%d of %d shown)|r", #src.d, src.dn) or ""))
+          sub(L["Drops from"] .. ((src.dn and src.dn > #src.d) and "  |cff9d9d9d(" .. string.format(L["%d of %d shown"], #src.d, src.dn) .. ")|r" or ""))
           for _, n in ipairs(src.d) do npcRow(n, ry, b); ry = ry - 24 end
           ry = ry - 6
         end
         if src.qs then
-          sub("Quest reward")
+          sub(L["Quest reward"])
           for _, q in ipairs(src.qs) do local qt = dtext("GameFontHighlightSmall", 370, b); qt:SetPoint("TOPLEFT", 14, ry); qt:SetText(q[2]); ry = ry - 18 end
         end
         if not (src.v or src.d or src.qs) then
           local t = dtext("GameFontDisableSmall", 370, b); t:SetPoint("TOPLEFT", 12, ry)
-          t:SetText(r.fav and "Bought with Merchant's Favor - see the Favor pages." or "Where this recipe comes from is not known yet."); ry = ry - 18
+          t:SetText(r.fav and L["Bought with Merchant's Favor - see the Favor pages."] or L["Where this recipe comes from is not known yet."]); ry = ry - 18
         end
         return ry
       end)
@@ -1069,7 +1114,7 @@ function UI.CreateRecipeBrowser(parent)
       local d = difficulty(r, skill)
       local pct = skillUpChance(r, d, skill)
       local n = knownT[r.s] and canMake(r) or 0
-      b.name:SetText(r.n .. (n > 0 and (" (" .. n .. ")") or "") .. (pct and ("  " .. pct .. "%") or ""))
+      b.name:SetText(recipeName(r) .. (n > 0 and (" (" .. n .. ")") or "") .. (pct and ("  " .. pct .. "%") or ""))
       local col = d and DIFF[d] or {0.92, 0.90, 0.84}
       b.name:SetTextColor(FLT.SkinC(col[1], col[2], col[3]))
       -- learn level; "?" when not known yet (6.1.5: the yellow level was shown here and read like the learn level)
@@ -1118,7 +1163,7 @@ function UI.CreateRecipeBrowser(parent)
   function f:Refresh(keepScroll)
     if self.otherLegend then
       local on = not FLT.IsRecipeShareEnabled or FLT.IsRecipeShareEnabled()
-      self.otherLegend:SetText("Other users |cff9d9d9d(" .. (on and "only visible when online" or "sharing is off") .. ")|r")
+      self.otherLegend:SetText(L["Other users"] .. " |cff9d9d9d(" .. (on and L["only visible when online"] or L["sharing is off"]) .. ")|r")
     end
     if not prof then return end
     local list = recipesFor(prof)
@@ -1126,16 +1171,17 @@ function UI.CreateRecipeBrowser(parent)
     local skill = p.skill
     local knownCount = 0
     for _, r in ipairs(list) do if p.known[r.s] then knownCount = knownCount + 1 end end
-    title:SetText(prof .. (filter == "fav" and " - Favorites" or " - All recipes") .. "  |cff9d9d9d(beta)|r")
+    local kf = knowFilter()
+    title:SetText(L[prof] .. " - " .. (filter == "fav" and L["Favorites"] or knowLabel(kf or "all")) .. "  |cff9d9d9d(beta)|r")
     FLT.SetTex(profIcon, (FLT.PROFESSION_ICONS and FLT.PROFESSION_ICONS[prof]) or "Interface\\Icons\\INV_Misc_QuestionMark")
     -- The skill comes from the profession book; no skill = not learned on this character.
-    meta:SetText((skill and ("Your skill: " .. skill .. (p.maxSkill and ("/" .. p.maxSkill) or "")) or "|cff9d9d9dNot learned on this character|r") ..
-      string.format("   |   %d recipes, %d known", #list, knownCount))
+    meta:SetText((skill and string.format(L["Your skill: %s"], skill .. (p.maxSkill and ("/" .. p.maxSkill) or "")) or "|cff9d9d9d" .. L["Not learned on this character"] .. "|r") ..
+      "   |   " .. string.format(L["%d recipes, %d known"], #list, knownCount))
     -- user 05.11.: a quiet note while learn levels are missing (only the trainer tells them; read when you visit one)
     local noLvl = 0
     for _, r in ipairs(list) do if not r.req then noLvl = noLvl + 1 end end
-    if skill and not p.scanned then scanHint:SetText("Open your " .. prof .. " window once to mark known recipes")
-    elseif noLvl > 0 then scanHint:SetText("|cff9d9d9d" .. noLvl .. " learn levels unknown (?) - read at the trainer|r")
+    if skill and not p.scanned then scanHint:SetText(string.format(L["Open your %s window once to mark known recipes"], L[prof]))
+    elseif noLvl > 0 then scanHint:SetText("|cff9d9d9d" .. string.format(L["%d learn levels unknown (?) - read at the trainer"], noLvl) .. "|r")
     else scanHint:SetText("") end
 
     -- Filtered list first (cheap); rows are only drawn for the visible part
@@ -1145,18 +1191,28 @@ function UI.CreateRecipeBrowser(parent)
       local ok = true
       if filter == "missing" and p.known[r.s] then ok = false end
       if filter == "fav" and not isFavorite(prof, r.s) then ok = false end
+      if ok and kf then
+        local mine = p.known[r.s] and true or false
+        if kf == "mine" then ok = mine
+        else
+          local g = FLT.GuildKnowsRecipe and FLT.GuildKnowsRecipe(prof, r.s) or false
+          ok = (kf == "guild" and g) or (kf == "both" and (mine or g))
+        end
+      end
       if ok and search ~= "" then
-        local hay = (r.n .. " " .. (r.cat or "") .. " " .. (r.rn or "")):lower()
+        local cn = recipeName(r)
+        local hay = (r.n .. " " .. (cn ~= r.n and (cn .. " ") or "") .. (r.cat or "") .. " " .. (r.rn or "")):lower()
         if not hay:find(search, 1, true) then ok = false end
       end
       if ok then vis[#vis + 1] = r end
     end
-    if filter == "fav" then
+    if filter == "fav" or kf then
       local still = false
       for _, r in ipairs(vis) do if r == selected then still = true end end
       if not still then selected = vis[1] end
     end
-    favEmpty:SetShown(filter == "fav" and #vis == 0)
+    favEmpty:SetText(filter == "fav" and L["No favorites yet. Open a recipe in All recipes and click the star at the top right to add it here."] or L["No recipe for this filter. The funnel next to the search changes it."])
+    favEmpty:SetShown((filter == "fav" or kf ~= nil) and #vis == 0)
     f.visible, f.visSkill, f.visKnown = vis, skill, p.known
     lchild:SetHeight(math.max(1, #vis * ROW_STEP + 4))
     if not keepScroll then lsf:SetVerticalScroll(0) end

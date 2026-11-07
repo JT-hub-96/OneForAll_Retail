@@ -1,5 +1,7 @@
 local _, FLT = ...
 local UI = FLT.UI
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
 
 -- "What can I learn next": spells and ranks a class trainer teaches. For your
 -- own class everything you do not know yet up to level 60 (own race only);
@@ -21,6 +23,14 @@ local CLASSES = {
   { id = 11, token = "DRUID", name = "Druid" },
 }
 local function classByID(id) for _, c in ipairs(CLASSES) do if c.id == id then return c end end end
+local function className(c) return (type(LOCALIZED_CLASS_NAMES_MALE) == "table" and LOCALIZED_CLASS_NAMES_MALE[c.token]) or c.name end
+-- names the client knows (spells) or that we translate (class quest milestones, Data/ClassQuests.lua) (6.2.0)
+local function client() return FLT.ClientTexts and FLT.ClientTexts() end
+local function _words() return N"Defensive Stance", N"Berserker Stance", N"Whirlwind Axe", N"Redemption", N"Verigan's Fist",
+  N"Summon Warhorse", N"Summon Charger", N"Tame Beast", N"Rhok'delar", N"Poisons", N"Racial spell (level 10)",
+  N"Racial spell (level 20)", N"Eye of Divinity", N"Earth Totem", N"Fire Totem", N"Water Totem", N"Air Totem", N"Mage's Wand",
+  N"Summon Voidwalker", N"Summon Succubus", N"Summon Felhunter", N"Summon Felsteed", N"Inferno (Infernal)", N"Ritual of Doom",
+  N"Summon Dreadsteed", N"Bear Form", N"Cure Poison", N"Aquatic Form" end
 
 local _, myToken, myClass = UnitClass("player")
 myClass = tonumber(myClass)
@@ -128,6 +138,8 @@ local function readProfTrainer(all)
     if name and category ~= "header" then
       local skill, rank = GetTrainerServiceSkillReq(i)
       rank = tonumber(rank)
+      -- the trainer names the profession in the client's language ("Schneiderei"): our key (6.2.0)
+      skill = FLT.ProfKey and FLT.ProfKey(skill) or skill
       if type(skill) == "string" and rank then
         local r = byName[skill .. "|" .. name]
         local id = serviceSpellID(i)
@@ -167,8 +179,8 @@ end
 -- /ofa trainer: what the last trainer visit read (for bug reports)
 function FLT.PrintTrainerDebug()
   local say = FLT.Msg or print
-  if #trainerRaw == 0 then say("Open your class trainer first, then type /ofa trainer again."); return end
-  say(#trainerRaw .. " trainer lines read (name | rank text | type | cost | level | spell ID):")
+  if #trainerRaw == 0 then say(L["Open your class trainer first, then type /ofa trainer again."]); return end
+  say(string.format(L["%d trainer lines read (name | rank text | type | cost | level | spell ID):"], #trainerRaw))
   for i = 1, math.min(12, #trainerRaw) do say("  " .. table.concat(trainerRaw[i], " | ")) end
 end
 
@@ -271,8 +283,8 @@ local function createFrame()
     b.icon, b.ring = ic, ring
     b:SetScript("OnClick", function() viewClass = c.id; if f.sf then f.sf:SetVerticalScroll(0) end; FLT.RefreshTrainerSpells() end)
     b:SetScript("OnEnter", function(self)
-      GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(c.name, 1, 0.82, 0)
-      GameTooltip:AddLine(c.id == myClass and "Your class: what you can learn next" or "All spells this trainer teaches", 1, 1, 1, true)
+      GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(className(c), 1, 0.82, 0)
+      GameTooltip:AddLine(c.id == myClass and L["Your class: what you can learn next"] or L["All spells this trainer teaches"], 1, 1, 1, true)
       GameTooltip:Show()
     end)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -284,9 +296,9 @@ local function createFrame()
   -- in a row of their own under the classes (user 27.10.: the window was too wide)
   x = 16
   -- no box around them, 30 % smaller than the class crests (user 27.10.)
-  for _, m in ipairs({ { "spells", "Interface\\Icons\\INV_Misc_Book_09", "Spells", "What the class trainer teaches." },
-      { "weapons", "Interface\\Icons\\INV_Sword_04", "Weapon skills", "Weapon skills this class can learn and where the weapon masters of your faction are." },
-      { "quests", "Interface\\Icons\\INV_Scroll_03", "Class quests", "The important class quests (abilities, pets, class items): what you have done and where the next quest starts." } }) do
+  for _, m in ipairs({ { "spells", "Interface\\Icons\\INV_Misc_Book_09", N"Spells", N"What the class trainer teaches." },
+      { "weapons", "Interface\\Icons\\INV_Sword_04", N"Weapon skills", N"Weapon skills this class can learn and where the weapon masters of your faction are." },
+      { "quests", "Interface\\Icons\\INV_Scroll_03", N"Class quests", N"The important class quests (abilities, pets, class items): what you have done and where the next quest starts." } }) do
     local b = CreateFrame("Button", nil, f); b:SetSize(26, 26); b:SetPoint("TOPLEFT", x, -116); x = x + 32
     local ic = b:CreateTexture(nil, "ARTWORK"); ic:SetPoint("TOPLEFT", 3, -3); ic:SetPoint("BOTTOMRIGHT", -3, 3)
     ic:SetTexture(m[2]); ic:SetTexCoord(0.08, 0.92, 0.08, 0.92)
@@ -296,7 +308,7 @@ local function createFrame()
     b.icon, b.ring = ic, ring
     b:SetScript("OnClick", function() viewMode = m[1]; if f.sf then f.sf:SetVerticalScroll(0) end; FLT.RefreshTrainerSpells() end)
     b:SetScript("OnEnter", function(self)
-      GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(m[3], 1, 0.82, 0); GameTooltip:AddLine(m[4], 1, 1, 1, true); GameTooltip:Show()
+      GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L[m[3]], 1, 0.82, 0); GameTooltip:AddLine(L[m[4]], 1, 1, 1, true); GameTooltip:Show()
     end)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
     f.modeButtons[m[1]] = b
@@ -315,12 +327,12 @@ local function createFrame()
   fdv:SetPoint("BOTTOMLEFT", 12, 48); fdv:SetPoint("BOTTOMRIGHT", -12, 48)
   f.total = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlight"); f.total:SetPoint("BOTTOMLEFT", 20, 22)
   f.legend = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); f.legend:SetPoint("BOTTOMRIGHT", -20, 23); f.legend:SetJustifyH("RIGHT")
-  f.legend:SetText("|T" .. QUEST_TEX .. ":14:12|t = Quest     |cff9d9d9d?|r = cost not known yet")
+  f.legend:SetText(string.format(L["%s = Quest     |cff9d9d9d?|r = cost not known yet"], "|T" .. QUEST_TEX .. ":14:12|t"))
   f.legend:SetTextColor(0.80, 0.77, 0.70)
   local lh = CreateFrame("Frame", nil, f); lh:SetAllPoints(f.legend)
   lh:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine("Costs", 1, 0.82, 0)
-    GameTooltip:AddLine("Training costs are not part of the game data. They are filled in when you open your class trainer.", 1, 1, 1, true)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L["Costs"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["Training costs are not part of the game data. They are filled in when you open your class trainer."], 1, 1, 1, true)
     GameTooltip:Show()
   end)
   lh:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -350,33 +362,33 @@ local function getRow(f, i)
   do local font, _, flags = r.name:GetFont(); if font then r.name:SetFont(font, 12, flags) end end
   r.cost = FLT.NewFS(r, nil, "OVERLAY", "GameFontHighlight"); r.cost:SetPoint("RIGHT", -10, 0); r.cost:SetJustifyH("RIGHT")
   -- weapon masters: map pin
-  r.map = UI.GoldButton(r, "Map", 56, 18, UI.ASSET_ROOT .. "icon_map", 10); r.map:SetPoint("RIGHT", -8, 0); r.map:Hide()
+  r.map = UI.GoldButton(r, L["Map"], 56, 18, UI.ASSET_ROOT .. "icon_map", 10); r.map:SetPoint("RIGHT", -8, 0); r.map:Hide()
   -- class quests: the chain popup of the Gear Planner (every step, done / in the log, Map per step)
-  r.chain = UI.GoldButton(r, "Chain", 50, 18, nil, 10); r.chain:SetPoint("RIGHT", -70, 0); r.chain:Hide()
+  r.chain = UI.GoldButton(r, L["Chain"], 50, 18, nil, 10); r.chain:SetPoint("RIGHT", -(r.map:GetWidth() + 14), 0); r.chain:Hide()
   r.chain:SetScript("OnClick", function(self) if self.qid and FLT.ShowQuestChain then FLT.ShowQuestChain(self.qid) end end)
   r.chain:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Quest chain", 1, 0.82, 0)
-    GameTooltip:AddLine("Every quest of the chain: green = done, yellow = in your quest log, Map = its quest giver.", 1, 1, 1, true); GameTooltip:Show()
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Quest chain"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["Every quest of the chain: green = done, yellow = in your quest log, Map = its quest giver."], 1, 1, 1, true); GameTooltip:Show()
   end)
   r.chain:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  r.map:SetScript("OnClick", function(self) local t = self.trainer; if t and FLT.ShowOnMap then FLT:ShowOnMap({ mapID = t.map, x = t.x, y = t.y, name = t.name .. (t.quest and (" (quest: " .. t.quest .. ")") or " (Weapon Master)") }) end end)
+  r.map:SetScript("OnClick", function(self) local t = self.trainer; if t and FLT.ShowOnMap then FLT:ShowOnMap({ mapID = t.map, x = t.x, y = t.y, name = t.quest and string.format(L["%s (quest: %s)"], t.name, t.quest) or string.format(L["%s (Weapon Master)"], t.name) }) end end)
   r:SetScript("OnEnter", function(self)
     if self.cq then
       local c, q = self.cq, self.cq.q
-      GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(c.milestone, 1, 0.82, 0)
-      if c.finished then GameTooltip:AddLine("Done", 0.35, 1, 0.45)
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L[c.milestone], 1, 0.82, 0)
+      if c.finished then GameTooltip:AddLine(L["Done"], 0.35, 1, 0.45)
       elseif q then
-        GameTooltip:AddLine((c.current and "In your quest log: " or (c.own and "Next quest: " or "First quest: ")) .. q.name, 1, 1, 1, true)
-        if q.giver and not c.current then GameTooltip:AddLine("Starts at " .. q.giver, 1, 1, 1, true) end
-        if (q.req or 0) > 0 then GameTooltip:AddLine("From level " .. q.req, 0.8, 0.8, 0.8) end
+        GameTooltip:AddLine(string.format(c.current and L["In your quest log: %s"] or (c.own and L["Next quest: %s"] or L["First quest: %s"]), q.name), 1, 1, 1, true)
+        if q.giver and not c.current then GameTooltip:AddLine(string.format(L["Starts at %s"], q.giver), 1, 1, 1, true) end
+        if (q.req or 0) > 0 then GameTooltip:AddLine(string.format(L["From level %d"], q.req), 0.8, 0.8, 0.8) end
       end
-      if c.n > 1 then GameTooltip:AddLine(c.own and string.format("Chain of %d quests, %d done (button Chain)", c.n, c.done) or ("Chain of " .. c.n .. " quests (button Chain)"), 0.7, 0.7, 0.7, true) end
+      if c.n > 1 then GameTooltip:AddLine(c.own and string.format(L["Chain of %d quests, %d done (button Chain)"], c.n, c.done) or string.format(L["Chain of %d quests (button Chain)"], c.n), 0.7, 0.7, 0.7, true) end
       GameTooltip:Show()
       return
     end
     if self.trainer then
-      GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(self.trainer.name, 1, 0.82, 0)
-      GameTooltip:AddLine("Weapon Master, " .. self.trainer.city, 1, 1, 1); GameTooltip:Show()
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(FLT.Name and FLT.Name(self.trainer.name) or self.trainer.name, 1, 0.82, 0)
+      GameTooltip:AddLine(string.format(L["Weapon Master, %s"], FLT.ZoneName and FLT.ZoneName(self.trainer.city) or self.trainer.city), 1, 1, 1); GameTooltip:Show()
       return
     end
     if not self.id then return end
@@ -384,10 +396,10 @@ local function getRow(f, i)
     if not pcall(GameTooltip.SetSpellByID, GameTooltip, self.id) then GameTooltip:SetText(self.label or "") end
     if self.questName then
       GameTooltip:AddLine(" ")
-      GameTooltip:AddLine(self.questName == "class quest" and "Learned from a class quest, not at the trainer."
-        or ("Learned from the quest " .. self.questName .. ", not at the trainer."), 1, 0.82, 0, true)
+      GameTooltip:AddLine(self.questName == "class quest" and L["Learned from a class quest, not at the trainer."]
+        or string.format(L["Learned from the quest %s, not at the trainer."], self.questName), 1, 0.82, 0, true)
     end
-    if self.talent then GameTooltip:AddLine("Higher rank of a talent: only when you have the talent.", 0.7, 0.7, 0.7, true) end
+    if self.talent then GameTooltip:AddLine(L["Higher rank of a talent: only when you have the talent."], 0.7, 0.7, 0.7, true) end
     GameTooltip:Show()
   end)
   r:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -449,7 +461,7 @@ local function refreshWeapons(f, c, own)
   local y, ri, hi, toLearn = 0, 0, 0, 0
   for _, sub in ipairs(subs) do
     local sid = FLT.WEAPON_SKILL_SPELL and FLT.WEAPON_SKILL_SPELL[sub]
-    local name = (sid and spellName(sid)) or (FLT.WEAPON_SKILL_NAME and FLT.WEAPON_SKILL_NAME[sub]) or ("Weapon " .. sub)
+    local name = (sid and spellName(sid)) or (FLT.WEAPON_SKILL_NAME and FLT.WEAPON_SKILL_NAME[sub]) or string.format(L["Weapon %s"], sub)
     local known = own and sid and knowsSpell(sid)
     local trainers = {}
     for _, t in ipairs(FLT.WEAPON_TRAINERS or {}) do
@@ -460,9 +472,9 @@ local function refreshWeapons(f, c, own)
     local h = getHead(f, hi)
     h:ClearAllPoints(); h:SetPoint("TOPLEFT", 0, y); y = y - HEAD_H - 2
     h.text:SetText(name); h.text:SetTextColor(FLT.SkinC(1, 0.84, 0.30))
-    if known then h.right:SetText("|cff59ff73Known|r")
-    elseif #trainers == 0 then h.right:SetText(sub == 19 and "|cff9d9d9dFrom the start, no trainer|r" or "|cff9d9d9dNo weapon master of your faction|r")
-    else h.right:SetText(sub == 6 and "1 gold, from level 20" or "10 silver"); toLearn = toLearn + 1 end
+    if known then h.right:SetText("|cff59ff73" .. L["Known"] .. "|r")
+    elseif #trainers == 0 then h.right:SetText("|cff9d9d9d" .. (sub == 19 and L["From the start, no trainer"] or L["No weapon master of your faction"]) .. "|r")
+    else h.right:SetText(sub == 6 and L["1 gold, from level 20"] or L["10 silver"]); toLearn = toLearn + 1 end
     h:Show()
     if not known then
       for i, t in ipairs(trainers) do
@@ -471,7 +483,7 @@ local function refreshWeapons(f, c, own)
         row:ClearAllPoints(); row:SetPoint("TOPLEFT", 0, y); y = y - ROW_H
         row.bg:SetAlpha(i % 2 == 1 and 1 or 0)
         row.id, row.label, row.questName, row.talent, row.trainer = nil, t.name, nil, nil, t
-        row.name:SetText(t.name .. "   |cff9d9d9d" .. t.city .. "|r"); row.name:SetTextColor(1, 1, 1)
+        row.name:SetText((FLT.Name and FLT.Name(t.name) or t.name) .. "   |cff9d9d9d" .. (FLT.ZoneName and FLT.ZoneName(t.city) or t.city) .. "|r"); row.name:SetTextColor(1, 1, 1)
         local wi = FLT.WEAPON_SKILL_ICON and FLT.WEAPON_SKILL_ICON[sub]
         row.icon:SetTexture(wi and ("Interface\\Icons\\" .. wi) or (sid and spellIcon(sid)) or "Interface\\Icons\\INV_Sword_04")
         row.quest:Hide(); row.cost:SetText(""); row.map.trainer = t; row.map:Show()
@@ -480,7 +492,7 @@ local function refreshWeapons(f, c, own)
     end
   end
   f.child:SetHeight(math.max(10, -y + 4))
-  f.total:SetText(own and (toLearn > 0 and (toLearn .. " weapon skills to learn") or "You know every weapon skill of your class") or (#subs .. " weapon skills"))
+  f.total:SetText(own and (toLearn > 0 and string.format(L["%d weapon skills to learn"], toLearn) or L["You know every weapon skill of your class"]) or string.format(L["%d weapon skills"], #subs))
 end
 
 -- Class quests (5.7.3, user 27.10.): the important quests per class (Data/ClassQuests.lua), grouped by level like the
@@ -566,9 +578,9 @@ local function refreshQuests(f, c, own)
       if hi > 1 then y = y - 6 end
       local h = getHead(f, hi)
       h:ClearAllPoints(); h:SetPoint("TOPLEFT", 0, y); y = y - HEAD_H - 2
-      if e.group == "now" then h.text:SetText("Available now"); h.text:SetTextColor(0.45, 1.00, 0.50)
-      elseif e.group == "done" then h.text:SetText("Done"); h.text:SetTextColor(0.45, 1.00, 0.50)
-      else h.text:SetText("Level " .. e.group); h.text:SetTextColor(FLT.SkinC(1, 0.84, 0.30)) end
+      if e.group == "now" then h.text:SetText(L["Available now"]); h.text:SetTextColor(0.45, 1.00, 0.50)
+      elseif e.group == "done" then h.text:SetText(L["Done"]); h.text:SetTextColor(0.45, 1.00, 0.50)
+      else h.text:SetText(string.format(L["Level %s"], e.group)); h.text:SetTextColor(FLT.SkinC(1, 0.84, 0.30)) end
       h.right:SetText(""); h:Show()
       stripe = 0
     end
@@ -584,7 +596,7 @@ local function refreshQuests(f, c, own)
     if not ch.finished and q then
       what = ch.current and ("   |cffffd200" .. q.name .. "|r") or ("   |cff9d9d9d" .. q.name .. "|r")
     end
-    row.name:SetWidth(210); row.name:SetText(m[1] .. what)
+    row.name:SetWidth(210); row.name:SetText(L[m[1]] .. what)
     if ch.finished then row.name:SetTextColor(0.55, 0.85, 0.55)
     elseif e.group == "now" or not own then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(0.80, 0.78, 0.72) end
     row.icon:SetTexture("Interface\\Icons\\" .. m[3])
@@ -593,19 +605,20 @@ local function refreshQuests(f, c, own)
     row.chain.qid = ch.final; row.chain:SetShown(#ch.steps > 1)
     local mapQ = not ch.finished and not ch.current and q and q.loc and q or nil
     if mapQ then row.map.trainer = { map = mapQ.loc.mapID, x = mapQ.loc.x, y = mapQ.loc.y, name = mapQ.giver or mapQ.name, quest = mapQ.name }; row.map:Show() end
-    row.cost:ClearAllPoints(); row.cost:SetPoint("RIGHT", -128, 0)
-    if ch.finished then row.cost:SetText("|cff59ff73Done|r")
+    -- done rows have no Chain / Map buttons: "Done" sits at the right edge (user 07.11.)
+    row.cost:ClearAllPoints(); row.cost:SetPoint("RIGHT", ch.finished and -10 or -128, 0)
+    if ch.finished then row.cost:SetText("|cff59ff73" .. L["Done"] .. "|r")
     elseif own and #ch.steps > 1 then row.cost:SetText((ch.done > 0 and "|cffffd200" or "|cff9d9d9d") .. ch.done .. " / " .. #ch.steps .. "|r")
     else row.cost:SetText("") end
     row:Show()
   end
   if #entries == 0 then
     local h = getHead(f, 1); h:ClearAllPoints(); h:SetPoint("TOPLEFT", 0, 0)
-    h.text:SetText("No class quests for your faction"); h.text:SetTextColor(0.75, 0.75, 0.75); h.right:SetText(""); h:Show()
+    h.text:SetText(L["No class quests for your faction"]); h.text:SetTextColor(0.75, 0.75, 0.75); h.right:SetText(""); h:Show()
     y = -HEAD_H
   end
   f.child:SetHeight(math.max(10, -y + 4))
-  local total = own and string.format("%d of %d done", done, #entries) or (#entries .. " class quests")
+  local total = own and string.format(L["%d of %d done"], done, #entries) or string.format(L["%d class quests"], #entries)
   f.total:SetText(total)
   FLT._cqStatus = function() return total end -- test hook
 end
@@ -631,25 +644,25 @@ function FLT.RefreshTrainerSpells()
   for _, h in ipairs(f.heads) do h:Hide() end
   if viewMode == "quests" then
     local own = c.id == myClass
-    f.title:SetText("Class quests - " .. c.name)
-    f.sub:SetText(own and "Your progress and where the next quest starts" or "The important quests of this class")
+    f.title:SetText(string.format(L["Class quests - %s"], className(c)))
+    f.sub:SetText(own and L["Your progress and where the next quest starts"] or L["The important quests of this class"])
     f.legend:Hide()
     refreshQuests(f, c, own)
     return
   end
   if viewMode == "weapons" then
     local own = c.id == myClass
-    f.title:SetText("Weapon skills - " .. c.name)
-    f.sub:SetText(own and "What you can still learn, and where (your faction)" or "What this class can learn, and where (your faction)")
+    f.title:SetText(string.format(L["Weapon skills - %s"], className(c)))
+    f.sub:SetText(own and L["What you can still learn, and where (your faction)"] or L["What this class can learn, and where (your faction)"])
     f.legend:Hide()
     refreshWeapons(f, c, own)
     return
   end
   f.legend:Show()
   local list, level, own = spellList(c.id)
-  f.title:SetText("Class trainer - " .. c.name)
-  if own then f.sub:SetText("Spells and ranks you have not learned yet, up to level 60")
-  else f.sub:SetText("Everything this trainer teaches, level 1 to 60") end
+  f.title:SetText(string.format(L["Class trainer - %s"], className(c)))
+  if own then f.sub:SetText(L["Spells and ranks you have not learned yet, up to level 60"])
+  else f.sub:SetText(L["Everything this trainer teaches, level 1 to 60"]) end
   local y, ri, hi = 0, 0, 0
   local lastGroup, stripe = nil, 0
   local nowCost, nowCount, nowUnknown = 0, 0, 0
@@ -663,9 +676,9 @@ function FLT.RefreshTrainerSpells()
       local h = getHead(f, hi)
       h:ClearAllPoints(); h:SetPoint("TOPLEFT", 0, y); y = y - HEAD_H - 2
       if group == "now" then
-        h.text:SetText("Available now"); h.text:SetTextColor(0.45, 1.00, 0.50)
+        h.text:SetText(L["Available now"]); h.text:SetTextColor(0.45, 1.00, 0.50)
       else
-        h.text:SetText("Level " .. lvl); h.text:SetTextColor(FLT.SkinC(1, 0.84, 0.30))
+        h.text:SetText(string.format(L["Level %s"], lvl)); h.text:SetTextColor(FLT.SkinC(1, 0.84, 0.30))
       end
       h.right:SetText("")
       h:Show()
@@ -676,11 +689,11 @@ function FLT.RefreshTrainerSpells()
     row:ClearAllPoints(); row:SetPoint("TOPLEFT", 0, y); y = y - ROW_H
     row.bg:SetAlpha(stripe % 2 == 1 and 1 or 0)
     row.id, row.label, row.questName, row.talent = id, name, quest, talent
-    row.name:SetText(name .. (rank > 0 and ("   |cff9d9d9dRank " .. rank .. "|r") or "") .. (talent and "  |cff9d9d9d(talent)|r" or ""))
+    row.name:SetText((client() and spellName(id) or name) .. (rank > 0 and ("   |cff9d9d9d" .. string.format(L["Rank %s"], rank) .. "|r") or "") .. (talent and ("  |cff9d9d9d" .. L["(talent)"] .. "|r") or ""))
     row.icon:SetTexture(spellIcon(id, icon))
     row.quest:SetShown(quest and true or false)
     if group == "now" or not own then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(0.80, 0.78, 0.72) end
-    if quest then row.cost:SetText("|cffffd200Quest|r")
+    if quest then row.cost:SetText("|cffffd200" .. L["Quest"] .. "|r")
     else row.cost:SetText(cost and money(cost) or "|cff9d9d9d?|r") end
     row:Show()
     if group == "now" and not quest then
@@ -690,17 +703,19 @@ function FLT.RefreshTrainerSpells()
   end
   if #list == 0 then
     local h = getHead(f, 1); h:ClearAllPoints(); h:SetPoint("TOPLEFT", 0, 0)
-    h.text:SetText("Nothing left to learn"); h.text:SetTextColor(0.75, 0.75, 0.75); h.right:SetText(""); h:Show()
+    h.text:SetText(L["Nothing left to learn"]); h.text:SetTextColor(0.75, 0.75, 0.75); h.right:SetText(""); h:Show()
     y = -HEAD_H
   end
   f.child:SetHeight(math.max(10, -y + 4))
   if not own then
-    f.total:SetText(#list .. " spells and ranks")
+    f.total:SetText(string.format(L["%d spells and ranks"], #list))
   elseif nowCount > 0 then
-    f.total:SetText(string.format("Available now: %d  |  Cost: %s%s", nowCount, money(nowCost), nowUnknown > 0 and " + ?" or ""))
+    f.total:SetText(string.format(L["Available now: %d  |  Cost: %s%s"], nowCount, money(nowCost), nowUnknown > 0 and " + ?" or ""))
   else
-    f.total:SetText("Nothing to learn at the trainer right now")
+    f.total:SetText(L["Nothing to learn at the trainer right now"])
   end
+  -- long totals (German, gold + silver + copper) ran into the legend (user 07.11.): then the legend steps back
+  if f.total:GetStringWidth() + f.legend:GetStringWidth() + 24 > f:GetWidth() - 40 then f.legend:Hide() end
 end
 
 -- classID: class to show (the class picked in the talent planner); default your own
@@ -759,8 +774,8 @@ local function addSpellbookButton()
   -- opened from the spellbook: it closes with it (X or P again, user 22.10.)
   psf:HookScript("OnHide", function() if frame and frame.ofaFromBook and frame:IsShown() then frame:Hide() end end)
   b:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Trainer: next spells", 1, 0.82, 0)
-    GameTooltip:AddLine("OneForAll: spells and ranks your class trainer teaches that you do not know yet.", 1, 1, 1, true)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Trainer: next spells"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["OneForAll: spells and ranks your class trainer teaches that you do not know yet."], 1, 1, 1, true)
     GameTooltip:Show()
   end)
   b:SetScript("OnLeave", function() GameTooltip:Hide() end)

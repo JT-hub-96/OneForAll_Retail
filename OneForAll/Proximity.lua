@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 -- Coordinate-based nearby alerts.
 -- We prefer world-coordinate distance when the client exposes it. This makes the
@@ -109,7 +110,7 @@ local function createAlertFrame()
 
   local eyebrow = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalSmall")
   eyebrow:SetPoint("TOPLEFT", 82, -15)
-  eyebrow:SetText("LIBRARY BOOK NEARBY")
+  eyebrow:SetText(L["LIBRARY BOOK NEARBY"])
   f.eyebrow = eyebrow
   eyebrow:SetTextColor(FLT.SkinC(1.00, 0.76, 0.18))
 
@@ -130,14 +131,14 @@ local function createAlertFrame()
   local map = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
   map:SetSize(92, 25)
   map:SetPoint("BOTTOMLEFT", 82, 13)
-  map:SetText("Open Map")
+  map:SetText(L["Open Map"])
   if FLT.UI and FLT.UI.SkinBlizzButton then FLT.UI.SkinBlizzButton(map, 25) end
   f.mapButton = map
 
   local dismiss = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
   dismiss:SetSize(78, 25)
   dismiss:SetPoint("LEFT", map, "RIGHT", 8, 0)
-  dismiss:SetText("Dismiss")
+  dismiss:SetText(L["Dismiss"])
   dismiss:SetScript("OnClick", function() f:Hide() end)
   if FLT.UI and FLT.UI.SkinBlizzButton then FLT.UI.SkinBlizzButton(dismiss, 25) end
 
@@ -220,7 +221,7 @@ function FLT:ShowAlert(opts)
           -- The visible button is only a placeholder; the secure button sits on top.
           if InCombatLockdown and InCombatLockdown() then
             b:Disable()
-            b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine("Not available in combat", 1, 0.3, 0.3); GameTooltip:Show() end)
+            b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L["Not available in combat"], 1, 0.3, 0.3); GameTooltip:Show() end)
             b:SetScript("OnLeave", function() GameTooltip:Hide() end)
           else
             b:SetScript("OnEnter", nil); b:SetScript("OnLeave", nil)
@@ -264,7 +265,7 @@ end
 function FLT:ShowNearbyBookAlert(book, distance)
   if not book then return end
   local f = createAlertFrame()
-  f.eyebrow:SetText("LIBRARY BOOK NEARBY")
+  f.eyebrow:SetText(L["LIBRARY BOOK NEARBY"])
   FLT.SetTex(f.icon, "Interface\\Icons\\INV_Misc_Book_09")
   f:SetWidth(470)
   f.mapButton:Show()
@@ -274,8 +275,8 @@ function FLT:ShowNearbyBookAlert(book, distance)
   f.title:SetText(book.name)
 
   local distanceText = ""
-  if distance then distanceText = string.format("  |  about %.0f yd away", distance) end
-  f.where:SetText(string.format("%s  %.1f, %.1f%s", book.zone or "Unknown zone", book.x or 0, book.y or 0, distanceText))
+  if distance then distanceText = "  |  " .. string.format(L["about %.0f yd away"], distance) end
+  f.where:SetText(string.format("%s  %.1f, %.1f%s", book.zone or L["Unknown zone"], book.x or 0, book.y or 0, distanceText))
   f.mapButton:SetScript("OnClick", function() FLT:ShowOnMap(book) end)
 
   alertSerial = alertSerial + 1

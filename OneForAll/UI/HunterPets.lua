@@ -1,4 +1,6 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
 local UI = FLT.UI
 local makeTexture, makeButton = UI.makeTexture, UI.makeButton
 
@@ -25,6 +27,121 @@ local ABILITY_ICON = {
   ["Great Stamina"]="Spell_Nature_UnyeildingStamina", ["Natural Armor"]="Spell_Nature_SpiritArmor",
 }
 -- Icons come from the data (Petopia icon names); the tables above are fallbacks.
+-- 6.2.0: family, ability, diet and role words of Data/HunterPets.lua are shown with L[...]; only the ones whose German
+-- client name is known are marked here (the client reports pets and abilities in its language: FLT.EnglishOf maps back)
+local function _words() return N"Fox", N"Demoralizing Screech", N"Dismember", N"Lava Breath", N"Mine!", N"Pinch",
+  N"Savage Rend", N"Tendon Rip", N"Trickster's Dance", N"Web", N"Bat", N"Bear", N"Bird of Prey", N"Boar", N"Carrion Bird", N"Cat", N"Core Hound", N"Crab",
+  N"Crocolisk", N"Gorilla", N"Hyena", N"Raptor", N"Scorpid", N"Spider", N"Tallstrider", N"Turtle", N"Wind Serpent", N"Wolf",
+  N"Bite", N"Claw", N"Charge", N"Cower", N"Dash", N"Dive", N"Dust Cloud", N"Furious Howl", N"Lightning Breath", N"Prowl",
+  N"Scorpid Poison", N"Shell Shield", N"Swipe", N"Thunderstomp", N"Growl", N"Arcane Resistance", N"Fire Resistance",
+  N"Frost Resistance", N"Nature Resistance", N"Shadow Resistance", N"Great Stamina", N"Natural Armor",
+  N"Meat", N"Fruit", N"Fish", N"Fungus", N"Bread", N"Cheese", N"Raw Fish", N"Offense", N"Defense", N"General",
+  N"Health", N"Armor", N"Damage", N"All families" end
+-- data sentences of Data/HunterPets.lua (effects, rank texts, notes, rare tames), shown with FLT.LNum (numbers -> %s)
+local function _texts() return {
+  N"Increases Arcane Resistance.",
+  N"Bite the enemy, causing damage.",
+  N"Charges an enemy, immobilizes it for %s sec, and adds melee attack power to the boar's next attack.",
+  N"Claw the enemy, causing damage.",
+  N"Cower, causing no damage but lowering threat, making the enemy less likely to attack.",
+  N"Increases movement speed for %s seconds.",
+  N"Blasts a single enemy for damage and lowers the melee attack power of all enemies in melee range. Effect lasts %s sec.",
+  N"Viciously bites enemy appendages for damage and reduces the effectiveness of any healing by %s%% for %s sec.",
+  N"Your tallstrider kicks up an abrasive cloud of dust, reducing the target's Armor for %s sec.",
+  N"Increases attack speed.",
+  N"Increases Fire Resistance.",
+  N"Increases Frost Resistance.",
+  N"The wolf howls, increasing the melee attack power of all party members within %s yards.  Lasts %s min.",
+  N"Stamina increased.",
+  N"Taunt the target, increasing the likelihood the creature will focus attacks on your pet.",
+  N"Breathes molten lava at %s nearby enemies, instantly dealing Fire damage and reducing the target's casting speed by %s%% for %s sec.",
+  N"Breathes lightning, instantly dealing Nature damage to a single target.",
+  N"Grabs an enemy's weapon with its talons, causing damage and disarming them for %s sec.",
+  N"Armor increased.",
+  N"Increases Nature Resistance.",
+  N"Pinches an enemy's legs for damage and reduces movement speed by %s%% for %s sec.",
+  N"Puts your pet in stealth mode, but slows its movement speed. The first attack from stealth receives a bonus to damage. Lasts until cancelled.",
+  N"Slash an enemy with razor talons, causing the target to Bleed for damage over %s sec.",
+  N"Inflicts Nature damage over %s sec. Effect can stack up to %s times on a single target.",
+  N"Increases Shadow Resistance.",
+  N"Reduces all damage your pet takes by %s%% and increases the time between your pet's attacks by %s%%, but deals more damage with each attack. Lasts %s sec.",
+  N"Decreases attack speed.",
+  N"Swipe %s nearby enemies, inflicting damage.",
+  N"Tears at an enemy's legs for damage over %s sec and reduces movement speed by %s%% for %s sec.",
+  N"Shakes the ground with thundering force, doing Nature damage to all enemies within %s yards.",
+  N"Increases your pet's chance to Dodge by %s%% and decreases the time between your pet's attacks by %s%%. Lasts %s sec.",
+  N"Entangles an enemy in a corrosive web, immobilizing them and dealing Nature damage over %s sec.",
+  N"Increases Arcane Resistance by %s.",
+  N"Bite the enemy, causing %s to %s damage.",
+  N"Charges an enemy, immobilizes it for %s sec, and adds %s melee attack power to the boar's next attack.",
+  N"Claw the enemy, causing %s to %s damage.",
+  N"Increases movement speed by %s%% for %s seconds.",
+  N"Blasts a single enemy for %s to %s damage and lowers the melee attack power of all enemies in melee range by %s. Effect lasts %s sec.",
+  N"Viciously bites enemy appendages for %s to %s damage and reduces the effectiveness of any healing by %s%% for %s sec.",
+  N"Your tallstrider kicks up an abrasive cloud of dust, reducing the target's Armor by %s for %s sec.",
+  N"Increases attack speed by %s%%.",
+  N"Increases Fire Resistance by %s.",
+  N"Increases Frost Resistance by %s.",
+  N"The wolf howls, increasing the melee attack power of all party members within %s yards by %s.  Lasts %s min.",
+  N"The wolf howls, increasing the melee attack power of all party members within %s yards by %s to %s.  Lasts %s min.",
+  N"Stamina increased by %s.",
+  N"Breathes molten lava at %s nearby enemies, instantly dealing %s to %s Fire damage and reducing the target's casting speed by %s%% for %s sec.",
+  N"Breathes lightning, instantly dealing %s to %s Nature damage to a single target.",
+  N"Grabs an enemy's weapon with its talons, causing %s to %s damage and disarming them for %s sec.",
+  N"Armor increased by %s.",
+  N"Increases Nature Resistance by %s.",
+  N"Pinches an enemy's legs for %s to %s damage and reduces movement speed by %s%% for %s sec.",
+  N"Puts your pet in stealth mode, but slows its movement speed by %s%%. The first attack from stealth receives a %s%% bonus to damage. Lasts until cancelled.",
+  N"Slash an enemy with razor talons, causing the target to Bleed for %s damage over %s sec.",
+  N"Inflicts %s Nature damage over %s sec. Effect can stack up to %s times on a single target.",
+  N"Increases Shadow Resistance by %s.",
+  N"Decreases attack speed by %s%%.",
+  N"Swipe %s nearby enemies, inflicting %s damage.",
+  N"Swipe %s nearby enemies, inflicting %s to %s damage.",
+  N"Tears at an enemy's legs for %s damage over %s sec and reduces movement speed by %s%% for %s sec.",
+  N"Shakes the ground with thundering force, doing %s to %s Nature damage to all enemies within %s yards.",
+  N"Entangles an enemy in a corrosive web, immobilizing them and dealing %s Nature damage over %s sec.",
+  N"Only family with %s.",
+  N"White lion skin; marked as a spawned (not always present) mob.",
+  N"Rare spawn; only tameable black lion; fast %s attack speed.",
+  N"Translucent ghostly cat summoned from cat figurines at Ruins of Mathystra; keeps its look after taming; teaches Claw %s.",
+  N"Rare spawned nightsaber with spotted black skin.",
+  N"Named cat; teaches Dash %s.",
+  N"Named panther; teaches Dash %s.",
+  N"Elite striped white tiger; teaches Claw %s and Dash %s.",
+  N"Rare aqua-colored saber cat; teaches Dash %s.",
+  N"Elite aqua saber cat.",
+  N"Spawned elite white lion.",
+  N"Only tameable lavender saber cat.",
+  N"Red raptor summoned via a quest (spawned).",
+  N"Named tallstrider; teaches Cower %s.",
+  N"Rare red vulture.",
+  N"Rare red carrion bird; teaches Dive %s.",
+  N"Rare elite red carrion bird; teaches Dive %s.",
+  N"Rare white wind serpent.",
+  N"Rare white wind serpent; teaches Dive %s and Lightning Breath %s.",
+  N"Rare red gorilla.",
+  N"Rare-listed white gorilla; teaches Bite %s.",
+  N"Named red gorilla; teaches Thunderstomp %s.",
+  N"Rare white crocolisk found in the Stormwind canals; teaches Bite %s.",
+  N"Named white crocolisk; teaches Bite %s.",
+  N"Named wolf; teaches Bite %s.",
+  N"Named wolf; teaches Bite %s and Dash %s.",
+  N"Named wolf; teaches Bite %s and Furious Howl %s.",
+  N"Named bear; teaches Claw %s.",
+  N"Named bird of prey; teaches Claw %s and Dive %s.",
+  N"Named spider; teaches Bite %s.",
+  N"Named turtle; teaches Bite %s and Shell Shield %s.",
+} end
+local LN = FLT.LNum or function(t) return t end
+local ZN = FLT.ZoneName or function(z) return z end
+local NM = FLT.Name or function(n) return n end -- beast names in the client's language (6.2.0 step 2b)
+local EN = FLT.EnglishOf or function(w) return w end -- client word (German client) -> our English data name
+local function tlist(list, sep) -- a list of data words, translated
+  local out = {}
+  for i, w in ipairs(list or {}) do out[i] = L[w] end
+  return table.concat(out, sep or ", ")
+end
 -- a beast on the world map: the pin and, when known, the outline of its spawns (6.1.9, user 07.11.: "mehrere
 -- Koordinaten ... zu einer Linie verbinden, um ein Gebiet abzudecken"; Data/HunterPetTames.lua PET_TAME_AREAS)
 local function showBeast(b)
@@ -80,6 +197,7 @@ local function noteKnown(name, rank)
   local t = knownTable()
   if not t or not name or name == "" then return false end
   rank = rank or 1
+  name = EN(name) -- the German client names the ability in German
   if (t[name] or 0) < rank then t[name] = rank; return true end
   return false
 end
@@ -92,7 +210,10 @@ end
 local function scanBeastTraining()
   if not (GetNumCrafts and GetCraftInfo) then return end
   local line = GetCraftDisplaySkillLine and GetCraftDisplaySkillLine()
-  if line and line ~= "Beast Training" and line ~= (BEAST_TRAINING or "") then return end
+  -- the window's name in the client's language: the Beast Training spell (5149) names it (6.2.0)
+  local own
+  pcall(function() own = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(5149)) or (GetSpellInfo and GetSpellInfo(5149)) end)
+  if line and line ~= "Beast Training" and line ~= (BEAST_TRAINING or "") and line ~= own then return end
   local changed = false
   for i = 1, GetNumCrafts() or 0 do
     local name, sub, kind = GetCraftInfo(i)
@@ -155,12 +276,12 @@ FLT.ScanPetAbilities = function() scanPetSpellbook(); scanBeastTraining() end
 
 -- Stabled pets are only readable while the stable master window is open, so
 -- the last seen list is stored per character (OneForAllCharDB.stablePets).
-local FAMILY_ALIAS_GLOBAL = { ["Owl"] = "Bird of Prey" }
+local FAMILY_ALIAS_GLOBAL = { ["Owl"] = "Bird of Prey", ["Eule"] = "Bird of Prey" }
 local function scanStable()
   if type(OneForAllCharDB) ~= "table" then return end
   local list = {}
   local function add(name, level, family)
-    if name and family then list[#list + 1] = { name = name, level = level, family = FAMILY_ALIAS_GLOBAL[family] or family } end
+    if name and family then list[#list + 1] = { name = name, level = level, family = FAMILY_ALIAS_GLOBAL[family] or EN(family) } end
   end
   if C_StableInfo and C_StableInfo.GetStablePetInfo then
     for i = 1, 10 do
@@ -234,10 +355,10 @@ local function myPetFamilies()
   local fams = {}
   if UnitExists and UnitExists("pet") and UnitCreatureFamily then
     local fam = UnitCreatureFamily("pet")
-    if fam then fam = FAMILY_ALIAS_GLOBAL[fam] or fam; fams[fam] = (UnitName and UnitName("pet")) or "your pet" end
+    if fam then fam = FAMILY_ALIAS_GLOBAL[fam] or EN(fam); fams[fam] = (UnitName and UnitName("pet")) or L["your pet"] end
   end
   for _, sp in ipairs(FLT:GetStabledPets()) do
-    if sp.family and not fams[sp.family] then fams[sp.family] = (sp.name or "?") .. ", stable" end
+    if sp.family and not fams[sp.family] then fams[sp.family] = (sp.name or "?") .. ", " .. L["stable"] end
   end
   return fams
 end
@@ -246,10 +367,10 @@ local function abilityFits(a, fams)
   local out = {}
   for _, fam in ipairs(a.families or {}) do
     if fam == "All families" then
-      for f, who in pairs(fams) do out[#out + 1] = f .. " (" .. who .. ")" end
+      for f, who in pairs(fams) do out[#out + 1] = L[f] .. " (" .. who .. ")" end
       return out
     elseif fams[fam] then
-      out[#out + 1] = fam .. " (" .. fams[fam] .. ")"
+      out[#out + 1] = L[fam] .. " (" .. fams[fam] .. ")"
     end
   end
   return out
@@ -350,20 +471,20 @@ local function checkTeacher(unit)
   local guid = UnitGUID and UnitGUID(unit)
   local beastName = (UnitName and UnitName(unit)) or e.beast.name
   FLT:ShowAlert({
-    eyebrow = "PET ABILITY NEARBY",
+    eyebrow = L["PET ABILITY NEARBY"],
     icon = "Interface\\Icons\\" .. (e.ability.icon or "INV_Misc_QuestionMark"),
-    title = string.format("%s teaches %s %d", (UnitName and UnitName(unit)) or e.beast.name or "?", e.ability.name, e.rank.rank or 1),
-    where = string.format("You know %s. For: %s",
-      best.known > 0 and ("rank " .. best.known) or "no rank yet", table.concat(best.fits, ", ")),
+    title = string.format(L["%s teaches %s %d"], (UnitName and UnitName(unit)) or e.beast.name or "?", L[e.ability.name], e.rank.rank or 1),
+    where = string.format(L["You know %s. For: %s"],
+      best.known > 0 and string.format(L["rank %s"], best.known) or L["no rank yet"], table.concat(best.fits, ", ")),
     buttons = {
-      { text = "Target", keepOpen = true, secureMacro = "/targetexact " .. (beastName or "") },
-      { text = "Snooze 15 min", onClick = function()
+      { text = L["Target"], keepOpen = true, secureMacro = "/targetexact " .. (beastName or "") },
+      { text = L["Snooze 15 min"], onClick = function()
         snoozeUntil = (GetTime and GetTime() or 0) + 900
-        if FLT.Msg then FLT.Msg("Pet ability alerts paused for 15 minutes.") end
+        if FLT.Msg then FLT.Msg(L["Pet ability alerts paused for 15 minutes."]) end
       end },
-      { text = "Ignore " .. e.ability.name, onClick = function()
+      { text = string.format(L["Ignore %s"], L[e.ability.name]), onClick = function()
         FLT:SetPetAlertIgnored(e.ability.name, true)
-        if FLT.Msg then FLT.Msg(e.ability.name .. " no longer triggers pet alerts. Re-enable it in Hunter Pets > Abilities.") end
+        if FLT.Msg then FLT.Msg(string.format(L["%s no longer triggers pet alerts. Re-enable it in Hunter Pets > Abilities."], L[e.ability.name])) end
       end },
     },
   })
@@ -405,16 +526,16 @@ local function createPetsPanel(parent)
   local panel = CreateFrame("Frame", nil, parent)
   UI.PlacePanel(panel, parent)
   UI.TitleBand(panel, { emblem = UI.ASSET_ROOT .. "emblem_pets", art = UI.ASSET_ROOT .. "pets_banner",
-    title = "Hunter Pets", subtitle = "Pet families, abilities with every rank and where to learn them, and notable rare tames.", fadeRight = 120 })
+    title = L["Hunter Pets"], subtitle = L["Pet families, abilities with every rank and where to learn them, and notable rare tames."], fadeRight = 120 })
 
   -- ht7 (user 30.10.): the three modes as a side list like the other tabs (emblem and name on top)
   local modeButtons = {}
-  local modes = { {key="families", label="Families", icon="Interface\\Icons\\Ability_Hunter_BeastTaming"},
-    {key="abilities", label="Abilities", icon="Interface\\Icons\\Ability_Hunter_BeastTraining"},
-    {key="rares", label="Rare Tames", icon="Interface\\Icons\\INV_Misc_Head_Tiger_01"} }
-  local nav, navY = UI.SideNav(panel, -74, "emblem_pets", "Hunter Pets") -- ht8: the same side list in every tab
+  local modes = { {key="families", label=N"Families", icon="Interface\\Icons\\Ability_Hunter_BeastTaming"},
+    {key="abilities", label=N"Abilities", icon="Interface\\Icons\\Ability_Hunter_BeastTraining"},
+    {key="rares", label=N"Rare Tames", icon="Interface\\Icons\\INV_Misc_Head_Tiger_01"} }
+  local nav, navY = UI.SideNav(panel, -74, "emblem_pets", L["Hunter Pets"]) -- ht8: the same side list in every tab
   for _, m in ipairs(modes) do
-    local b; b, navY = UI.NavEntry(nav, navY, m.label, m.icon)
+    local b; b, navY = UI.NavEntry(nav, navY, L[m.label], m.icon)
     modeButtons[m.key] = b
   end
 
@@ -422,11 +543,11 @@ local function createPetsPanel(parent)
   body:SetPoint("TOPLEFT", 182, -74); body:SetPoint("BOTTOMRIGHT", -8, 4)
   -- head like Quality of Life (user 31.10.): icon, mode name, one line, a search over all three modes
   local runSearch -- below
-  local head = UI.PageHeader(body, { placeholder = "Search families, abilities, beasts...", onSearch = function(t) if runSearch then runSearch(t) end end })
+  local head = UI.PageHeader(body, { placeholder = L["Search families, abilities, beasts..."], onSearch = function(t) if runSearch then runSearch(t) end end })
   local MODE_HEAD = {
-    families = { "Interface\\Icons\\Ability_Hunter_BeastTaming", "Families", "Diet, role and abilities of every pet family, and where to tame one." },
-    abilities = { "Interface\\Icons\\Ability_Hunter_BeastTraining", "Abilities", "Every rank of the pet abilities and the beasts that teach them." },
-    rares = { "Interface\\Icons\\INV_Misc_Head_Tiger_01", "Rare Tames", "Notable rare beasts worth taming and where to find them." },
+    families = { "Interface\\Icons\\Ability_Hunter_BeastTaming", N"Families", N"Diet, role and abilities of every pet family, and where to tame one." },
+    abilities = { "Interface\\Icons\\Ability_Hunter_BeastTraining", N"Abilities", N"Every rank of the pet abilities and the beasts that teach them." },
+    rares = { "Interface\\Icons\\INV_Misc_Head_Tiger_01", N"Rare Tames", N"Notable rare beasts worth taming and where to find them." },
   }
   local function place(view) view:SetPoint("TOPLEFT", 0, -60); view:SetPoint("BOTTOMRIGHT") end -- below the head
 
@@ -440,9 +561,9 @@ local function createPetsPanel(parent)
   local function beastRow(parentFrame, b, y, width)
     local row = CreateFrame("Frame", nil, parentFrame); row:SetSize(width, 24); row:SetPoint("TOPLEFT", 0, y)
     local t = text(row, "GameFontHighlightSmall", width - 70); t:SetPoint("LEFT", 6, 0)
-    t:SetText(string.format("%s  |cff9d9d9d(%s)|r  -  %s", b.name or "?", b.level or "?", b.zone or "?"))
+    t:SetText(string.format("%s  |cff9d9d9d(%s)|r  -  %s", NM(b.name) or "?", b.level or "?", ZN(b.zone) or "?"))
     if b.mapID and b.x and b.y then
-      local mb = UI.GoldButton(row, "Map", 64, 20, UI.ASSET_ROOT .. "icon_map", 11); mb:SetPoint("RIGHT", -4, 0)
+      local mb = UI.GoldButton(row, L["Map"], 64, 20, UI.ASSET_ROOT .. "icon_map", 11); mb:SetPoint("RIGHT", -4, 0)
       mb:SetScript("OnClick", function() showBeast(b) end)
     end
     return row
@@ -484,7 +605,7 @@ local function createPetsPanel(parent)
       local b = CreateFrame("Button", nil, lchild); b:SetSize(ROW_W, 34); b:SetPoint("TOPLEFT", 0, y); y = y - 37
       local card = UI.CardRow(b)
       local ic = b:CreateTexture(nil, "ARTWORK"); ic:SetSize(26, 26); ic:SetPoint("LEFT", 6, 0); FLT.SetTex(ic, item.icon)
-      local label = text(b, "GameFontHighlight", 160); label:SetPoint("LEFT", 40, 0); label:SetText(item.label)
+      local label = text(b, "GameFontHighlight", 160); label:SetPoint("LEFT", 40, 0); label:SetText(L[item.label])
       local sub = text(b, "GameFontDisableSmall", 110); sub:SetPoint("RIGHT", -8, 0); sub:SetJustifyH("RIGHT"); sub:SetText(item.sub or "")
       b:SetScript("OnClick", function() select(i) end)
       rows[i] = {card=card, label=label, sub=sub, button=b}
@@ -518,12 +639,12 @@ local function createPetsPanel(parent)
 
   -- Families -----------------------------------------------------------------
   -- The hunter's active pet (family name as the client reports it).
-  local FAMILY_ALIAS = { ["Owl"] = "Bird of Prey" }
+  local FAMILY_ALIAS = { ["Owl"] = "Bird of Prey", ["Eule"] = "Bird of Prey" }
   local function activePet()
     if not (UnitExists and UnitExists("pet") and UnitCreatureFamily) then return nil end
     local fam = UnitCreatureFamily("pet")
     if not fam then return nil end
-    return FAMILY_ALIAS[fam] or fam, UnitName and UnitName("pet"), UnitLevel and UnitLevel("pet")
+    return FAMILY_ALIAS[fam] or EN(fam), UnitName and UnitName("pet"), UnitLevel and UnitLevel("pet")
   end
 
   -- All known beasts of a family: the hand-picked list plus every beast that
@@ -582,7 +703,7 @@ local function createPetsPanel(parent)
   local function buildFamilies()
     local items = {}
     for _, f in ipairs(FLT.PET_FAMILIES or {}) do
-      items[#items + 1] = { label=f.name, icon=icon(FAMILY_ICON, f.name), sub=table.concat(f.diet or {}, ", "), data=f }
+      items[#items + 1] = { label=f.name, icon=icon(FAMILY_ICON, f.name), sub=tlist(f.diet), data=f }
     end
     -- framed sub-box with a small-caps title (optional icon)
     local function box(child, x, y, w, h, title, iconPath)
@@ -592,7 +713,7 @@ local function createPetsPanel(parent)
       if iconPath then
         local ic = b:CreateTexture(nil, "ARTWORK"); ic:SetSize(18, 18); ic:SetPoint("TOPLEFT", 10, -8); FLT.SetTex(ic, iconPath); tx = 34
       end
-      local t = UI.SmallCaps(b, title, 15, 11, GOLD); t:SetPoint("TOPLEFT", tx, -9)
+      local t = UI.SmallCaps(b, L[title], 15, 11, GOLD); t:SetPoint("TOPLEFT", tx, -9)
       return b
     end
     local MOD_ICONS = { health = "Interface\\Icons\\Spell_Holy_Heal", armor = "Interface\\Icons\\INV_Shield_06", damage = "Interface\\Icons\\INV_Sword_04" }
@@ -611,7 +732,7 @@ local function createPetsPanel(parent)
         pic:SetTexCoord(0.07, 0.93, 0.07, 0.93)
       end
       local ringTex = ring:CreateTexture(nil, "OVERLAY"); ringTex:SetAllPoints(); FLT.SetTex(ringTex, UI.ASSET_ROOT .. "frame_ring")
-      local t = text(child, "GameFontNormalLarge"); t:SetPoint("TOPLEFT", 118, -6); t:SetText(f.name); t:SetTextColor(FLT.SkinC(unpack(GOLD)))
+      local t = text(child, "GameFontNormalLarge"); t:SetPoint("TOPLEFT", 118, -6); t:SetText(L[f.name]); t:SetTextColor(FLT.SkinC(unpack(GOLD)))
       do local font, _, flags = t:GetFont(); if font then t:SetFont(font, 26, flags) end end
       local petTag = text(child, "GameFontHighlightSmall", 260); petTag:SetPoint("LEFT", t, "RIGHT", 14, -2); petTag:SetTextColor(FLT.SkinC(0.35, 1, 0.45))
       local dv = child:CreateTexture(nil, "ARTWORK"); FLT.SetTex(dv, UI.ASSET_ROOT .. "divider_ornate"); dv:SetSize(W - 112, 16); dv:SetPoint("TOPLEFT", 112, -36)
@@ -621,10 +742,11 @@ local function createPetsPanel(parent)
       -- the "not confirmed" remark belongs to "Where to tame", not to the trait
       trait = trait:gsub("%s*Tameable beasts not confirmed yet in Forever%.?", "")
       if trait:match("^Stat modifiers") then trait = "" end
+      do local ab = trait:match("^Only family with (.+)%.$"); if ab then trait = string.format(L["Only family with %s."], L[ab]) else trait = LN(trait) end end
       local facts = {
-        { "Interface\\Icons\\INV_Misc_Food_14", "Diet", table.concat(f.diet or {}, ", ") },
-        role and { "Interface\\Icons\\Ability_DualWield", "Role", role } or nil,
-        { "Interface\\Icons\\Ability_Hunter_BeastTaming", "Special trait", trait ~= "" and trait or "|cff9d9d9dNone|r" },
+        { "Interface\\Icons\\INV_Misc_Food_14", L["Diet"], tlist(f.diet) },
+        role and { "Interface\\Icons\\Ability_DualWield", L["Role"], L[role] } or nil,
+        { "Interface\\Icons\\Ability_Hunter_BeastTaming", L["Special trait"], trait ~= "" and trait or ("|cff9d9d9d" .. L["None"] .. "|r") },
       }
       local fy = -56
       for i = 1, 3 do
@@ -642,11 +764,11 @@ local function createPetsPanel(parent)
         local fam, pname, plevel = activePet()
         local parts = {}
         if fam == f.name then
-          parts[#parts + 1] = "Your pet: " .. (pname or "?") .. (plevel and plevel > 0 and (", level " .. plevel) or "")
+          parts[#parts + 1] = string.format(L["Your pet: %s"], pname or "?") .. (plevel and plevel > 0 and (", " .. string.format(L["level %s"], plevel)) or "")
         end
         for _, sp in ipairs(FLT:GetStabledPets()) do
           if sp.family == f.name then
-            parts[#parts + 1] = "|cff7fbfffIn stable: " .. (sp.name or "?") .. (sp.level and (", level " .. sp.level) or "") .. "|r"
+            parts[#parts + 1] = "|cff7fbfff" .. string.format(L["In stable: %s"], sp.name or "?") .. (sp.level and (", " .. string.format(L["level %s"], sp.level)) or "") .. "|r"
           end
         end
         petTag:SetText(table.concat(parts, "   "))
@@ -657,29 +779,29 @@ local function createPetsPanel(parent)
       local nAb = #(f.abilities or {})
       local bw = math.floor((W - 8) / 2)
       local bh = math.max(34 + 3 * 34 + 6, 34 + nAb * 28 + 6)
-      local mb = box(child, 0, y, bw, bh, "Modifiers")
+      local mb = box(child, 0, y, bw, bh, N"Modifiers")
       local my = -32
       for _, key in ipairs({ "health", "armor", "damage" }) do
         local val = f.modifiers and f.modifiers[key]
         local r = CreateFrame("Frame", nil, mb); r:SetPoint("TOPLEFT", 8, my); r:SetSize(bw - 16, 30); my = my - 34
         UI.Card(r, r, 4, {0.30, 0.27, 0.22, 0.9}, {0.06, 0.062, 0.072, 0.96}, "BACKGROUND", 2)
         local ic = r:CreateTexture(nil, "ARTWORK"); ic:SetSize(22, 22); ic:SetPoint("LEFT", 5, 0); FLT.SetTex(ic, MOD_ICONS[key]); ic:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-        local l = text(r, "GameFontHighlight"); l:SetPoint("LEFT", 36, 0); l:SetText(key:sub(1, 1):upper() .. key:sub(2))
+        local l = text(r, "GameFontHighlight"); l:SetPoint("LEFT", 36, 0); l:SetText(L[key:sub(1, 1):upper() .. key:sub(2)])
         local v = text(r, "GameFontHighlight"); v:SetPoint("RIGHT", -12, 0); v:SetText(val and ("x" .. val) or "-")
         local n = tonumber(val)
         if n and n > 1.001 then v:SetTextColor(FLT.SkinC(0.45, 1, 0.45)) elseif n and n < 0.999 then v:SetTextColor(FLT.SkinC(1, 0.45, 0.40)) else v:SetTextColor(FLT.SkinC(0.95, 0.93, 0.88)) end
       end
-      local ab = box(child, bw + 8, y, bw, bh, "Family abilities")
+      local ab = box(child, bw + 8, y, bw, bh, N"Family abilities")
       local ay = -32
       for _, name in ipairs(f.abilities or {}) do
         local b = CreateFrame("Button", nil, ab); b:SetSize(bw - 16, 26); b:SetPoint("TOPLEFT", 8, ay); ay = ay - 28
         local ic = b:CreateTexture(nil, "ARTWORK"); ic:SetSize(22, 22); ic:SetPoint("LEFT", 3, 0); FLT.SetTex(ic, icon(ABILITY_ICON, name))
-        local l = text(b, "GameFontHighlight", bw - 60); l:SetPoint("LEFT", 34, 0); l:SetText(name)
+        local l = text(b, "GameFontHighlight", bw - 60); l:SetPoint("LEFT", 34, 0); l:SetText(L[name])
         local sep = makeTexture(b, "BORDER", 0.72, 0.50, 0.12, 0.18); sep:SetPoint("BOTTOMLEFT", 30, -1); sep:SetPoint("BOTTOMRIGHT", 0, -1); sep:SetHeight(1)
         local hi = makeTexture(b, "HIGHLIGHT", 0.90, 0.66, 0.22, 0.10); hi:SetPoint("TOPLEFT", 1, -1); hi:SetPoint("BOTTOMRIGHT", -1, 1)
         UI.HoverEdge(b)
         b:SetScript("OnClick", function() showMode("abilities", abilityIndex[name]) end)
-        b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(name, 1, 0.82, 0); GameTooltip:AddLine("Click to open the ability", 0.8, 0.8, 0.8); GameTooltip:Show() end)
+        b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L[name], 1, 0.82, 0); GameTooltip:AddLine(L["Click to open the ability"], 0.8, 0.8, 0.8); GameTooltip:Show() end)
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)
       end
       y = y - bh - 10
@@ -687,7 +809,7 @@ local function createPetsPanel(parent)
       -- Where to tame: the 4 beasts closest to your level; "Show all" folds
       -- out every known beast of the family (merged from the ability ranks).
       local tames = familyTames(f.name)
-      local tb = box(child, 0, y, W, 40, "Where to tame", "Interface\\Icons\\Ability_Hunter_BeastTaming")
+      local tb = box(child, 0, y, W, 40, N"Where to tame", "Interface\\Icons\\Ability_Hunter_BeastTaming")
       local tameTop = y
       local showAll = false
       local tameRows = {}
@@ -702,7 +824,7 @@ local function createPetsPanel(parent)
         local list = showAll and tames or nearestTames(tames, TAME_PREVIEW)
         local ty = -32
         if #list == 0 then
-          if not none then none = text(tb, "GameFontDisableSmall", W - 30); none:SetPoint("TOPLEFT", 14, ty - 8); none:SetText("No tameable beasts confirmed in Forever yet.") end
+          if not none then none = text(tb, "GameFontDisableSmall", W - 30); none:SetPoint("TOPLEFT", 14, ty - 8); none:SetText(L["No tameable beasts confirmed in Forever yet."]) end
           ty = ty - 32
         end
         for i, b in ipairs(list) do
@@ -710,20 +832,20 @@ local function createPetsPanel(parent)
           if not r then
             r = CreateFrame("Button", nil, tb); r:SetSize(W - 16, 30)
             UI.CardRow(r)
-            r.n = text(r, "GameFontHighlight", 230); r.n:SetPoint("LEFT", 12, 0); r.n:SetWordWrap(false)
-            r.z = text(r, "GameFontHighlightSmall", 150); r.z:SetPoint("LEFT", 254, 0); r.z:SetTextColor(FLT.SkinC(0.84, 0.81, 0.74)); r.z:SetWordWrap(false)
-            r.m = UI.GoldButton(r, "Map", 64, 20, UI.ASSET_ROOT .. "icon_map", 11); r.m:SetPoint("RIGHT", -6, 0)
+            r.n = text(r, "GameFontHighlight", 200); r.n:SetPoint("LEFT", 12, 0); r.n:SetWordWrap(false)
+            r.z = text(r, "GameFontHighlightSmall", 120); r.z:SetPoint("LEFT", 214, 0); r.z:SetTextColor(FLT.SkinC(0.84, 0.81, 0.74)); r.z:SetWordWrap(false)
+            r.m = UI.GoldButton(r, L["Map"], 64, 20, UI.ASSET_ROOT .. "icon_map", 11); r.m:SetPoint("RIGHT", -6, 0)
             r.m:SetScript("OnClick", function() local d = r.data; if d then showBeast(d) end end)
             tameRows[i] = r
           end
           r.data = b
           r:ClearAllPoints(); r:SetPoint("TOPLEFT", 8, ty); ty = ty - 32
-          r.n:SetText(string.format("%s  |cff9d9d9d(%s)|r", b.name or "?", b.level or "?"))
-          r.z:SetText(b.zone or "?")
+          r.n:SetText(string.format("%s  |cff9d9d9d(%s)|r", NM(b.name) or "?", b.level or "?"))
+          r.z:SetText(ZN(b.zone) or "?")
           if b.mapID and b.x and b.y then r.m:Show() else r.m:Hide() end
           r:Show()
         end
-        if toggle then toggle:SetLabel(showAll and "Show less" or ("Show all (" .. #tames .. ")")) end
+        if toggle then toggle:SetLabel(showAll and L["Show less"] or string.format(L["Show all (%d)"], #tames)) end
         local th = -ty + 6
         tb:SetHeight(th)
         child:SetHeight(math.max(1, -(tameTop - th - 6) + 4))
@@ -751,10 +873,10 @@ local function createPetsPanel(parent)
           end
           if mine then
             r.petMark:SetColorTexture(FLT.SkinC(0.35, 1, 0.45, 0.95)); r.petMark:Show()
-            r.sub:SetText("|cff59ff73Your pet|r" .. (stabled > 0 and "\n|cff7fbfffIn stable|r" or ""))
+            r.sub:SetText("|cff59ff73" .. L["Your pet"] .. "|r" .. (stabled > 0 and ("\n|cff7fbfff" .. L["In stable"] .. "|r") or ""))
           elseif stabled > 0 then
             r.petMark:SetColorTexture(FLT.SkinC(0.50, 0.75, 1, 0.95)); r.petMark:Show()
-            r.sub:SetText("|cff7fbfffIn stable" .. (stabled > 1 and (" (" .. stabled .. ")") or "") .. "|r")
+            r.sub:SetText("|cff7fbfff" .. L["In stable"] .. (stabled > 1 and (" (" .. stabled .. ")") or "") .. "|r")
           else
             r.petMark:Hide(); r.sub:SetText(it.sub or "")
           end
@@ -774,19 +896,19 @@ local function createPetsPanel(parent)
     -- (resistances, Great Stamina, ...) are listed on each family instead.
     for _, a in ipairs(FLT.PET_ABILITIES or {}) do
       if a.source ~= "trainer" then
-      items[#items + 1] = { label=a.name, icon=icon(ABILITY_ICON, a.name), sub=(a.source == "trainer") and "Pet Trainer" or (#(a.ranks or {}) .. " ranks"), data=a }
+      items[#items + 1] = { label=L[a.name], icon=icon(ABILITY_ICON, a.name), sub=(a.source == "trainer") and L["Pet Trainer"] or string.format(L["%d ranks"], #(a.ranks or {})), data=a }
       abilityIndex[a.name] = #items
       end
     end
     local function subText(a)
       if a.source == "trainer" then
         local k = FLT:GetKnownPetRank(a.name)
-        return k > 0 and ("|cff59ff73Rank " .. k .. "|r  Pet Trainer") or "Pet Trainer"
+        return k > 0 and ("|cff59ff73" .. string.format(L["Rank %s"], k) .. "|r  " .. L["Pet Trainer"]) or L["Pet Trainer"]
       end
       local k = FLT:GetKnownPetRank(a.name)
-      local mute = FLT:IsPetAlertIgnored(a.name) and "  |cff808080(no alert)|r" or ""
-      if k > 0 then return string.format("|cff59ff73%d/%d learned|r", math.min(k, #(a.ranks or {})), #(a.ranks or {})) .. mute end
-      return #(a.ranks or {}) .. " ranks" .. mute
+      local mute = FLT:IsPetAlertIgnored(a.name) and ("  |cff808080" .. L["(no alert)"] .. "|r") or ""
+      if k > 0 then return "|cff59ff73" .. string.format(L["%d/%d learned"], math.min(k, #(a.ranks or {})), #(a.ranks or {})) .. "|r" .. mute end
+      return string.format(L["%d ranks"], #(a.ranks or {})) .. mute
     end
     for _, it in ipairs(items) do it.sub = subText(it.data) end
 
@@ -806,16 +928,16 @@ local function createPetsPanel(parent)
         local m = fr:CreateMaskTexture(); FLT.SetTex(m, UI.ASSET_ROOT .. "talent_icon_mask2", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE"); m:SetAllPoints(pic); pic:AddMaskTexture(m)
       end
       local frame = fr:CreateTexture(nil, "OVERLAY"); frame:SetAllPoints(); FLT.SetTex(frame, UI.ASSET_ROOT .. "talent_frame"); frame:SetVertexColor(FLT.SkinC(0.98, 0.76, 0.30, 1))
-      local t = text(child, "GameFontNormalLarge"); t:SetPoint("TOPLEFT", 100, -8); t:SetText(a.name); t:SetTextColor(FLT.SkinC(unpack(GOLD)))
+      local t = text(child, "GameFontNormalLarge"); t:SetPoint("TOPLEFT", 100, -8); t:SetText(L[a.name]); t:SetTextColor(FLT.SkinC(unpack(GOLD)))
       do local font, _, flags = t:GetFont(); if font then t:SetFont(font, 24, flags) end end
-      local eff = text(child, "GameFontHighlight", W - 110); eff:SetPoint("TOPLEFT", 101, -38); eff:SetText(a.effect or ""); eff:SetTextColor(FLT.SkinC(0.92, 0.90, 0.84))
+      local eff = text(child, "GameFontHighlight", W - 110); eff:SetPoint("TOPLEFT", 101, -38); eff:SetText(LN(a.effect or "")); eff:SetTextColor(FLT.SkinC(0.92, 0.90, 0.84))
       local alertCB = FLT.SkinBlizz(CreateFrame("CheckButton", nil, child, "UICheckButtonTemplate"))
       alertCB:SetSize(22, 22); alertCB:SetPoint("TOPRIGHT", -2, -4)
-      local alertLbl = text(child, "GameFontHighlightSmall"); alertLbl:SetPoint("RIGHT", alertCB, "LEFT", -2, 0); alertLbl:SetText("Alert for this ability")
+      local alertLbl = text(child, "GameFontHighlightSmall"); alertLbl:SetPoint("RIGHT", alertCB, "LEFT", -2, 0); alertLbl:SetText(L["Alert for this ability"])
       alertCB:SetScript("OnClick", function(self) FLT:SetPetAlertIgnored(a.name, not self:GetChecked()) end)
       alertCB:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:AddLine("Pet ability alert", 1, 0.82, 0)
-        GameTooltip:AddLine("Untick to never get a popup for beasts teaching this ability.", 1, 1, 1, true); GameTooltip:Show()
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT"); GameTooltip:AddLine(L["Pet ability alert"], 1, 0.82, 0)
+        GameTooltip:AddLine(L["Untick to never get a popup for beasts teaching this ability."], 1, 1, 1, true); GameTooltip:Show()
       end)
       alertCB:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
@@ -827,13 +949,13 @@ local function createPetsPanel(parent)
       local fam = CreateFrame("Frame", nil, child); fam:SetPoint("TOPLEFT", 0, fy); fam:SetWidth(W)
       UI.FramedPanel(fam)
       local paw = fam:CreateTexture(nil, "ARTWORK"); paw:SetSize(34, 34); paw:SetPoint("TOPLEFT", 8, -8); FLT.SetTex(paw, PAW)
-      local ft = UI.SmallCaps(fam, "Supported Families", 14, 10, GOLD); ft:SetPoint("TOPLEFT", 50, -9)
+      local ft = UI.SmallCaps(fam, L["Supported Families"], 14, 10, GOLD); ft:SetPoint("TOPLEFT", 50, -9)
       local fl = text(fam, "GameFontHighlightSmall", W - 62); fl:SetPoint("TOPLEFT", 50, -28)
-      fl:SetText((a.families and #a.families > 0) and table.concat(a.families, ", ") or "-"); fl:SetTextColor(FLT.SkinC(0.85, 0.83, 0.77))
+      fl:SetText((a.families and #a.families > 0) and tlist(a.families) or "-"); fl:SetTextColor(FLT.SkinC(0.85, 0.83, 0.77))
       local famH = math.max(50, 28 + math.max(14, fl:GetStringHeight() or 14) + 10)
       fam:SetHeight(famH)
       local headBottom = fy - famH
-      local ranksTitle = UI.SmallCaps(child, "Ranks", 16, 12, GOLD); ranksTitle:SetPoint("TOPLEFT", 2, headBottom - 12)
+      local ranksTitle = UI.SmallCaps(child, L["Ranks"], 16, 12, GOLD); ranksTitle:SetPoint("TOPLEFT", 2, headBottom - 12)
       local introTop = headBottom - 36
 
       local intro = {}
@@ -842,12 +964,12 @@ local function createPetsPanel(parent)
         if r then p:SetTextColor(FLT.SkinC(r, g, b)) end
         intro[#intro + 1] = p
       end
-      if a.source == "trainer" then addIntro("Learned from any Pet Trainer.", 0.65, 0.85, 1) end
+      if a.source == "trainer" then addIntro(L["Learned from any Pet Trainer."], 0.65, 0.85, 1) end
       local noneKnown = a.source ~= "trainer" and #(a.ranks or {}) > 0
       for _, r in ipairs(a.ranks or {}) do if #(r.learnFrom or {}) > 0 then noneKnown = false end end
-      if noneKnown then addIntro("New in WoW Forever: no beast that teaches this ability is known yet.", 0.65, 0.85, 1) end
+      if noneKnown then addIntro(L["New in WoW Forever: no beast that teaches this ability is known yet."], 0.65, 0.85, 1) end
       local scanHint = text(child, "GameFontDisableSmall", W - 10)
-      scanHint:SetText("Green = rank you already know. Summon your pet (or open Beast Training) so OneForAll can read your known ranks.")
+      scanHint:SetText(L["Green = rank you already know. Summon your pet (or open Beast Training) so OneForAll can read your known ranks."])
 
       -- One card per rank: header line, effect, and the teaching beasts (fold out).
       for ri, r in ipairs(a.ranks or {}) do
@@ -859,13 +981,13 @@ local function createPetsPanel(parent)
         local tog = hdr:CreateTexture(nil, "OVERLAY"); tog:SetSize(14, 14); tog:SetPoint("LEFT", 10, 0); FLT.SetTex(tog, UI.ASSET_ROOT .. "chevron")
         local label = text(hdr, "GameFontNormal", 340); label:SetPoint("LEFT", 32, 0)
         do local font, _, flags = label:GetFont(); if font then label:SetFont(font, 14, flags) end end
-        label:SetText(string.format("Rank %d  |cffe0dccf-  pet level %s, %s TP|r", r.rank, tostring(r.level or "?"), tostring(r.tp or "?")))
+        label:SetText(string.format(L["Rank %d  |cffe0dccf-  pet level %s, %s TP|r"], r.rank, tostring(r.level or "?"), tostring(r.tp or "?")))
         local right = text(hdr, "GameFontHighlightSmall", 150); right:SetPoint("RIGHT", -12, 0); right:SetJustifyH("RIGHT")
         local rpaw = hdr:CreateTexture(nil, "ARTWORK"); rpaw:SetSize(18, 18); FLT.SetTex(rpaw, PAW)
         local body = CreateFrame("Frame", nil, card); body:SetPoint("TOPLEFT", 0, -30); body:SetPoint("TOPRIGHT", 0, -30); body:SetHeight(1)
         local by = 0
         if r.desc and r.desc ~= "" then
-          local d = text(body, "GameFontHighlightSmall", W - 40); d:SetPoint("TOPLEFT", 32, by); d:SetText(r.desc); d:SetTextColor(FLT.SkinC(0.86, 0.84, 0.78))
+          local d = text(body, "GameFontHighlightSmall", W - 40); d:SetPoint("TOPLEFT", 32, by); d:SetText(LN(r.desc)); d:SetTextColor(FLT.SkinC(0.86, 0.84, 0.78))
           by = by - math.max(16, (d:GetStringHeight() or 14) + 6)
         end
         local beastsTop = by
@@ -876,7 +998,7 @@ local function createPetsPanel(parent)
             body.beasts[#body.beasts + 1] = row
           end
         elseif a.source ~= "trainer" and not noneKnown then
-          local d = text(body, "GameFontDisableSmall", W - 40); d:SetPoint("TOPLEFT", 32, by); d:SetText("No beast known that teaches this rank."); by = by - 18
+          local d = text(body, "GameFontDisableSmall", W - 40); d:SetPoint("TOPLEFT", 32, by); d:SetText(L["No beast known that teaches this rank."]); by = by - 18
         end
         body.fullH, body.descH = -by + 6, -beastsTop + 6
         hdr:SetScript("OnClick", function()
@@ -920,11 +1042,11 @@ local function createPetsPanel(parent)
           bl.paw:ClearAllPoints()
           if learned then
             bl.bg:SetFill(0.05, 0.15, 0.07, 0.95); bl.bg:SetBorder(0.30, 0.55, 0.30, 0.9); bl.label:SetTextColor(FLT.SkinC(0.35, 1, 0.45))
-            bl.right:SetText("|cff59ff73Learned|r"); bl.paw:Hide()
+            bl.right:SetText("|cff59ff73" .. L["Learned"] .. "|r"); bl.paw:Hide()
           else
             bl.bg:SetFill(0.060, 0.062, 0.074, 0.97); bl.bg:SetBorder(0.42, 0.33, 0.18, 0.95); bl.label:SetTextColor(FLT.SkinC(unpack(GOLD)))
             if bl.hasBeasts then
-              bl.right:SetText(#bl.rank.learnFrom .. " beasts"); bl.right:SetTextColor(FLT.SkinC(0.86, 0.84, 0.78))
+              bl.right:SetText(string.format(L["%d beasts"], #bl.rank.learnFrom)); bl.right:SetTextColor(FLT.SkinC(0.86, 0.84, 0.78))
               bl.paw:SetPoint("RIGHT", bl.right, "RIGHT", -(bl.right:GetStringWidth() or 50) - 6, 0); bl.paw:Show()
             else
               bl.right:SetText(""); bl.paw:Hide()
@@ -960,20 +1082,20 @@ local function createPetsPanel(parent)
       cards[i] = UI.CardRow(row)
       local ic = row:CreateTexture(nil, "ARTWORK"); ic:SetSize(28, 28); ic:SetPoint("LEFT", 8, 0); FLT.SetTex(ic, icon(FAMILY_ICON, r.family))
       local n = text(row, "GameFontNormal", 300); n:SetPoint("TOPLEFT", 44, -6)
-      n:SetText(string.format("%s  |cffbbbbbb%s, level %s%s|r", r.name or "?", r.family or "?", r.level or "?", r.speed and (", speed " .. r.speed) or ""))
-      local w = text(row, "GameFontHighlightSmall", 440); w:SetPoint("TOPLEFT", 44, -25); w:SetText(r.why or ""); w:SetWordWrap(false)
-      local z = text(row, "GameFontHighlightSmall", 190); z:SetPoint("RIGHT", -96, 0); z:SetJustifyH("RIGHT"); z:SetText(r.zone or ""); z:SetWordWrap(false)
+      n:SetText(string.format("%s  |cffbbbbbb%s, %s%s|r", NM(r.name) or "?", r.family and L[r.family] or "?", string.format(L["level %s"], r.level or "?"), r.speed and (", " .. string.format(L["speed %s"], r.speed)) or ""))
+      local w = text(row, "GameFontHighlightSmall", 440); w:SetPoint("TOPLEFT", 44, -25); w:SetText(LN(r.why or "")); w:SetWordWrap(false)
+      local z = text(row, "GameFontHighlightSmall", 190); z:SetPoint("RIGHT", -96, 0); z:SetJustifyH("RIGHT"); z:SetText(ZN(r.zone) or ""); z:SetWordWrap(false)
       -- full text in the tooltip (the description is cut to one line)
       row:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_CURSOR"); GameTooltip:AddLine(r.name or "?", 1, 0.82, 0)
-        GameTooltip:AddLine(string.format("%s, level %s%s", r.family or "?", r.level or "?", r.speed and (", attack speed " .. r.speed) or ""), 0.9, 0.9, 0.9)
-        if r.why and r.why ~= "" then GameTooltip:AddLine(r.why, 1, 1, 1, true) end
-        if r.zone then GameTooltip:AddLine(r.zone, 0.65, 0.85, 1) end
+        GameTooltip:SetOwner(self, "ANCHOR_CURSOR"); GameTooltip:AddLine(NM(r.name) or "?", 1, 0.82, 0)
+        GameTooltip:AddLine(string.format("%s, %s%s", r.family and L[r.family] or "?", string.format(L["level %s"], r.level or "?"), r.speed and (", " .. string.format(L["attack speed %s"], r.speed)) or ""), 0.9, 0.9, 0.9)
+        if r.why and r.why ~= "" then GameTooltip:AddLine(LN(r.why), 1, 1, 1, true) end
+        if r.zone then GameTooltip:AddLine(ZN(r.zone), 0.65, 0.85, 1) end
         GameTooltip:Show()
       end)
       row:SetScript("OnLeave", function() GameTooltip:Hide() end)
       if r.mapID and r.x and r.y then
-        local mb = UI.GoldButton(row, "Map", 74, 22, UI.ASSET_ROOT .. "icon_map", 12); mb:SetPoint("RIGHT", -10, 0)
+        local mb = UI.GoldButton(row, L["Map"], 74, 22, UI.ASSET_ROOT .. "icon_map", 12); mb:SetPoint("RIGHT", -10, 0)
         mb:SetScript("OnClick", function() showBeast(r) end)
       end
     end
@@ -996,33 +1118,33 @@ local function createPetsPanel(parent)
     views[key]:Show()
     if selectIndex and views[key].select then views[key].select(selectIndex) end
     for k, b in pairs(modeButtons) do b:SetActive(k == key) end
-    head:Set(unpack(MODE_HEAD[key]))
+    do local mh = MODE_HEAD[key]; head:Set(mh[1], L[mh[2]], L[mh[3]]) end
     current = key
   end
 
   -- Search over all three modes (user 31.10.): one result list; a click opens the entry in its mode.
   -- The index is built on the first search only.
-  local KIND = { families = "Family", abilities = "Ability", rares = "Rare tame" }
+  local KIND = { families = N"Family", abilities = N"Ability", rares = N"Rare tame" }
   local function buildIndex()
     searchIndex = {}
     local function add(kind, key, label, ic, parts) searchIndex[#searchIndex + 1] = { kind = kind, key = key, label = label, icon = ic, find = table.concat(parts, " "):lower() } end
     for i, f in ipairs(FLT.PET_FAMILIES or {}) do
-      local parts = { f.name or "", table.concat(f.diet or {}, " "), table.concat(f.abilities or {}, " ") }
+      local parts = { f.name or "", L[f.name or ""], table.concat(f.diet or {}, " "), tlist(f.diet, " "), table.concat(f.abilities or {}, " "), tlist(f.abilities, " ") }
       for _, b in ipairs(f.tames or {}) do parts[#parts + 1] = (b.name or "") .. " " .. (b.zone or "") end
       for _, b in ipairs(FLT.PET_TAMES_EXTRA and FLT.PET_TAMES_EXTRA[f.name] or {}) do parts[#parts + 1] = (b.name or "") .. " " .. (b.zone or "") end
-      add("families", i, f.name, icon(FAMILY_ICON, f.name), parts)
+      add("families", i, L[f.name], icon(FAMILY_ICON, f.name), parts)
     end
     for _, a in ipairs(FLT.PET_ABILITIES or {}) do
       if a.source ~= "trainer" then
-        local parts = { a.name or "", a.effect or "" }
+        local parts = { a.name or "", L[a.name or ""], a.effect or "" }
         for _, rk in ipairs(a.ranks or {}) do
           for _, b in ipairs(rk.learnFrom or {}) do parts[#parts + 1] = (b.name or "") .. " " .. (b.zone or "") end
         end
-        add("abilities", a.name, a.name, icon(ABILITY_ICON, a.name), parts)
+        add("abilities", a.name, L[a.name], icon(ABILITY_ICON, a.name), parts)
       end
     end
     for i, r in ipairs(FLT.PET_RARES or {}) do
-      add("rares", i, r.name, icon(FAMILY_ICON, r.family), { r.name or "", r.family or "", r.zone or "", r.why or "" })
+      add("rares", i, r.name, icon(FAMILY_ICON, r.family), { r.name or "", NM(r.name or ""), r.family or "", L[r.family or ""], r.zone or "", r.why or "" })
     end
   end
   local function openHit(hit)
@@ -1036,7 +1158,7 @@ local function createPetsPanel(parent)
     if not current then return end
     if t == "" then
       if searchView then searchView:Hide() end
-      views[current]:Show(); head:Set(unpack(MODE_HEAD[current])); modeButtons[current]:SetActive(true)
+      views[current]:Show(); do local mh = MODE_HEAD[current]; head:Set(mh[1], L[mh[2]], L[mh[3]]) end; modeButtons[current]:SetActive(true)
       return
     end
     if not searchIndex then buildIndex() end
@@ -1046,7 +1168,7 @@ local function createPetsPanel(parent)
       local child = CreateFrame("Frame", nil, sf); child:SetSize(770, 1); sf:SetScrollChild(child)
       UI.AutoHideScrollBar(sf)
       searchView.child, searchView.sf, searchView.rows = child, sf, {}
-      searchView.none = text(child, "GameFontDisable"); searchView.none:SetPoint("TOPLEFT", 12, -12); searchView.none:SetText("Nothing found.")
+      searchView.none = text(child, "GameFontDisable"); searchView.none:SetPoint("TOPLEFT", 12, -12); searchView.none:SetText(L["Nothing found."])
     end
     for _, v in pairs(views) do v:Hide() end
     for _, b in pairs(modeButtons) do b:SetActive(false) end
@@ -1064,7 +1186,7 @@ local function createPetsPanel(parent)
           r:SetScript("OnClick", function(self) openHit(self.hit) end)
           rows[n] = r
         end
-        r.hit = hit; FLT.SetTex(r.ic, hit.icon); r.label:SetText(hit.label or "?"); r.kind:SetText(KIND[hit.kind])
+        r.hit = hit; FLT.SetTex(r.ic, hit.icon); r.label:SetText(hit.label or "?"); r.kind:SetText(L[KIND[hit.kind]])
         r:ClearAllPoints(); r:SetPoint("TOPLEFT", 0, y); r:Show(); y = y - 37
       end
     end
@@ -1072,7 +1194,7 @@ local function createPetsPanel(parent)
     searchView.none:SetShown(n == 0)
     searchView.child:SetHeight(math.max(1, -y + 4)); searchView.sf:SetVerticalScroll(0)
     searchView:Show()
-    head:Set("Interface\\Icons\\INV_Misc_Spyglass_02", "Search", n == 1 and "1 match in families, abilities and rare tames." or (n .. " matches in families, abilities and rare tames."))
+    head:Set("Interface\\Icons\\INV_Misc_Spyglass_02", L["Search"], n == 1 and L["1 match in families, abilities and rare tames."] or string.format(L["%d matches in families, abilities and rare tames."], n))
   end
   for k, b in pairs(modeButtons) do b:SetScript("OnClick", function() showMode(k) end) end
 
@@ -1094,4 +1216,4 @@ local function createPetsPanel(parent)
   return panel
 end
 
-UI.RegisterPanel({ key="pets", label="Hunter Pets", order=7, tabWidth=122, create=createPetsPanel })
+UI.RegisterPanel({ key="pets", label=N"Hunter Pets", order=7, tabWidth=122, create=createPetsPanel })

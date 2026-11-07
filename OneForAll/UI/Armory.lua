@@ -1,4 +1,6 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
 local UI = FLT.UI
 local unpack = unpack or table.unpack
 local makeTexture = UI.makeTexture
@@ -20,14 +22,16 @@ local CLASSES = {
   { id = 11, token = "DRUID", name = "Druid" },
 }
 local CLASS_NAME = {}
+-- shown names: the client's own (localized) class names, English as a fallback
+local function className(token) return (type(LOCALIZED_CLASS_NAMES_MALE) == "table" and LOCALIZED_CLASS_NAMES_MALE[token]) or CLASS_NAME[token] or token end
 for _, c in ipairs(CLASSES) do CLASS_NAME[c.token] = c.name end
 
 local GROUPS = {
-  { key = "raid", label = "Raid Sets", icon = "Interface\\Icons\\INV_Helmet_08" },
-  { key = "dungeon", label = "Dungeon Sets", icon = "Interface\\Icons\\INV_Chest_Cloth_05" },
-  { key = "pvp", label = "PvP Sets", icon = "Interface\\Icons\\INV_BannerPVP_02" },
-  { key = "crafted", label = "Crafted Sets", icon = "Interface\\Icons\\Trade_BlackSmithing" },
-  { key = "world", label = "World Sets", icon = "Interface\\Icons\\INV_Misc_Map_01" },
+  { key = "raid", label = N"Raid Sets", icon = "Interface\\Icons\\INV_Helmet_08" },
+  { key = "dungeon", label = N"Dungeon Sets", icon = "Interface\\Icons\\INV_Chest_Cloth_05" },
+  { key = "pvp", label = N"PvP Sets", icon = "Interface\\Icons\\INV_BannerPVP_02" },
+  { key = "crafted", label = N"Crafted Sets", icon = "Interface\\Icons\\Trade_BlackSmithing" },
+  { key = "world", label = N"World Sets", icon = "Interface\\Icons\\INV_Misc_Map_01" },
 }
 local GROUP_LABEL = {}
 for _, g in ipairs(GROUPS) do GROUP_LABEL[g.key] = g.label end
@@ -35,11 +39,11 @@ for _, g in ipairs(GROUPS) do GROUP_LABEL[g.key] = g.label end
 -- Buttons for the main sets of a group (user 22.10.): { label, sub names }; everything else of the group
 -- goes into the "Other Sets" drop-down. Groups without an entry (World Sets) keep the plain list.
 local TABS = {
-  raid = { { "Forever T1", { "Forever Tier 1" } }, { "Tier 1", { "Tier 1 - Molten Core" } },
-           { "Tier 2", { "Tier 2 - Blackwing Lair" } }, { "Tier 3", { "Tier 3 - Naxxramas" } } },
-  dungeon = { { "Dungeon 1", { "Dungeon Set 1" } }, { "Dungeon 2", { "Dungeon Set 2" } } },
-  pvp = { { "Rare (Rank 7-10)", { "Rank 7-10 (rare)" } }, { "Epic (Rank 12-13)", { "Rank 12-13 (epic)" } },
-          { "Rank 14", { "Rank 14 weapons" } } }, -- Arathi Basin under "Other Sets" (user 22.10.)
+  raid = { { N"Forever T1", { N"Forever Tier 1" } }, { N"Tier 1", { N"Tier 1 - Molten Core" } },
+           { N"Tier 2", { N"Tier 2 - Blackwing Lair" } }, { N"Tier 3", { N"Tier 3 - Naxxramas" } } },
+  dungeon = { { N"Dungeon 1", { N"Dungeon Set 1" } }, { N"Dungeon 2", { N"Dungeon Set 2" } } },
+  pvp = { { N"Rare (Rank 7-10)", { N"Rank 7-10 (rare)" } }, { N"Epic (Rank 12-13)", { N"Rank 12-13 (epic)" } },
+          { N"Rank 14", { N"Rank 14 weapons" } } }, -- Arathi Basin under "Other Sets" (user 22.10.)
   crafted = { { "Leatherworking", { "Leatherworking" } }, { "Blacksmithing", { "Blacksmithing" } }, { "Tailoring", { "Tailoring" } } },
 }
 for _, list in pairs(TABS) do
@@ -48,12 +52,17 @@ end
 
 -- st: 1 obtainable, 2 made for Forever but no source known yet, 0 not in Forever yet
 local STATUS = {
-  [0] = { text = "Not in Forever yet", c = {0.62, 0.50, 0.46}, tip = "This set exists in the game files, but its source (raid, battleground ranks, event, ...) is not part of WoW Forever yet." },
-  [2] = { text = "Source not known yet", c = {0.95, 0.70, 0.28}, tip = "A set made for WoW Forever. Where its pieces drop is not known yet." },
+  [0] = { text = N"Not in Forever yet", c = {0.62, 0.50, 0.46}, tip = N"This set exists in the game files, but its source (raid, battleground ranks, event, ...) is not part of WoW Forever yet." },
+  [2] = { text = N"Source not known yet", c = {0.95, 0.70, 0.28}, tip = N"A set made for WoW Forever. Where its pieces drop is not known yet." },
 }
-local RANK_LABEL = { [3] = "Neutral", [4] = "Friendly", [5] = "Honored", [6] = "Revered", [7] = "Exalted" }
+local RANK_LABEL = { [3] = N"Neutral", [4] = N"Friendly", [5] = N"Honored", [6] = N"Revered", [7] = N"Exalted" }
 local RANK_COLOR = { [3] = {0.85, 0.85, 0.85}, [4] = {0.30, 0.85, 0.30}, [5] = {0.30, 0.85, 0.55}, [6] = {0.30, 0.75, 0.85}, [7] = {0.75, 0.55, 1.00} }
-local KINDS = { { key = "all", label = "All" }, { key = "gear", label = "Gear" }, { key = "recipe", label = "Recipes" }, { key = "other", label = "Other" } }
+-- words from Data/Armory.lua that are shown with L[...] (armor and weapon types, slots, kinds; extract.py counts them here)
+local function _words() return N"Cloth", N"Leather", N"Mail", N"Plate", N"Sword", N"Mace", N"Fist Weapon", N"Dagger", N"Axe", N"Shield",
+  N"Polearm", N"Staff", N"Bow", N"Crossbow", N"Gun", N"Head", N"Neck", N"Shoulder", N"Back", N"Chest", N"Wrist", N"Hands", N"Waist",
+  N"Legs", N"Feet", N"Finger", N"Trinket", N"Main Hand", N"One-Hand", N"Two-Hand", N"Off Hand", N"Ranged", N"Tabard",
+  N"Held In Off-hand", N"Recipe", N"Item", N"Back (slot)" end
+local KINDS = { { key = "all", label = N"All" }, { key = "gear", label = N"Gear" }, { key = "recipe", label = N"Recipes" }, { key = "other", label = N"Other" } }
 
 -- Saved choices (per character): class filter, hide unreleased sets, item kind.
 local function prefs()
@@ -70,12 +79,14 @@ end
 local GetItemCount = GetItemCount or (C_Item and C_Item.GetItemCount)
 local IsEquippedItem = IsEquippedItem or (C_Item and C_Item.IsEquippedItem)
 
+local SW = FLT.SlotWord or function(w) return w and L[w] end -- slot / item words ("Back" is not the button "Back")
 local function itemName(id, fallback)
-  if fallback then return fallback end
+  -- German client + German chosen: the client's item name first (beta12); else our English name from the data
+  if fallback and not (FLT.ClientTexts and FLT.ClientTexts()) then return fallback end
   local n = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)
   if not n and GetItemInfo then n = GetItemInfo(id) end
   if not n and C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, id) end
-  return n or ("Item " .. id)
+  return n or fallback or (L["Item"] .. " " .. id)
 end
 local function setItemIcon(tex, id, icon)
   if type(icon) == "number" and icon > 0 then tex:SetTexture(icon)
@@ -139,18 +150,67 @@ local function standing(fid)
     local ok, d = pcall(C_Reputation.GetFactionDataByID, fid)
     if ok and type(d) == "table" and d.name then
       local lo, hi = d.currentReactionThreshold or 0, d.nextReactionThreshold or 0
-      return d.reaction, (d.currentStanding or 0) - lo, hi - lo
+      return d.reaction, (d.currentStanding or 0) - lo, hi - lo, d.name
     end
   end
   if GetFactionInfoByID then
     local ok, name, _, st, bmin, bmax, val = pcall(GetFactionInfoByID, fid)
-    if ok and name and st then return st, (val or 0) - (bmin or 0), (bmax or 0) - (bmin or 0) end
+    if ok and name and st then return st, (val or 0) - (bmin or 0), (bmax or 0) - (bmin or 0), name end
   end
   return nil
 end
 local function standingLabel(st)
-  if not st then return "Not met yet" end
-  return _G["FACTION_STANDING_LABEL" .. st] or RANK_LABEL[st - 1] or tostring(st)
+  if not st then return L["Not met yet"] end
+  return _G["FACTION_STANDING_LABEL" .. st] or (RANK_LABEL[st - 1] and L[RANK_LABEL[st - 1]]) or tostring(st)
+end
+-- shown faction name: the client's (localized) one when ClientTexts, else ours
+local function factionName(f, clientName) return (clientName and FLT.ClientTexts and FLT.ClientTexts()) and clientName or f.n end
+
+-- Set name and bonuses in the client's language (beta12): read once from the tooltip of the set's first piece
+-- ("Name (0/6)", "(2) Set: ...", worn bonuses as "Set: ..."); nil until the item is loaded or when ClientTexts is off
+local setLoc = {}
+-- a client format ("%s (%d/%d)", German "%1$s (%2$d/%3$d)") as a match pattern; nil when it cannot be one
+local function fmtPat(fmt)
+  local p = "^" .. fmt:gsub("%%%d%$", "%%"):gsub("[%^%$%(%)%.%[%]%*%+%-%?]", "%%%0"):gsub("%%d", "(%%d+)"):gsub("%%s", "(.+)") .. "$"
+  return pcall(string.find, "", p) and p or nil
+end
+-- the text captures of a match (positional formats can put the number first)
+local function textOf(a, b, c) if a and not tonumber(a) then return a end if b and not tonumber(b) then return b end return c end
+local pats -- { name, gray bonus, active bonus }, made once
+local function clientSet(s)
+  if not (FLT.ClientTexts and FLT.ClientTexts()) then return nil end
+  local c = setLoc[s.id]; if c then return c end
+  local TI = type(C_TooltipInfo) == "table" and C_TooltipInfo.GetItemByID
+  if type(TI) ~= "function" or type(ITEM_SET_NAME) ~= "string" or not s.i[1] then return nil end
+  pats = pats or { fmtPat(ITEM_SET_NAME), type(ITEM_SET_BONUS_GRAY) == "string" and fmtPat(ITEM_SET_BONUS_GRAY),
+    type(ITEM_SET_BONUS) == "string" and fmtPat(ITEM_SET_BONUS) }
+  local pn, pg, pa = pats[1], pats[2], pats[3]
+  if not pn then return nil end
+  local ok, data = pcall(TI, s.i[1][1])
+  if not (ok and type(data) == "table" and type(data.lines) == "table") then return nil end
+  local name, b = nil, {}
+  for _, line in ipairs(data.lines) do
+    local t = (line.leftText or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    if not name then name = textOf(t:match(pn)) end
+    local x = pg and textOf(t:match(pg))
+    if not x and pa then x = textOf(t:match(pa)) end
+    if x then b[#b + 1] = x end
+  end
+  if not name then -- not loaded yet: ask for it, the Armory redraws when it arrives
+    if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, s.i[1][1]) end
+    return nil
+  end
+  c = { n = name, b = (#b == #(s.b or {})) and b or nil }
+  setLoc[s.id] = c
+  return c
+end
+local function setName(s) local c = clientSet(s); return c and c.n or s.n end
+-- source texts from the data: "Crafted: Tailoring" / "Quest: ..." translated, "Dungeon - Boss" as it is (for now)
+local function sourceText(src)
+  local prof = src:match("^Crafted: (.+)$")
+  if prof then return string.format(L["Crafted: %s"], L[prof]) end
+  local q = src:match("^Quest: (.+)$")
+  return q and string.format(L["Quest: %s"], q) or src
 end
 -- item ranks use 0-7 (4 = Friendly); the client's standingID is 1-8
 local function rankReached(rank, st) return st and (st - 1) >= rank end
@@ -162,7 +222,7 @@ end
 local function sourceAction(src)
   if type(src) ~= "string" then return nil end
   if src:find("^Crafted:") then
-    return function() if FLT.OpenPanel then FLT:OpenPanel("professions") end end, "Professions"
+    return function() if FLT.OpenPanel then FLT:OpenPanel("professions") end end, L["Professions"]
   end
   local dname, boss = src:match("^(.-) %- (.+)$")
   if src:find("^Quest:") then dname = src:match("%(([^%)]+)%)$") end
@@ -188,7 +248,7 @@ end
 local function itemTooltip(owner, id, name, slot, q)
   if H.tryShowItemTooltip and H.tryShowItemTooltip(owner, { id = id, name = name, slot = slot, quality = q }) then return end
   GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
-  if not pcall(GameTooltip.SetHyperlink, GameTooltip, "item:" .. id) then GameTooltip:AddLine(name or ("Item " .. id)) end
+  if not pcall(GameTooltip.SetHyperlink, GameTooltip, "item:" .. id) then GameTooltip:AddLine(name or (L["Item"] .. " " .. id)) end
   GameTooltip:Show()
 end
 local function itemClick(id, name, slot, q, button)
@@ -214,9 +274,9 @@ local function createArmoryPanel(parent)
   P.class = playerClass()
 
   local band = UI.TitleBand(panel, { emblem = UI.ASSET_ROOT .. "emblem_armory", art = UI.ASSET_ROOT .. "armory_banner",
-    title = "Armory", subtitle = "Item sets and reputation rewards in WoW Forever, and which pieces you already own.", fadeRight = 60 })
+    title = L["Armory"], subtitle = L["Item sets and reputation rewards in WoW Forever, and which pieces you already own."], fadeRight = 60 })
 
-  local nav, navTop = UI.SideNav(panel, -74, "emblem_armory", "Armory") -- ht8: the same side list in every tab
+  local nav, navTop = UI.SideNav(panel, -74, "emblem_armory", L["Armory"]) -- ht8: the same side list in every tab
   local body = CreateFrame("Frame", nil, panel)
   body:SetPoint("TOPLEFT", 182, -74); body:SetPoint("BOTTOMRIGHT", -8, 4)
 
@@ -244,11 +304,11 @@ local function createArmoryPanel(parent)
     end
   end
   do
-    local allB = UI.GoldButton(filterBar, "All classes", 92, 26); allB:SetPoint("LEFT", 0, 0)
+    local allB = UI.GoldButton(filterBar, L["All classes"], 92, 26); allB:SetPoint("LEFT", 0, 0)
     allB.token = nil
     allB:SetScript("OnClick", function() P.class = false; paintClassButtons(); if refreshSets then refreshSets() end end)
     classButtons[#classButtons + 1] = allB
-    local x = 98
+    local x = math.floor((allB:GetWidth() or 92) + 6) -- the button grows with a longer name (French / Spanish, beta42)
     for _, c in ipairs(CLASSES) do
       local b = CreateFrame("Button", nil, filterBar); b:SetSize(30, 30); b:SetPoint("LEFT", x, 0); x = x + 34
       local ic = b:CreateTexture(nil, "ARTWORK"); ic:SetPoint("TOPLEFT", 3, -3); ic:SetPoint("BOTTOMRIGHT", -3, 3)
@@ -263,13 +323,13 @@ local function createArmoryPanel(parent)
       hl:SetVertexColor(FLT.SkinC(1, 0.86, 0.40, 0.85))
       b.icon, b.ring, b.token = ic, ring, c.token
       b:SetScript("OnClick", function() P.class = c.token; paintClassButtons(); if refreshSets then refreshSets() end end)
-      b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(c.name); GameTooltip:Show() end)
+      b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(className(c.token)); GameTooltip:Show() end)
       b:SetScript("OnLeave", function() GameTooltip:Hide() end)
       classButtons[#classButtons + 1] = b
     end
     local hide = FLT.SkinBlizz(CreateFrame("CheckButton", nil, filterBar, "UICheckButtonTemplate"))
     hide:SetSize(24, 24); hide:SetPoint("RIGHT", -170, 0)
-    local hl = newText(filterBar, "GameFontHighlightSmall", 168, TEXT); hl:SetPoint("LEFT", hide, "RIGHT", 2, 0); hl:SetText("Hide sets not in Forever yet")
+    local hl = newText(filterBar, "GameFontHighlightSmall", 168, TEXT); hl:SetPoint("LEFT", hide, "RIGHT", 2, 0); hl:SetText(L["Hide sets not in Forever yet"])
     hide:SetChecked(P.hideNotYet and true or false)
     hide:SetScript("OnClick", function(self) P.hideNotYet = self:GetChecked() and true or false; if refreshSets then refreshSets() end end)
     filterBar.hide, filterBar.hideLabel = hide, hl
@@ -280,13 +340,13 @@ local function createArmoryPanel(parent)
   -- tabPick[group] = index of a button, or the sub name picked under "Other Sets"; starts on the first button
   local tabBar = CreateFrame("Frame", nil, body); tabBar:SetPoint("TOPLEFT", 0, -36); tabBar:SetPoint("TOPRIGHT", 0, -36); tabBar:SetHeight(26); tabBar:Hide()
   local tabButtons, tabPick = {}, {}
-  local otherB = UI.GoldButton(tabBar, "Other Sets", 170, 24, nil, 12)
+  local otherB = UI.GoldButton(tabBar, L["Other Sets"], 170, 24, nil, 12)
   -- a long source name ends with "..." on the button, the whole name is in its tooltip (user 22.10.)
   otherB._label:SetWidth(170 - 40); otherB._label:SetWordWrap(false)
   otherB:SetScript("OnEnter", function(self)
     local pick = tabPick[current]
     if type(pick) ~= "string" then return end
-    GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:SetText(pick); GameTooltip:Show()
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:SetText(L[pick]); GameTooltip:Show()
   end)
   otherB:SetScript("OnLeave", function() GameTooltip:Hide() end)
   local otherArrow = otherB:CreateTexture(nil, "OVERLAY"); otherArrow:SetSize(12, 12); otherArrow:SetPoint("RIGHT", -8, 0)
@@ -323,12 +383,12 @@ local function createArmoryPanel(parent)
       local t = tabs and tabs[i]
       b:SetShown(t ~= nil)
       if t then
-        b:SetLabel(t[1]); b:SetActive(tabPick[current] == i)
+        b:SetLabel(L[t[1]]); b:SetActive(tabPick[current] == i)
       end
     end
     local pick = tabPick[current]
     local isOther = type(pick) == "string"
-    otherB:SetLabel(isOther and pick or "Other Sets"); otherB:SetActive(isOther)
+    otherB:SetLabel(isOther and L[pick] or L["Other Sets"]); otherB:SetActive(isOther)
     otherB:SetShown(tabs ~= nil and #otherSubs(current) > 0)
     otherB:ClearAllPoints(); otherB:SetPoint("LEFT", tabButtons[tabs and #tabs or 1], "RIGHT", 10, 0)
   end
@@ -343,8 +403,8 @@ local function createArmoryPanel(parent)
     for _, sub in ipairs(otherSubs(current)) do
       local subs = { [sub] = true }
       local dim = notYet(current, subs)
-      opts[#opts + 1] = { key = sub, label = dim and ("|cff9d9d9d" .. sub .. "  (not in Forever yet)|r") or sub }
-      longest = math.max(longest, #sub + (dim and 20 or 0))
+      opts[#opts + 1] = { key = sub, label = dim and ("|cff9d9d9d" .. L[sub] .. "  " .. L["(not in Forever yet)"] .. "|r") or L[sub] }
+      longest = math.max(longest, #L[sub] + (dim and 20 or 0))
     end
     -- wide enough for the longest name (the list was narrower than its text, user 22.10.)
     UI.OpenDropDown(self, opts, tabPick[current], function(k) tabPick[current] = k; paintTabs(); if refreshSets then refreshSets() end end,
@@ -364,7 +424,7 @@ local function createArmoryPanel(parent)
   local DW = 452
   local detail = CreateFrame("Frame", nil, dsf); detail:SetSize(DW, 1); dsf:SetScrollChild(detail)
   UI.AutoHideScrollBar(dsf)
-  local emptyText = newText(right, "GameFontDisable", 400); emptyText:SetPoint("CENTER"); emptyText:SetJustifyH("CENTER"); emptyText:SetText("No sets for this filter.")
+  local emptyText = newText(right, "GameFontDisable", 400); emptyText:SetPoint("CENTER"); emptyText:SetJustifyH("CENTER"); emptyText:SetText(L["No sets for this filter."])
 
   local selectedSet = {} -- group -> set id
   local setRows, headRows = {}, {}
@@ -382,7 +442,7 @@ local function createArmoryPanel(parent)
       local st = STATUS[self.set.st]
       if not st then return end
       GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(self.set.n, 1, 0.82, 0)
-      GameTooltip:AddLine(st.text, unpack(st.c)); GameTooltip:AddLine(st.tip, 1, 1, 1, true); GameTooltip:Show()
+      GameTooltip:AddLine(L[st.text], unpack(st.c)); GameTooltip:AddLine(L[st.tip], 1, 1, 1, true); GameTooltip:Show()
     end)
     r:SetScript("OnLeave", function() GameTooltip:Hide() end)
     setRows[i] = r
@@ -437,10 +497,11 @@ local function createArmoryPanel(parent)
     sel = sel or list[1]
     if sel then selectedSet[current] = sel.id end
     for _, s in ipairs(list) do
-      local sub = s.sub or GROUP_LABEL[s.g]
-      local d = findDungeon(sub)
+      local raw = s.sub or GROUP_LABEL[s.g]
+      local d = findDungeon(raw)
+      local sub = L[raw]
       if d and d.level then sub = sub .. "  |cff9d9d9d·  " .. d.level .. "|r" end
-      if s.st == 0 then sub = sub .. "  |cff9d9d9d(not in Forever yet)|r" end
+      if s.st == 0 then sub = sub .. "  |cff9d9d9d" .. L["(not in Forever yet)"] .. "|r" end
       if sub ~= lastSub then
         nh = nh + 1; local h = headRow(nh); h:ClearAllPoints(); h:SetPoint("TOPLEFT", 0, y); h:Show(); y = y - 24
         h.text:SetText(sub); lastSub = sub
@@ -450,13 +511,13 @@ local function createArmoryPanel(parent)
       r.set = s
       local first = setIcon(s)
       setItemIcon(r.icon, first[1], first[5]); FLT.Desat(r.icon, s.st == 0); r.icon:SetAlpha(s.st == 0 and 0.6 or 1)
-      r.name:SetText(s.n)
+      r.name:SetText(setName(s))
       local owned, _, total = setProgress(s)
       if s.st == 0 then r.name:SetTextColor(FLT.SkinC(unpack(DIM))) else r.name:SetTextColor(qualityColor(first[4])) end
-      local info = owned .. " / " .. total .. " owned"
-      if s.arm then info = info .. "  ·  " .. s.arm end
-      if s.lv then info = info .. "  ·  Lvl " .. s.lv end
-      if s.st == 2 then info = info .. "  ·  |cfff2b347no source yet|r" end
+      local info = string.format(L["%d / %d owned"], owned, total)
+      if s.arm then info = info .. "  ·  " .. L[s.arm] end
+      if s.lv then info = info .. "  ·  " .. string.format(L["Lvl %d"], s.lv) end
+      if s.st == 2 then info = info .. "  ·  |cfff2b347" .. L["no source yet"] .. "|r" end
       r.sub:SetText(info)
       r.card:SetSelected(s == sel)
     end
@@ -471,7 +532,7 @@ local function createArmoryPanel(parent)
   local dSub = newText(detail, "GameFontHighlightSmall", DW - 10, DIM); dSub:SetPoint("TOPLEFT", 2, -26)
   local dStatus = newText(detail, "GameFontHighlightSmall", DW - 10); dStatus:SetPoint("TOPLEFT", 2, -42); dStatus:SetWordWrap(true)
   local dProgress = newText(detail, "GameFontNormal", DW - 10, TEXT); dProgress:SetPoint("TOPLEFT", 2, -60)
-  local piecesTitle = UI.SectionTitle(detail, "Pieces", 2, -84, -6)
+  local piecesTitle = UI.SectionTitle(detail, L["Pieces"], 2, -84, -6)
   local pieceRows = {}
   local function pieceRow(i)
     local r = pieceRows[i]; if r then return r end
@@ -486,7 +547,7 @@ local function createArmoryPanel(parent)
     r.check:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready")
     -- star far right like everywhere else, "Show" left of it (user 22.10.)
     r.star = UI.WishStar(r); r.star:SetPoint("RIGHT", -10, 0)
-    r.go = UI.GoldButton(r, "Show", 54, 20, nil, 11); r.go:SetPoint("RIGHT", -38, 0)
+    r.go = UI.GoldButton(r, L["Show"], 54, 20, nil, 11); r.go:SetPoint("RIGHT", -38, 0)
     r:SetHitRectInsets(0, 96, 0, 0) -- no item tooltip over "Show" and the star (like the gear planner)
     r:SetScript("OnEnter", function(self) itemTooltip(self, self.it[1], self.itName, self.it[3], self.it[4]) end)
     r:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -494,7 +555,7 @@ local function createArmoryPanel(parent)
     pieceRows[i] = r
     return r
   end
-  local bonusTitle = UI.SectionTitle(detail, "Set bonuses", 2, -300, -6)
+  local bonusTitle = UI.SectionTitle(detail, L["Set bonuses"], 2, -300, -6)
   local bonusLines = {}
   local function bonusLine(i)
     local b = bonusLines[i]; if b then return b end
@@ -505,19 +566,19 @@ local function createArmoryPanel(parent)
   local dNote = newText(detail, "GameFontDisableSmall", DW - 10); dNote:SetWordWrap(true)
 
   renderDetail = function(s)
-    dTitle:SetText(s.n)
+    dTitle:SetText(setName(s))
     local cls = {}
-    for _, c in ipairs(s.cls or {}) do cls[#cls + 1] = CLASS_NAME[c] or c end
-    local parts = { s.sub or GROUP_LABEL[s.g] }
-    if s.arm then parts[#parts + 1] = s.arm end
-    if s.lv then parts[#parts + 1] = "Requires level " .. s.lv end
+    for _, c in ipairs(s.cls or {}) do cls[#cls + 1] = className(c) end
+    local parts = { L[s.sub or GROUP_LABEL[s.g]] }
+    if s.arm then parts[#parts + 1] = L[s.arm] end
+    if s.lv then parts[#parts + 1] = string.format(L["Requires level %d"], s.lv) end
     if #cls > 0 and #cls < 9 then parts[#parts + 1] = table.concat(cls, ", ") end
     dSub:SetText(table.concat(parts, "  ·  "))
     local st = STATUS[s.st]
-    if st then dStatus:SetText(st.text .. ": " .. st.tip); dStatus:SetTextColor(FLT.SkinC(unpack(st.c)))
-    else dStatus:SetText("Obtainable in WoW Forever"); dStatus:SetTextColor(0.35, 0.85, 0.35) end
+    if st then dStatus:SetText(L[st.text] .. ": " .. L[st.tip]); dStatus:SetTextColor(FLT.SkinC(unpack(st.c)))
+    else dStatus:SetText(L["Obtainable in WoW Forever"]); dStatus:SetTextColor(0.35, 0.85, 0.35) end
     local owned, equipped, total = setProgress(s)
-    dProgress:SetText(string.format("Owned %d / %d", owned, total) .. (equipped > 0 and string.format("   (%d equipped)", equipped) or ""))
+    dProgress:SetText(string.format(L["Owned %d / %d"], owned, total) .. (equipped > 0 and ("   " .. string.format(L["(%d equipped)"], equipped)) or ""))
     local y = -42 - math.max(14, dStatus:GetStringHeight() or 14) - 6
     dProgress:ClearAllPoints(); dProgress:SetPoint("TOPLEFT", 2, y); y = y - 26
     piecesTitle:ClearAllPoints(); piecesTitle:SetPoint("TOPLEFT", 2, y)
@@ -529,20 +590,20 @@ local function createArmoryPanel(parent)
       setItemIcon(r.icon, it[1], it[5])
       r.name:SetText(r.itName); r.name:SetTextColor(qualityColor(it[4]))
       local src = it[6] and it[6][1]
-      local srcText = (it[3] or "") .. (it[7] and (", " .. it[7]) or "")
-      if src then srcText = srcText .. "  ·  " .. src
-      elseif s.st == 1 then srcText = srcText .. "  ·  source not known yet" end
+      local srcText = (it[3] and SW(it[3]) or "") .. (it[7] and (", " .. L[it[7]]) or "")
+      if src then srcText = srcText .. "  ·  " .. sourceText(src)
+      elseif s.st == 1 then srcText = srcText .. "  ·  " .. L["source not known yet"] end
       if it[6] and #it[6] > 1 then srcText = srcText .. string.format("  (+%d)", #it[6] - 1) end
       r.src:SetText(srcText)
       r.star:SetItem(it[1])
       local w = ownedWhere(it[1])
       r.check:SetShown(w ~= nil)
-      r.own:SetText(w and (w == "equipped" and "Equipped" or (w == "bank" and "Bank" or "Bags")) or "")
+      r.own:SetText(w and L[w == "equipped" and N"Equipped" or (w == "bank" and N"Bank" or N"Bags")] or "")
       r.own:SetTextColor(0.40, 0.85, 0.40)
       local action, target = sourceAction(src)
       if action then
         r.go:Show(); r.go:SetScript("OnClick", action)
-        r.go:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Open " .. target, 1, 0.82, 0); GameTooltip:Show() end)
+        r.go:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(string.format(L["Open %s"], target), 1, 0.82, 0); GameTooltip:Show() end)
         r.go:SetScript("OnLeave", function() GameTooltip:Hide() end)
       else
         r.go:Hide()
@@ -553,17 +614,18 @@ local function createArmoryPanel(parent)
     for _, b in ipairs(bonusLines) do b:Hide() end
     if #(s.b or {}) == 0 then
       local b = bonusLine(1); b:ClearAllPoints(); b:SetPoint("TOPLEFT", 8, y); b:Show()
-      b:SetText("Set bonuses are not known yet."); b:SetTextColor(FLT.SkinC(unpack(DIM))); y = y - 18
+      b:SetText(L["Set bonuses are not known yet."]); b:SetTextColor(FLT.SkinC(unpack(DIM))); y = y - 18
     end
+    local cs = clientSet(s)
     for i, bonus in ipairs(s.b or {}) do
       local b = bonusLine(i); b:ClearAllPoints(); b:SetPoint("TOPLEFT", 8, y); b:Show()
-      b:SetText(string.format("(%d) Set: %s", bonus[1], bonus[2]))
+      b:SetText(string.format(L["(%d) Set: %s"], bonus[1], cs and cs.b and cs.b[i] or bonus[2]))
       if equipped >= bonus[1] then b:SetTextColor(0.35, 0.90, 0.35) else b:SetTextColor(FLT.SkinC(unpack(DIM))) end
       y = y - (b:GetStringHeight() or 14) - 6
     end
     y = y - 6
     dNote:ClearAllPoints(); dNote:SetPoint("TOPLEFT", 2, y)
-    dNote:SetText("Bonuses light up for the pieces you wear. Hover a piece for its tooltip, Shift-click to link it.")
+    dNote:SetText(L["Bonuses light up for the pieces you wear. Hover a piece for its tooltip, Shift-click to link it."])
     y = y - 30
     detail:SetHeight(-y)
   end
@@ -614,7 +676,7 @@ local function createArmoryPanel(parent)
     sel = sel or list[1]
     if sel then selectedFaction = sel.id end
     for _, f in ipairs(list) do
-      local head = f.st == 0 and "Not in Forever yet" or "Factions"
+      local head = f.st == 0 and L["Not in Forever yet"] or L["Factions"]
       if head ~= lastHead then
         nh = nh + 1; local h = facHead(nh); h:ClearAllPoints(); h:SetPoint("TOPLEFT", 0, y); h:Show(); y = y - 24
         h.text:SetText(head); lastHead = head
@@ -622,10 +684,10 @@ local function createArmoryPanel(parent)
       nr = nr + 1
       local r = facRow(nr); r:ClearAllPoints(); r:SetPoint("TOPLEFT", 0, y); r:Show(); y = y - 41
       r.f = f
-      r.name:SetText(f.n)
+      r.name:SetText(factionName(f, select(4, standing(f.id))))
       if f.st == 0 then r.name:SetTextColor(FLT.SkinC(unpack(DIM))) else r.name:SetTextColor(FLT.SkinC(unpack(TEXT))) end
       local stid = standing(f.id)
-      r.sub:SetText(string.format("%s  ·  %d rewards", standingLabel(stid), #f.i))
+      r.sub:SetText(string.format(L["%s  ·  %d rewards"], standingLabel(stid), #f.i))
       r.card:SetSelected(f == sel)
     end
     rsf.child:SetHeight(math.max(1, -y))
@@ -642,20 +704,20 @@ local function createArmoryPanel(parent)
   UI.RoundRect(barBg, barBg, "BACKGROUND", 1, 5, 1.5, 0.06, 0.05, 0.04, 0.96)
   local bar = CreateFrame("Frame", nil, barBg); bar:SetPoint("TOPLEFT", 2, -2); bar:SetPoint("BOTTOMLEFT", 2, 2); bar:SetWidth(BAR_W - 4)
   local barFill = UI.RoundRect(bar, bar, "ARTWORK", 0, 4, 0, 0.86, 0.62, 0.20, 1)
-  local vendorTitle = UI.SectionTitle(rdetail, "Vendor", 2, -64, -6)
+  local vendorTitle = UI.SectionTitle(rdetail, L["Vendor"], 2, -64, -6)
   local vendorRows = {}
   local function vendorRow(i)
     local r = vendorRows[i]; if r then return r end
     r = CreateFrame("Frame", nil, rdetail); r:SetSize(DW - 4, 26)
     r.text = newText(r, "GameFontHighlight", DW - 100, TEXT); r.text:SetPoint("LEFT", 6, 0)
-    r.map = UI.GoldButton(r, "Map", 64, 20, UI.ASSET_ROOT .. "icon_map", 11); r.map:SetPoint("RIGHT", -4, 0)
+    r.map = UI.GoldButton(r, L["Map"], 64, 20, UI.ASSET_ROOT .. "icon_map", 11); r.map:SetPoint("RIGHT", -4, 0)
     vendorRows[i] = r
     return r
   end
-  local itemsTitle = UI.SectionTitle(rdetail, "Rewards", 2, -120, -6)
+  local itemsTitle = UI.SectionTitle(rdetail, L["Rewards"], 2, -120, -6)
   local kindButtons = {}
   for i, k in ipairs(KINDS) do
-    local b = UI.GoldButton(rdetail, k.label, 70, 20, nil, 11); b.key = k.key
+    local b = UI.GoldButton(rdetail, L[k.label], 70, 20, nil, 11); b.key = k.key
     b:SetScript("OnClick", function() P.kind = k.key; refreshRep(true) end)
     kindButtons[i] = b
   end
@@ -713,13 +775,13 @@ local function createArmoryPanel(parent)
 
   renderFaction = function(f)
     lastFaction = f
-    fTitle:SetText(f.n)
-    local stid, val, max = standing(f.id)
+    local stid, val, max, cname = standing(f.id)
+    fTitle:SetText(factionName(f, cname))
     if f.st == 0 then
-      fStanding:SetText("Not in Forever yet: the content of this faction is not part of WoW Forever yet.")
+      fStanding:SetText(L["Not in Forever yet: the content of this faction is not part of WoW Forever yet."])
       fStanding:SetTextColor(FLT.SkinC(unpack(STATUS[0].c)))
     else
-      local txt = "Your standing: " .. standingLabel(stid)
+      local txt = string.format(L["Your standing: %s"], standingLabel(stid))
       if stid and max and max > 0 then txt = txt .. string.format("  (%d / %d)", val or 0, max) end
       fStanding:SetText(txt); fStanding:SetTextColor(FLT.SkinC(unpack(TEXT)))
     end
@@ -734,23 +796,31 @@ local function createArmoryPanel(parent)
     for _, v in ipairs(f.v or {}) do
       nv = nv + 1
       local r = vendorRow(nv); r:ClearAllPoints(); r:SetPoint("TOPLEFT", 0, y); r:Show(); y = y - 28
-      local where = v[6] and v[6] ~= "" and ("  |cff9d9d9d" .. v[6] .. (v[4] and string.format(" (%.1f, %.1f)", v[4], v[5]) or "") .. "|r") or ""
-      r.text:SetText(v[2] .. where)
+      local zone = v[6]
+      if v[3] and FLT.ClientTexts and FLT.ClientTexts() and type(C_Map) == "table" and type(C_Map.GetMapInfo) == "function" then
+        local mi = C_Map.GetMapInfo(v[3]); if type(mi) == "table" and mi.name then zone = mi.name end
+      end
+      local where = zone and zone ~= "" and ("  |cff9d9d9d" .. zone .. (v[4] and string.format(" (%.1f, %.1f)", v[4], v[5]) or "") .. "|r") or ""
+      r.text:SetText((FLT.Name and FLT.Name(v[2]) or v[2]) .. where)
       if v[3] and v[4] then
-        r.map:Show(); r.map:SetScript("OnClick", function() FLT:ShowOnMap({ mapID = v[3], x = v[4], y = v[5], zone = v[6], name = v[2] }) end)
+        r.map:Show(); r.map:SetScript("OnClick", function() FLT:ShowOnMap({ mapID = v[3], x = v[4], y = v[5], zone = v[6], name = FLT.Name and FLT.Name(v[2]) or v[2] }) end)
       else r.map:Hide() end
     end
     if nv == 0 then
       nv = 1; local r = vendorRow(1); r:ClearAllPoints(); r:SetPoint("TOPLEFT", 0, y); r:Show(); y = y - 28
-      r.text:SetText("|cff9d9d9dNot known yet|r"); r.map:Hide()
+      r.text:SetText("|cff9d9d9d" .. L["Not known yet"] .. "|r"); r.map:Hide()
     end
     y = y - 6
     itemsTitle:ClearAllPoints(); itemsTitle:SetPoint("TOPLEFT", 2, y)
     local kind = P.kind or "all"
     local kx = DW - 4
     for i = #kindButtons, 1, -1 do
-      local b = kindButtons[i]; b:ClearAllPoints(); kx = kx - 72; b:SetPoint("TOPLEFT", kx, y + 2); b:SetActive(b.key == kind)
+      -- a longer (translated) label makes its button wider: place by the real width (beta13)
+      local b = kindButtons[i]; b:ClearAllPoints(); kx = kx - (b:GetWidth() or 70) - 2; b:SetPoint("TOPLEFT", kx, y + 2); b:SetActive(b.key == kind)
     end
+    -- the title's line ends before the buttons (it ran through them with the wider German labels, user 07.11.)
+    local dv = itemsTitle.divider
+    if dv then dv:ClearAllPoints(); dv:SetPoint("LEFT", itemsTitle, "RIGHT", 12, -1); dv:SetPoint("RIGHT", kindButtons[1], "LEFT", -10, 0) end
     y = y - 28
     for _, r in ipairs(repItemRows) do r:Hide() end
     for _, h in ipairs(repBands) do h:Hide() end
@@ -773,10 +843,10 @@ local function createArmoryPanel(parent)
         if folded then h.ch:SetTexCoord(0.5, 1, 0, 1) else h.ch:SetTexCoord(0, 0.5, 0, 1) end
         y = y - 32 - (nb > 1 and 6 or 0)
         local rc = RANK_COLOR[it[6]] or TEXT
-        h.text:SetText(RANK_LABEL[it[6]] or "?"); h.text:SetTextColor(rc[1], rc[2], rc[3])
+        h.text:SetText(RANK_LABEL[it[6]] and L[RANK_LABEL[it[6]]] or "?"); h.text:SetTextColor(rc[1], rc[2], rc[3])
         if f.st == 0 then h.right:SetText("")
-        elseif rankReached(it[6], stid) then h.right:SetText("|cff66dd66Reached - you can buy these|r")
-        else h.right:SetText("|cff9d9d9dNot reached yet|r") end
+        elseif rankReached(it[6], stid) then h.right:SetText("|cff66dd66" .. L["Reached - you can buy these"] .. "|r")
+        else h.right:SetText("|cff9d9d9d" .. L["Not reached yet"] .. "|r") end
       end
       if not folded then
         n = n + 1
@@ -784,8 +854,8 @@ local function createArmoryPanel(parent)
         r.it = it; r.itName = itemName(it[1], it[2])
         setItemIcon(r.icon, it[1], it[5])
         r.name:SetText(r.itName); r.name:SetTextColor(qualityColor(it[4]))
-        local kindText = it[7] == "recipe" and "Recipe" or (it[3] or (it[7] == "gear" and "Gear" or "Item"))
-        if it[9] and #it[9] > 0 then kindText = kindText .. string.format("  ·  %d variants", #it[9] + 1) end
+        local kindText = it[7] == "recipe" and L["Recipe"] or it[3] and SW(it[3]) or L[it[7] == "gear" and N"Gear" or N"Item"]
+        if it[9] and #it[9] > 0 then kindText = kindText .. "  ·  " .. string.format(L["%d variants"], #it[9] + 1) end
         r.sub:SetText(kindText)
         local reached = rankReached(it[6], stid)
         FLT.Desat(r.icon, not reached); r.icon:SetAlpha(reached and 1 or 0.6)
@@ -797,7 +867,7 @@ local function createArmoryPanel(parent)
     end
     if n == 0 then y = y - 4 end
     repNote:ClearAllPoints(); repNote:SetPoint("TOPLEFT", 2, y - 4)
-    repNote:SetText("Rewards of the ranks you have not reached yet are greyed out. A green check marks items you own.")
+    repNote:SetText(L["Rewards of the ranks you have not reached yet are greyed out. A green check marks items you own."])
     y = y - 40
     rdetail:SetHeight(-y)
   end
@@ -830,16 +900,16 @@ local function createArmoryPanel(parent)
     return b
   end
   local function divider() navY = UI.NavSeparator(nav, navY) end
-  navButton("gear", "Gear Planner", "Interface\\Icons\\INV_Misc_Note_05")
+  navButton("gear", L["Gear Planner"], "Interface\\Icons\\INV_Misc_Note_05")
   divider()
-  for _, g in ipairs(GROUPS) do navButton(g.key, g.label, g.icon) end
+  for _, g in ipairs(GROUPS) do navButton(g.key, L[g.label], g.icon) end
   divider()
-  navButton("rep", "Reputation", "Interface\\Icons\\INV_Misc_Note_02")
+  navButton("rep", L["Reputation"], "Interface\\Icons\\INV_Misc_Note_02")
   divider()
-  for _, l in ipairs({ { "Mounts", "Interface\\Icons\\Ability_Mount_RidingHorse" }, { "Legendaries", "Interface\\Icons\\INV_Staff_Medivh" } }) do
-    local b; b, navY = UI.NavEntry(nav, navY, l[1], l[2])
+  for _, l in ipairs({ { N"Mounts", "Interface\\Icons\\Ability_Mount_RidingHorse" }, { N"Legendaries", "Interface\\Icons\\INV_Staff_Medivh" } }) do
+    local b; b, navY = UI.NavEntry(nav, navY, L[l[1]], l[2])
     b._label:SetTextColor(0.5, 0.5, 0.5); if b.icon then FLT.Desat(b.icon, true); b.icon:SetAlpha(0.5) end
-    b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(l[1], 1, 0.82, 0); GameTooltip:AddLine("Coming in a later version.", 1, 1, 1); GameTooltip:Show() end)
+    b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L[l[1]], 1, 0.82, 0); GameTooltip:AddLine(L["Coming in a later version."], 1, 1, 1); GameTooltip:Show() end)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
   end
 
@@ -853,11 +923,13 @@ local function createArmoryPanel(parent)
   end
   local ev = CreateFrame("Frame", nil, panel)
   ev:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+  pcall(ev.RegisterEvent, ev, "ITEM_DATA_LOAD_RESULT") -- C_Item.RequestLoadItemDataByID answers with this one (names in German)
   ev:RegisterEvent("BAG_UPDATE_DELAYED")
   ev:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
   ev:RegisterEvent("UPDATE_FACTION")
-  ev:SetScript("OnEvent", function(_, event)
+  ev:SetScript("OnEvent", function(_, event, _, success)
     if event == "PLAYER_EQUIPMENT_CHANGED" then gearChanged = true end
+    if event == "ITEM_DATA_LOAD_RESULT" and not success then return end -- a failed load: no redraw (it would ask again)
     if pending or not panel:IsVisible() then return end
     pending = true
     if C_Timer and C_Timer.After then C_Timer.After(0.4, function() FLT.SafeCall("Armory", redraw) end) else redraw() end
@@ -869,4 +941,4 @@ local function createArmoryPanel(parent)
   return panel
 end
 
-UI.RegisterPanel({ key = "armory", label = "Armory", order = 1, tabWidth = 96, create = createArmoryPanel })
+UI.RegisterPanel({ key = "armory", label = N"Armory", order = 1, tabWidth = 96, create = createArmoryPanel })

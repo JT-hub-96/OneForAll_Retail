@@ -1,5 +1,8 @@
 local _, FLT = ...
 local UI = FLT.UI
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
+local SW = FLT.SlotWord or function(w) return w and L[w] end -- slot words ("Back" is not the button "Back")
 local unpack = unpack or table.unpack
 
 -- Gear Planner (Armory, first view since 5.6.3): character panel with the equipped items on the left,
@@ -20,13 +23,18 @@ local GetItemInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
 -- Slots: left column, right column, weapons (inventory slot IDs). Shirt and tabard are shown greyed
 -- (no suggestions for them), so the panel looks like the character window (user 16.10.).
 local SLOTS = {
-  { 1, "HeadSlot", "Head" }, { 2, "NeckSlot", "Neck" }, { 3, "ShoulderSlot", "Shoulder" }, { 15, "BackSlot", "Back" },
-  { 5, "ChestSlot", "Chest" }, { 4, "ShirtSlot", "Shirt", true }, { 19, "TabardSlot", "Tabard", true }, { 9, "WristSlot", "Wrist" },
-  { 10, "HandsSlot", "Hands" }, { 6, "WaistSlot", "Waist" }, { 7, "LegsSlot", "Legs" }, { 8, "FeetSlot", "Feet" },
-  { 11, "Finger0Slot", "Finger" }, { 12, "Finger1Slot", "Finger" }, { 13, "Trinket0Slot", "Trinket" }, { 14, "Trinket1Slot", "Trinket" },
-  { 16, "MainHandSlot", "Main Hand" }, { 17, "SecondaryHandSlot", "Off Hand" }, { 18, "RangedSlot", "Ranged" },
+  { 1, "HeadSlot", N"Head" }, { 2, "NeckSlot", N"Neck" }, { 3, "ShoulderSlot", N"Shoulder" }, { 15, "BackSlot", N"Back" },
+  { 5, "ChestSlot", N"Chest" }, { 4, "ShirtSlot", N"Shirt", true }, { 19, "TabardSlot", N"Tabard", true }, { 9, "WristSlot", N"Wrist" },
+  { 10, "HandsSlot", N"Hands" }, { 6, "WaistSlot", N"Waist" }, { 7, "LegsSlot", N"Legs" }, { 8, "FeetSlot", N"Feet" },
+  { 11, "Finger0Slot", N"Finger" }, { 12, "Finger1Slot", N"Finger" }, { 13, "Trinket0Slot", N"Trinket" }, { 14, "Trinket1Slot", N"Trinket" },
+  { 16, "MainHandSlot", N"Main Hand" }, { 17, "SecondaryHandSlot", N"Off Hand" }, { 18, "RangedSlot", N"Ranged" },
 }
-local SLOT_NAME, SLOT_INDEX = {}, {}
+local SLOT_NAME, SLOT_INDEX = {}, {} -- SLOT_NAME: English, shown with L[...]
+-- spec names of Data/GearWeights.lua (and GearValue's "Custom" / "Leveling"), shown with L[...]
+local function _specs() return N"Affliction", N"Arcane", N"Arms", N"Assassination", N"Balance", N"Beast Mastery", N"Combat",
+  N"Demonology", N"Destruction", N"Discipline", N"Elemental", N"Enhancement", N"Feral (Bear)", N"Feral (Cat)", N"Fire", N"Frost",
+  N"Fury", N"Holy", N"Marksmanship", N"Protection", N"Restoration", N"Retribution", N"Shadow", N"Subtlety", N"Survival",
+  N"Custom", N"Leveling" end
 for i, s in ipairs(SLOTS) do SLOT_NAME[s[1]] = s[3]; SLOT_INDEX[s[1]] = i end
 -- equip location -> slots it fits
 local LOC_SLOTS = {
@@ -140,6 +148,8 @@ local function split(str, sep, out)
   return out
 end
 local function idList(str) local o = {}; for v in str:gmatch("%d+") do o[#o + 1] = tonumber(v) end return o end
+-- quest and giver names in the client's language (6.2.0 step 2b; FLT.Name from Locales/Locale.lua)
+local function NM(s) return FLT.Name and FLT.Name(s) or s end
 function FLT.QuestInfo(qid)
   if not qid then return nil end
   local c = questCache[qid]
@@ -150,23 +160,23 @@ function FLT.QuestInfo(qid)
     raw = FLT.CLASS_QUESTS and FLT.CLASS_QUESTS.quests[qid]
     if not raw then questCache[qid] = false; return nil end
     local t = split(raw, "|", {})
-    c = { id = qid, name = t[1], lvl = tonumber(t[2]), req = tonumber(t[2]), side = "", cls = 0, races = tonumber(t[3]) or 0,
-      one = idList(t[4] or ""), all = idList(t[5] or ""), giver = t[6] ~= "" and t[6] or nil }
+    c = { id = qid, name = NM(t[1]), lvl = tonumber(t[2]), req = tonumber(t[2]), side = "", cls = 0, races = tonumber(t[3]) or 0,
+      one = idList(t[4] or ""), all = idList(t[5] or ""), giver = t[6] ~= "" and NM(t[6]) or nil }
     local map = tonumber(t[7])
     if map then c.loc = { mapID = map, x = tonumber(t[8]), y = tonumber(t[9]) } end
     -- several givers: the one in your home zones (Veteran Uzzek: Sorek in Orgrimmar for orcs)
     if t[10] and t[10] ~= "" and not FLT.IsHomeQuest(c) then
       for name, m, x, y in t[10]:gmatch("([^;~]+);(%d+);([%d.]+);([%d.]+)") do
         local alt = { mapID = tonumber(m), x = tonumber(x), y = tonumber(y) }
-        if FLT.IsHomeQuest({ loc = alt }) then c.giver, c.loc = name, alt; break end
+        if FLT.IsHomeQuest({ loc = alt }) then c.giver, c.loc = NM(name), alt; break end
       end
     end
     questCache[qid] = c
     return c
   end
   local t = split(raw, "|", {})
-  c = { id = qid, name = t[1], lvl = tonumber(t[2]), req = tonumber(t[3]), side = t[4], cls = tonumber(t[5]) or 0,
-    one = idList(t[6] or ""), all = idList(t[7] or ""), giver = t[8] ~= "" and t[8] or nil }
+  c = { id = qid, name = NM(t[1]), lvl = tonumber(t[2]), req = tonumber(t[3]), side = t[4], cls = tonumber(t[5]) or 0,
+    one = idList(t[6] or ""), all = idList(t[7] or ""), giver = t[8] ~= "" and NM(t[8]) or nil }
   local map = tonumber(t[9])
   if map then c.loc = { mapID = map, x = tonumber(t[10]), y = tonumber(t[11]) } end
   questCache[qid] = c
@@ -232,17 +242,17 @@ local function buildIndex()
   index, byId = {}, {}
   if not GetItemInfoInstant then return end
   for _, d in ipairs(FLT.DUNGEONS or {}) do
-    local where = d.short or d.name
+    local where = FLT.DungeonName and FLT.DungeonName(d.name) ~= d.name and FLT.DungeonName(d.name) or d.short or d.name
     for _, b in ipairs(d.bosses or {}) do
       for _, it in ipairs(b.loot or {}) do
-        local e = add(it.id, it.name, it.quality, where .. " - " .. b.name, d.minLevel, d)
+        local e = add(it.id, it.name, it.quality, where .. " - " .. NM(b.name), d.minLevel, d)
         if e then e.boss = b.name end
       end
     end
-    for _, it in ipairs(d.trashLoot or {}) do local e = add(it.id, it.name, it.quality, where .. " - trash", d.minLevel, d); if e then e.boss = "trash mobs" end end
+    for _, it in ipairs(d.trashLoot or {}) do local e = add(it.id, it.name, it.quality, where .. " - " .. L["trash"], d.minLevel, d); if e then e.boss = "trash mobs" end end
     for _, qu in ipairs(d.quests or {}) do
       for _, it in ipairs(qu.rewards or {}) do
-        local e = add(it.id, it.name, it.quality, "Quest: " .. (qu.name or "?"), qu.level)
+        local e = add(it.id, it.name, it.quality, string.format(L["Quest: %s"], NM(qu.name) or "?"), qu.level)
         if e then e.qid = qu.id; e.side = SIDE[qu.side] end
       end
     end
@@ -252,7 +262,7 @@ local function buildIndex()
       for _, it in ipairs(s.i or {}) do add(it[1], it[2], it[4], (type(it[6]) == "table" and it[6][1]) or s.n, s.lv) end
     end
   end
-  local RANK = { [4] = "Friendly", [5] = "Honored", [6] = "Revered", [7] = "Exalted" }
+  local RANK = { [4] = L["Friendly"], [5] = L["Honored"], [6] = L["Revered"], [7] = L["Exalted"] }
   for _, f in ipairs(FLT.ARMORY_REPUTATION or {}) do
     if f.st ~= 0 then
       for _, it in ipairs(f.i or {}) do
@@ -272,7 +282,7 @@ local function buildIndex()
       end
       if pick then
         req = tonumber(req)
-        local e = add(tonumber(id), name, nil, "Quest: " .. pick.name, req > 0 and req or pick.req)
+        local e = add(tonumber(id), name, nil, string.format(L["Quest: %s"], pick.name), req > 0 and req or pick.req)
         if e then
           e.qid, e.side, e.cls = pick.id, pick.side, pick.cls; if req > 0 then e.req = req end
           -- the level you can take the quest at: a reward without its own required level must not show earlier
@@ -287,7 +297,7 @@ local function buildIndex()
     for _, r in ipairs(list) do
       local sk = r.req or r.y
       if r.i then
-        local e = add(r.i, r.n, r.q, prof .. (sk and (" " .. sk) or ""), sk and math.floor(sk / 5) or nil)
+        local e = add(r.i, r.n, r.q, L[prof] .. (sk and (" " .. sk) or ""), sk and math.floor(sk / 5) or nil)
         if e then e.prof, e.ps = prof, r.s end -- the profession button opens this recipe (6.0.2, user 31.10.)
       end
     end
@@ -335,8 +345,8 @@ function UI.WishStar(parent)
   end)
   b:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:SetText(FLT.IsOnWishlist(self.id) and "Remove from wishlist" or "Add to wishlist")
-    GameTooltip:AddLine("The wishlist is in Armory > Gear Planner.", 0.8, 0.8, 0.8, true); GameTooltip:Show()
+    GameTooltip:SetText(L[FLT.IsOnWishlist(self.id) and N"Remove from wishlist" or N"Add to wishlist"])
+    GameTooltip:AddLine(L["The wishlist is in Armory > Gear Planner."], 0.8, 0.8, 0.8, true); GameTooltip:Show()
   end)
   b:SetScript("OnLeave", function() GameTooltip:Hide() end)
   function b:SetItem(id) self.id = id; self:SetShown(FLT.IsGearItem(id)); if self:IsShown() then paintWishStar(self) end end
@@ -369,7 +379,7 @@ function FLT.ShowQuestChain(qid)
     p.title = FLT.NewFS(p, nil, "OVERLAY", "GameFontNormalLarge"); p.title:SetPoint("TOPLEFT", 18, -16); p.title:SetPoint("RIGHT", -44, 0)
     p.title:SetJustifyH("LEFT"); p.title:SetWordWrap(false); p.title:SetTextColor(FLT.SkinC(1, 0.82, 0.20))
     p.sub = FLT.NewFS(p, nil, "OVERLAY", "GameFontHighlightSmall"); p.sub:SetPoint("TOPLEFT", 18, -38)
-    p.sub:SetText("Quest chain - green: done, yellow: in your quest log"); p.sub:SetTextColor(FLT.SkinC(0.80, 0.77, 0.70))
+    p.sub:SetText(L["Quest chain - green: done, yellow: in your quest log"]); p.sub:SetTextColor(FLT.SkinC(0.80, 0.77, 0.70))
     UI.CloseButton(p):SetPoint("TOPRIGHT", -12, -12)
     local sf = FLT.SkinBlizz(CreateFrame("ScrollFrame", nil, p, "UIPanelScrollFrameTemplate"))
     sf:SetPoint("TOPLEFT", 14, -62); sf:SetPoint("BOTTOMRIGHT", -32, 16)
@@ -380,7 +390,7 @@ function FLT.ShowQuestChain(qid)
   end
   local steps = FLT.QuestChain(qid)
   local last = FLT.QuestInfo(qid)
-  p.title:SetText(last and last.name or ("Quest " .. qid))
+  p.title:SetText(last and last.name or (L["Quest"] .. " " .. qid))
   for _, r in ipairs(p.rows) do r:Hide() end
   local y = 0
   for i, ids in ipairs(steps) do
@@ -392,10 +402,10 @@ function FLT.ShowQuestChain(qid)
       r.name:SetJustifyH("LEFT"); r.name:SetWordWrap(false)
       r.sub = FLT.NewFS(r, nil, "OVERLAY", "GameFontDisableSmall"); r.sub:SetPoint("TOPLEFT", 10, -22); r.sub:SetPoint("RIGHT", -74, 0)
       r.sub:SetJustifyH("LEFT"); r.sub:SetWordWrap(false)
-      r.map = UI.GoldButton(r, "Map", 56, 20, UI.ASSET_ROOT .. "icon_map", 11); r.map:SetPoint("RIGHT", -8, 0)
+      r.map = UI.GoldButton(r, L["Map"], 56, 20, UI.ASSET_ROOT .. "icon_map", 11); r.map:SetPoint("RIGHT", -8, 0)
       r.map:SetScript("OnClick", function(self) if self.loc then FLT:ShowOnMap(self.loc) end end)
       r.map:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Quest giver", 1, 0.82, 0)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Quest giver"], 1, 0.82, 0)
         GameTooltip:AddLine(self.loc and self.loc.label or "", 1, 1, 1, true); GameTooltip:Show()
       end)
       r.map:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -409,12 +419,12 @@ function FLT.ShowQuestChain(qid)
       if not state and questInLog(id) then show, state = id, "log" end
     end
     local q = FLT.QuestInfo(show)
-    local name = q and q.name or ("Quest " .. show)
+    local name = q and q.name or (L["Quest"] .. " " .. show)
     r.name:SetText(i .. ".  " .. name)
     local parts = {}
-    if q and q.lvl and q.lvl > 0 then parts[#parts + 1] = "Level " .. q.lvl end
+    if q and q.lvl and q.lvl > 0 then parts[#parts + 1] = string.format(L["Level %s"], q.lvl) end
     if q and q.giver then parts[#parts + 1] = q.giver end
-    if #ids > 1 then parts[#parts + 1] = "or one of " .. (#ids - 1) .. " other" .. (#ids > 2 and "s" or "") end
+    if #ids > 1 then parts[#parts + 1] = #ids > 2 and string.format(L["or one of %d others"], #ids - 1) or L["or one other"] end
     r.sub:SetText(table.concat(parts, "  ·  "))
     if state == "done" then r.card:SetFill(FLT.SkinC(0.035, 0.16, 0.055, 0.90)); r.name:SetTextColor(FLT.SkinC(0.35, 1, 0.45))
     elseif state == "log" then r.card:SetFill(FLT.SkinC(0.22, 0.17, 0.04, 0.92)); r.name:SetTextColor(FLT.SkinC(1, 0.82, 0.20))
@@ -464,8 +474,8 @@ function UI.CreateGearPlanner(parent)
   FLT.SetTex(specBtn.arrow, UI.ASSET_ROOT .. "chevron"); specBtn.arrow:SetTexCoord(0, 0.5, 0, 1)
   local shl = UI.makeTexture(specBtn, "HIGHLIGHT", 1, 0.82, 0.3, 0.10); shl:SetAllPoints()
   specBtn:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Spec for the Value", 1, 0.82, 0)
-    GameTooltip:AddLine("The stat weights of this spec are used for the upgrades here, in tooltips, bags and loot rolls. \"Active spec\" follows your talents. \"Edit custom weights...\" sets your own weights.", 1, 1, 1, true)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Spec for the Value"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["The stat weights of this spec are used for the upgrades here, in tooltips, bags and loot rolls. \"Active spec\" follows your talents. \"Edit custom weights...\" sets your own weights."], 1, 1, 1, true)
     GameTooltip:Show()
   end)
   specBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -474,11 +484,11 @@ function UI.CreateGearPlanner(parent)
   specBtn:SetScript("OnClick", function(self)
     local GV = FLT.GearValue; if not GV then return end
     local specs, pick, auto = GV.Specs()
-    local opts = { { key = 0, label = "Active spec" .. (auto and specs[auto] and ("  |cffb0b0b0(" .. specs[auto].name .. ")|r") or "") } }
-    for i, sp in ipairs(specs) do opts[#opts + 1] = { key = i, label = sp.name } end
+    local opts = { { key = 0, label = L["Active spec"] .. (auto and specs[auto] and ("  |cffb0b0b0(" .. L[specs[auto].name] .. ")|r") or "") } }
+    for i, sp in ipairs(specs) do opts[#opts + 1] = { key = i, label = L[sp.name] } end
     -- own weights (5.7.3, Discord sparkledooks, user 27.10.)
-    opts[#opts + 1] = { key = "custom", label = "Custom weights" }
-    opts[#opts + 1] = { key = "edit", label = "|cffd9a63aEdit custom weights...|r" }
+    opts[#opts + 1] = { key = "custom", label = L["Custom weights"] }
+    opts[#opts + 1] = { key = "edit", label = "|cffd9a63a" .. L["Edit custom weights..."] .. "|r" }
     UI.OpenDropDown(self, opts, pick or 0, function(k)
       if k == "edit" then
         GV.SetSpec("custom"); afterWeights()
@@ -520,9 +530,9 @@ function UI.CreateGearPlanner(parent)
   end)
   local function stopDrag(self) self:SetScript("OnUpdate", nil) end
   model:SetScript("OnMouseUp", stopDrag); model:SetScript("OnHide", stopDrag)
-  local reset = UI.GoldButton(left, "Reset", 60, 20, nil, 11); reset:SetPoint("BOTTOMRIGHT", -10, 10) -- in the frame's corner (user 16.10.)
+  local reset = UI.GoldButton(left, L["Reset"], 60, 20, nil, 11); reset:SetPoint("BOTTOMRIGHT", -10, 10) -- in the frame's corner (user 16.10.)
   reset:SetScript("OnClick", loadModel)
-  reset:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Reset"); GameTooltip:AddLine("Shows your own gear again. Right-click an item in the list to try it on, scroll on the character to zoom, drag it to turn it.", 1, 1, 1, true); GameTooltip:Show() end)
+  reset:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Reset"]); GameTooltip:AddLine(L["Shows your own gear again. Right-click an item in the list to try it on, scroll on the character to zoom, drag it to turn it."], 1, 1, 1, true); GameTooltip:Show() end)
   reset:SetScript("OnLeave", function() GameTooltip:Hide() end)
   f.tryOn = function(id) if model.TryOn then pcall(model.TryOn, model, "item:" .. id) end end
   local slotButtons = {}
@@ -548,7 +558,7 @@ function UI.CreateGearPlanner(parent)
     b:SetScript("OnEnter", function(self)
       GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
       GameTooltip.ofaNoCompare = true -- your own gear: no comparison tooltip (UI/DungeonHelpers.lua, user 31.10.)
-      if not GameTooltip:SetInventoryItem("player", self.slot) then GameTooltip:SetText(SLOT_NAME[self.slot] or "") end
+      if not GameTooltip:SetInventoryItem("player", self.slot) then GameTooltip:SetText(SW(SLOT_NAME[self.slot]) or "") end
       GameTooltip:Show()
       if type(ShoppingTooltip1) == "table" then ShoppingTooltip1:Hide() end
       if type(ShoppingTooltip2) == "table" then ShoppingTooltip2:Hide() end
@@ -586,8 +596,8 @@ function UI.CreateGearPlanner(parent)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         local cur = wornEnchant(self.slot)
         local ce = cur and FLT.ENCHANTS and FLT.ENCHANTS[cur]
-        GameTooltip:AddLine(cur and (ce and ce[1] or "Enchanted") or "Not enchanted", 1, 0.82, 0)
-        GameTooltip:AddLine("Click: what you can put on this item (enchants, armor kits and the like).", 1, 1, 1, true)
+        GameTooltip:AddLine(cur and (ce and ce[1] or L["Enchanted"]) or L["Not enchanted"], 1, 0.82, 0)
+        GameTooltip:AddLine(L["Click: what you can put on this item (enchants, armor kits and the like)."], 1, 1, 1, true)
         GameTooltip:Show()
       end)
       e:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -613,8 +623,8 @@ function UI.CreateGearPlanner(parent)
     local _, cls = UnitClass("player")
     -- the spec the Value is for (talent tree with the most points)
     local spec = FLT.GearValue and FLT.GearValue.SpecName()
-    who:SetText(string.format("%s  |cffb0b0b0Level %d%s|r", name, lvl, spec and "  ·" or ""))
-    specBtn.text:SetText(spec or ""); specBtn:SetShown(spec ~= nil)
+    who:SetText(name .. "  |cffb0b0b0" .. string.format(L["Level %s"], lvl) .. (spec and "  ·" or "") .. "|r")
+    specBtn.text:SetText(spec and L[spec] or ""); specBtn:SetShown(spec ~= nil)
     specBtn:SetWidth((specBtn.text:GetStringWidth() or 60) + 18)
     -- centre name + spec together
     head:SetWidth((who:GetStringWidth() or 100) + 2 + specBtn:GetWidth())
@@ -659,20 +669,20 @@ function UI.CreateGearPlanner(parent)
   local right = CreateFrame("Frame", nil, f); right:SetPoint("TOPLEFT", 358, 0); right:SetPoint("BOTTOMRIGHT")
   local tabs = {}
   local function tabButton(key, label, x)
-    local b = UI.GoldButton(right, label, 92, 26); b:SetPoint("TOPLEFT", x, -10)
+    local b = UI.GoldButton(right, L[label], 92, 26); b:SetPoint("TOPLEFT", x, -10)
     b:SetScript("OnClick", function() tab = key; for k, o in pairs(tabs) do o:SetActive(k == tab) end; refreshList() end)
     tabs[key] = b
   end
-  tabButton("suggest", "Suggested", 12)
-  tabButton("wish", "Wishlist", 108)
+  tabButton("suggest", N"Suggested", 12)
+  tabButton("wish", N"Wishlist", 108)
   tabs.suggest:SetActive(true)
   -- what the suggestions are (and are not), user 16.10.
   local warn = CreateFrame("Frame", nil, right); warn:SetSize(22, 22); warn:SetPoint("LEFT", tabs.wish, "RIGHT", 8, 0)
   local wt = warn:CreateTexture(nil, "ARTWORK"); wt:SetAllPoints(); FLT.SetTex(wt, UI.ASSET_ROOT .. "icon_warning")
   warn:EnableMouse(true)
   warn:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Suggestions only", 1, 0.82, 0)
-    GameTooltip:AddLine("No BiS list or simulated values. Only suggestions based on weighted stats for your talent spec.", 1, 1, 1, true)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Suggestions only"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["No BiS list or simulated values. Only suggestions based on weighted stats for your talent spec."], 1, 1, 1, true)
     GameTooltip:Show()
   end)
   warn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -680,9 +690,9 @@ function UI.CreateGearPlanner(parent)
   -- source filter (5.7.3, user 23.10.; several at once + Crafted since 6.0.2, user 31.10.): prefs.gearSources =
   -- { boe = true, quest = true, ... }, empty / nil = all sources. BoE comes from the client's item data (bind type 2),
   -- so an item counts once it is loaded. The button sits right of "All" (placed below, after the level row).
-  local SOURCES = { { key = "boe", label = "Bind on Equip" }, { key = "quest", label = "Quest rewards" },
-    { key = "dungeon", label = "Dungeon drops" }, { key = "raid", label = "Raid drops" }, { key = "crafted", label = "Crafted" } }
-  local SOURCE_SHORT = { boe = "BoE", quest = "Quests", dungeon = "Dungeons", raid = "Raids", crafted = "Crafted" }
+  local SOURCES = { { key = "boe", label = N"Bind on Equip" }, { key = "quest", label = N"Quest rewards" },
+    { key = "dungeon", label = N"Dungeon drops" }, { key = "raid", label = N"Raid drops" }, { key = "crafted", label = N"Crafted" } }
+  local SOURCE_SHORT = { boe = N"BoE", quest = N"Quests", dungeon = N"Dungeons", raid = N"Raids", crafted = N"Crafted" }
   if prefs.gearSource then prefs.gearSources = { [prefs.gearSource] = true }; prefs.gearSource = nil end -- old single choice
   local function picked() local t = prefs.gearSources; return t and next(t) and t or nil end
   local srcBtn = CreateFrame("Button", nil, right); srcBtn:SetSize(22, 22)
@@ -692,20 +702,20 @@ function UI.CreateGearPlanner(parent)
   local function shortNames()
     local t = picked(); if not t then return nil end
     local out = {}
-    for _, o in ipairs(SOURCES) do if t[o.key] then out[#out + 1] = SOURCE_SHORT[o.key] end end
+    for _, o in ipairs(SOURCES) do if t[o.key] then out[#out + 1] = L[SOURCE_SHORT[o.key]] end end
     return table.concat(out, ", ")
   end
   srcBtn:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Source filter", 1, 0.82, 0)
-    GameTooltip:AddLine(shortNames() or "All sources", 1, 1, 1)
-    GameTooltip:AddLine("Pick one or more. Bind on Equip: items you can buy in the auction house. Crafted: your own professions with everything, other professions only Bind on Equip.", 0.8, 0.8, 0.8, true)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Source filter"], 1, 0.82, 0)
+    GameTooltip:AddLine(shortNames() or L["All sources"], 1, 1, 1)
+    GameTooltip:AddLine(L["Pick one or more. Bind on Equip: items you can buy in the auction house. Crafted: your own professions with everything, other professions only Bind on Equip."], 0.8, 0.8, 0.8, true)
     GameTooltip:Show()
   end)
   srcBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
   local function openSources(self)
     local t = picked() or {}
-    local opts = { { key = "all", label = "All sources", checked = next(t) == nil } }
-    for _, o in ipairs(SOURCES) do opts[#opts + 1] = { key = o.key, label = o.label, checked = t[o.key] and true or false } end
+    local opts = { { key = "all", label = L["All sources"], checked = next(t) == nil } }
+    for _, o in ipairs(SOURCES) do opts[#opts + 1] = { key = o.key, label = L[o.label], checked = t[o.key] and true or false } end
     UI.OpenDropDown(self, opts, nil, function(k)
       if k == "all" then prefs.gearSources = nil
       else prefs.gearSources = prefs.gearSources or {}; prefs.gearSources[k] = not prefs.gearSources[k] or nil end
@@ -724,6 +734,7 @@ function UI.CreateGearPlanner(parent)
     if GetNumSkillLines and GetSkillLineInfo then
       for i = 1, tonumber(GetNumSkillLines()) or 0 do
         local name = GetSkillLineInfo(i)
+        name = FLT.ProfKey and FLT.ProfKey(name) or name -- in the client's language (6.2.0)
         if name and FLT.PROFESSION_ICONS and FLT.PROFESSION_ICONS[name] then myProfs[name] = true end
       end
     end
@@ -749,7 +760,7 @@ function UI.CreateGearPlanner(parent)
   -- search and the level row end flush with the list below (right edge -32, user 16.10.)
   box:SetHeight(20); box:SetPoint("TOPLEFT", 262, -13); box:SetPoint("TOPRIGHT", -32, -13); box:SetAutoFocus(false)
   if box.SetTextInsets then box:SetTextInsets(0, 22, 0, 0) end
-  local hint = FLT.NewFS(box, nil, "OVERLAY", "GameFontDisableSmall"); hint:SetPoint("LEFT", 4, 0); hint:SetText("Search all items...")
+  local hint = FLT.NewFS(box, nil, "OVERLAY", "GameFontDisableSmall"); hint:SetPoint("LEFT", 4, 0); hint:SetText(L["Search all items..."])
   local clear = UI.GoldButton(right, "X", 20, 18, nil, 10); clear:SetPoint("RIGHT", box, "RIGHT", -1, 0); clear:Hide()
   clear:SetFrameLevel(box:GetFrameLevel() + 2)
   clear:SetScript("OnClick", function() box:SetText(""); box:ClearFocus() end)
@@ -767,7 +778,7 @@ function UI.CreateGearPlanner(parent)
   titleHover:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
     GameTooltip:AddLine(self.head or "", 1, 0.82, 0)
-    GameTooltip:AddLine("Sources: " .. (self.sources or "all"), 1, 1, 1, true)
+    GameTooltip:AddLine(string.format(L["Sources: %s"], self.sources or L["all"]), 1, 1, 1, true)
     GameTooltip:Show()
   end)
   titleHover:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -779,8 +790,8 @@ function UI.CreateGearPlanner(parent)
     local lo, hi = prefs.gearMin or 1, prefs.gearMax or playerLevel()
     return lo, hi
   end
-  local allBtn = UI.GoldButton(right, "All", 40, 22, nil, 11); allBtn:SetPoint("TOPRIGHT", -32, -44)
-  local mineBtn = UI.GoldButton(right, "My lvl", 56, 22, nil, 11); mineBtn:SetPoint("RIGHT", allBtn, "LEFT", -4, 0)
+  local allBtn = UI.GoldButton(right, L["All"], 40, 22, nil, 11); allBtn:SetPoint("TOPRIGHT", -32, -44)
+  local mineBtn = UI.GoldButton(right, L["My lvl"], 56, 22, nil, 11); mineBtn:SetPoint("RIGHT", allBtn, "LEFT", -4, 0)
   srcBtn:SetPoint("LEFT", allBtn, "RIGHT", 6, 0) -- the source filter: right of "All" (user 31.10.)
   local function levelBox()
     local b = FLT.SkinBlizz(CreateFrame("EditBox", nil, right, "InputBoxTemplate"))
@@ -790,7 +801,7 @@ function UI.CreateGearPlanner(parent)
   local maxBox = levelBox(); maxBox:SetPoint("RIGHT", mineBtn, "LEFT", -10, 0)
   local dash = newText(right, "GameFontHighlightSmall"); dash:SetPoint("RIGHT", maxBox, "LEFT", -8, 0); dash:SetText("-")
   local minBox = levelBox(); minBox:SetPoint("RIGHT", dash, "LEFT", -6, 0)
-  local lvLabel = newText(right, "GameFontNormalSmall", nil, GOLD); lvLabel:SetPoint("RIGHT", minBox, "LEFT", -8, 0); lvLabel:SetText("Level")
+  local lvLabel = newText(right, "GameFontNormalSmall", nil, GOLD); lvLabel:SetPoint("RIGHT", minBox, "LEFT", -8, 0); lvLabel:SetText(L["Level"])
   local function setRange(lo, hi)
     lo = math.max(1, math.min(MAX_LEVEL, lo or 1))
     if hi then hi = math.max(1, math.min(MAX_LEVEL, hi)) end
@@ -813,14 +824,13 @@ function UI.CreateGearPlanner(parent)
   local function showRange(on) for _, w in ipairs({ lvLabel, minBox, dash, maxBox, mineBtn, allBtn }) do w:SetShown(on) end end
   -- "Clear wishlist" (user 03.11.): where the level range is, on the Wishlist tab (the range does not filter the
   -- wishlist). Clear all, or clear smart = the items that are no upgrade any more; both ask first.
-  local clearBtn = UI.GoldButton(right, "Clear wishlist", 116, 22, nil, 11); clearBtn:SetPoint("TOPRIGHT", -32, -44); clearBtn:Hide()
-  do local nm = UI.NewMark(clearBtn, "New in OneForAll 6.1.0: clear the wishlist, all or only what is no upgrade any more."); nm:SetPoint("RIGHT", clearBtn, "LEFT", -4, 0) end
+  local clearBtn = UI.GoldButton(right, L["Clear wishlist"], 116, 22, nil, 11); clearBtn:SetPoint("TOPRIGHT", -32, -44); clearBtn:Hide()
   -- "All slots" (user 03.11.): the whole wishlist at once instead of the selected slot
-  local allSlotsBtn = UI.GoldButton(right, "All slots", 80, 22, nil, 11); allSlotsBtn:SetPoint("RIGHT", clearBtn, "LEFT", -22, 0); allSlotsBtn:Hide()
+  local allSlotsBtn = UI.GoldButton(right, L["All slots"], 80, 22, nil, 11); allSlotsBtn:SetPoint("RIGHT", clearBtn, "LEFT", -22, 0); allSlotsBtn:Hide()
   allSlotsBtn:SetScript("OnClick", function() prefs.wishAll = not prefs.wishAll or nil; refreshList() end)
   allSlotsBtn:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("All slots", 1, 0.82, 0)
-    GameTooltip:AddLine("Shows the whole wishlist, sorted by slot. Click again for the selected slot only.", 1, 1, 1, true)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["All slots"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["Shows the whole wishlist, sorted by slot. Click again for the selected slot only."], 1, 1, 1, true)
     GameTooltip:Show()
   end)
   allSlotsBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -835,9 +845,9 @@ function UI.CreateGearPlanner(parent)
     return out
   end
   clearBtn:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Clear wishlist", 1, 0.82, 0)
-    GameTooltip:AddLine("Clear all: everything on the wishlist of this character (items and enchants).", 1, 1, 1, true)
-    GameTooltip:AddLine("Clear smart: only the items that are no upgrade any more (the same or worse than what you wear, for your spec). Items without data yet and enchants stay.", 1, 1, 1, true)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Clear wishlist"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["Clear all: everything on the wishlist of this character (items and enchants)."], 1, 1, 1, true)
+    GameTooltip:AddLine(L["Clear smart: only the items that are no upgrade any more (the same or worse than what you wear, for your spec). Items without data yet and enchants stay."], 1, 1, 1, true)
     GameTooltip:Show()
   end)
   clearBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -846,22 +856,22 @@ function UI.CreateGearPlanner(parent)
     local all = 0
     for _ in pairs(wishlist()) do all = all + 1 end
     local smart = noUpgrades()
-    UI.OpenDropDown(self, { { key = "all", label = string.format("Clear all (%d)", all) },
-      { key = "smart", label = string.format("Clear smart (%d)", #smart) } }, nil, function(k)
+    UI.OpenDropDown(self, { { key = "all", label = string.format(L["Clear all (%d)"], all) },
+      { key = "smart", label = string.format(L["Clear smart (%d)"], #smart) } }, nil, function(k)
       UI.CloseDropDown()
       if k == "all" then
         if all == 0 then return end
-        UI.Confirm(string.format("Remove all %d entries from the wishlist of this character?", all), function()
+        UI.Confirm(string.format(L["Remove all %d entries from the wishlist of this character?"], all), function()
           wipe(wishlist()); refreshList()
-        end, "Clear all")
+        end, L["Clear all"])
       else
         if #smart == 0 then
-          if FLT.Msg then FLT.Msg("Every item on your wishlist is still an upgrade (or has no data yet) - nothing to remove.") end
+          if FLT.Msg then FLT.Msg(L["Every item on your wishlist is still an upgrade (or has no data yet) - nothing to remove."]) end
           return
         end
-        UI.Confirm(string.format("Remove the %d %s from the wishlist that %s no upgrade any more?", #smart, #smart == 1 and "item" or "items", #smart == 1 and "is" or "are"), function()
+        UI.Confirm(#smart == 1 and L["Remove the 1 item from the wishlist that is no upgrade any more?"] or string.format(L["Remove the %d items from the wishlist that are no upgrade any more?"], #smart), function()
           local w = wishlist(); for _, id in ipairs(smart) do w[id] = nil end; refreshList()
-        end, "Clear smart")
+        end, L["Clear smart"])
       end
     end, 150)
   end)
@@ -907,7 +917,7 @@ function UI.CreateGearPlanner(parent)
     r.map:SetScript("OnEnter", function(self)
       local loc = r.e.qid and FLT.QuestStart(r.e.qid)
       GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-      GameTooltip:AddLine("Quest giver", 1, 0.82, 0); GameTooltip:AddLine(loc and loc.label or "", 1, 1, 1, true)
+      GameTooltip:AddLine(L["Quest giver"], 1, 0.82, 0); GameTooltip:AddLine(loc and loc.label or "", 1, 1, 1, true)
       GameTooltip:Show()
     end)
     r.map:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -925,7 +935,7 @@ function UI.CreateGearPlanner(parent)
     r.go:SetScript("OnEnter", function(self)
       local d = r.e.d; GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
       GameTooltip:AddLine(d and d.name or "", 1, 0.82, 0)
-      GameTooltip:AddLine("Open " .. (r.e.boss == "trash mobs" and "the trash loot" or (r.e.boss or "the dungeon")) .. " in Dungeons & Raids.", 1, 1, 1, true)
+      GameTooltip:AddLine(r.e.boss == "trash mobs" and L["Open the trash loot in Dungeons & Raids."] or r.e.boss and string.format(L["Open %s in Dungeons & Raids."], r.e.boss) or L["Open the dungeon in Dungeons & Raids."], 1, 1, 1, true)
       GameTooltip:Show()
     end)
     r.go:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -941,16 +951,16 @@ function UI.CreateGearPlanner(parent)
       if FLT.ShowRecipeInProfessions then FLT.ShowRecipeInProfessions(e.prof, e.ps) end
     end)
     r.pro:SetScript("OnEnter", function(self)
-      GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(r.e and r.e.prof or "", 1, 0.82, 0)
-      GameTooltip:AddLine("Crafted item. Click to open the recipe in Professions (reagents, trainer, who can make it).", 1, 1, 1, true)
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(r.e and r.e.prof and L[r.e.prof] or "", 1, 0.82, 0)
+      GameTooltip:AddLine(L["Crafted item. Click to open the recipe in Professions (reagents, trainer, who can make it)."], 1, 1, 1, true)
       GameTooltip:Show()
     end)
     r.pro:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    r.chain = UI.GoldButton(r, "Chain", 56, 20, nil, 11); r.chain:SetPoint("RIGHT", r.star, "LEFT", -8, 0)
+    r.chain = UI.GoldButton(r, L["Chain"], 56, 20, nil, 11); r.chain:SetPoint("RIGHT", r.star, "LEFT", -8, 0)
     r.chain:SetScript("OnClick", function() FLT.ShowQuestChain(r.e.qid) end)
     r.chain:SetScript("OnEnter", function(self)
-      GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Quest chain", 1, 0.82, 0)
-      GameTooltip:AddLine(self.steps .. " quests up to this reward. Click to see them all.", 1, 1, 1, true); GameTooltip:Show()
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Quest chain"], 1, 0.82, 0)
+      GameTooltip:AddLine(string.format(L["%d quests up to this reward. Click to see them all."], self.steps), 1, 1, 1, true); GameTooltip:Show()
     end)
     r.chain:SetScript("OnLeave", function() GameTooltip:Hide() end)
     r.name = newText(r, "GameFontHighlight"); r.name:SetPoint("TOPLEFT", 44, -5)
@@ -965,11 +975,11 @@ function UI.CreateGearPlanner(parent)
       local e = self.e
       if H.tryShowItemTooltip and H.tryShowItemTooltip(self, { id = e.id, name = e.name, quality = e.q }) then return end
       GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-      if not pcall(GameTooltip.SetHyperlink, GameTooltip, "item:" .. e.id) then GameTooltip:AddLine(e.name or ("Item " .. e.id)) end
+      if not pcall(GameTooltip.SetHyperlink, GameTooltip, "item:" .. e.id) then GameTooltip:AddLine(e.name or (L["Item"] .. " " .. e.id)) end
       GameTooltip:Show()
     end)
     r:HookScript("OnEnter", function()
-      if GameTooltip:IsShown() then GameTooltip:AddLine("Right-click: try it on", 0.4, 0.8, 1); GameTooltip:Show() end
+      if GameTooltip:IsShown() then GameTooltip:AddLine(L["Right-click: try it on"], 0.4, 0.8, 1); GameTooltip:Show() end
     end)
     r:SetScript("OnLeave", function() GameTooltip:Hide() end)
     r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -1003,8 +1013,8 @@ function UI.CreateGearPlanner(parent)
       if FLT.ShowRecipeInProfessions then FLT.ShowRecipeInProfessions(o.p, o.s) end
     end)
     r.prof:SetScript("OnEnter", function(self)
-      GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(r.o and r.o.p or "", 1, 0.82, 0)
-      GameTooltip:AddLine("Open the recipe in Professions.", 1, 1, 1, true); GameTooltip:Show()
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(r.o and r.o.p and L[r.o.p] or "", 1, 0.82, 0)
+      GameTooltip:AddLine(L["Open the recipe in Professions."], 1, 1, 1, true); GameTooltip:Show()
     end)
     r.prof:SetScript("OnLeave", function() GameTooltip:Hide() end)
     r.name = newText(r, "GameFontHighlight"); r.name:SetPoint("TOPLEFT", 44, -5)
@@ -1049,7 +1059,7 @@ function UI.CreateGearPlanner(parent)
     local GV = FLT.GearValue
     local base = GV and GV.SlotItemValue(slot) or 0
     local curV = (cur and GV and GV.EnchantValue(cur, slot, id)) or 0
-    title:SetText((tab == "wish" and "Wishlist: " or "Enchants: ") .. (SLOT_NAME[slot] or ""))
+    title:SetText(string.format(L[tab == "wish" and N"Wishlist: %s" or N"Enchants: %s"], SW(SLOT_NAME[slot]) or ""))
     wipe(elist)
     local hasCur = false
     for _, o in ipairs(id and enchantOptions(id) or {}) do
@@ -1062,7 +1072,7 @@ function UI.CreateGearPlanner(parent)
     -- what is on it now, also when it is not in our list (a raid or event enchant)
     if cur and not hasCur and tab ~= "wish" then
       local ce = FLT.ENCHANTS and FLT.ENCHANTS[cur]
-      elist[#elist + 1] = { e = cur, n = ce and ce[1] or "Current enchant", v = curV, worn = true }
+      elist[#elist + 1] = { e = cur, n = ce and ce[1] or L["Current enchant"], v = curV, worn = true }
     end
     -- best Value first, then the ones in Forever, then the higher skill
     table.sort(elist, function(a, b)
@@ -1082,25 +1092,25 @@ function UI.CreateGearPlanner(parent)
       local ce = FLT.ENCHANTS and FLT.ENCHANTS[o.e]
       local where
       if o.p then
-        where = o.p .. (o.req and (" " .. o.req) or "")
+        where = L[o.p] .. (o.req and (" " .. o.req) or "")
         local known, guild, other
         if FLT.RecipeKnowState and o.s then known, guild, other = FLT.RecipeKnowState(o.p, { s = o.s }) end
-        if known then where = where .. "  |cff40ff40(you know it)|r"
-        elseif other then where = where .. "  |cff8fd0ff(an alt knows it)|r"
-        elseif guild then where = where .. "  |cffffd35a(your guild)|r" end
-      elseif o.src then where = o.src .. (o.st == 0 and "  |cff9d9d9d(not in Forever yet)|r" or "") end
+        if known then where = where .. "  |cff40ff40" .. L["(you know it)"] .. "|r"
+        elseif other then where = where .. "  |cff8fd0ff" .. L["(an alt knows it)"] .. "|r"
+        elseif guild then where = where .. "  |cffffd35a" .. L["(your guild)"] .. "|r" end
+      elseif o.src then where = o.src .. (o.st == 0 and ("  |cff9d9d9d" .. L["(not in Forever yet)"] .. "|r") or "") end
       r.where = where
       local parts = {}
       if ce and not o.worn then parts[#parts + 1] = ce[1] end
       if where then parts[#parts + 1] = where end
       r.sub:SetText(table.concat(parts, "  ·  "))
-      if o.e == cur then r.val:SetText("|cffb0b0b0worn|r")
+      if o.e == cur then r.val:SetText("|cffb0b0b0" .. L["worn"] .. "|r")
       elseif o.v and o.v > 0 and base + curV > 0 then
         local pct = (o.v - curV) / (base + curV) * 100
         if pct >= 0.5 then r.val:SetText(string.format("|cff40ff40+%d%%|r", math.floor(pct + 0.5)))
         elseif pct <= -0.5 then r.val:SetText(string.format("|cffff5050-%d%%|r", math.floor(-pct + 0.5)))
         else r.val:SetText("|cffb0b0b0=|r") end
-      elseif o.v and o.v > 0 then r.val:SetText("|cff40ff40new|r")
+      elseif o.v and o.v > 0 then r.val:SetText("|cff40ff40" .. L["new"] .. "|r")
       else r.val:SetText("|cffb0b0b0-|r") end
       r.prof:SetShown(o.p ~= nil and o.s ~= nil)
       if r.prof:IsShown() then r.prof.tex:SetTexture(PROF_ICON[o.p] or "Interface\\Icons\\INV_Misc_QuestionMark") end
@@ -1108,7 +1118,7 @@ function UI.CreateGearPlanner(parent)
     end
     child:SetHeight(math.max(1, -y))
     if #elist == 0 then
-      empty:SetText(tab == "wish" and "No enchant for this slot on your wishlist yet.\nClick the star on an enchant to add it." or "Nothing in our data fits this item.")
+      empty:SetText(L[tab == "wish" and N"No enchant for this slot on your wishlist yet.\nClick the star on an enchant to add it." or N"Nothing in our data fits this item."])
       empty:Show()
     else empty:Hide() end
   end
@@ -1128,11 +1138,11 @@ function UI.CreateGearPlanner(parent)
     paintRange()
     local w = sf:GetWidth(); if w and w > 0 then child:SetWidth(w) end
     wipe(list)
-    local slotName = SLOT_NAME[selected] or ""
+    local slotName = SW(SLOT_NAME[selected]) or ""
     local function fits(e) for _, s in ipairs(LOC_SLOTS[e.loc] or {}) do if s == selected then return true end end return false end
     local function offhandOK(e) return selected ~= 17 or e.loc ~= "INVTYPE_WEAPON" or DUAL_WIELD[cls] end
     if search ~= "" then
-      title:SetText("Search: all slots")
+      title:SetText(L["Search: all slots"])
       for _, e in ipairs(idx) do
         if (e.name or ""):lower():find(search, 1, true) and sourceOK(e) then list[#list + 1] = e; if #list >= 100 then break end end
       end
@@ -1140,7 +1150,7 @@ function UI.CreateGearPlanner(parent)
     elseif tab == "wish" then
       -- "All slots" (user 03.11.): the whole wishlist, in the order of the slots, else the selected slot
       local all = prefs.wishAll and true or false
-      title:SetText("Wishlist: " .. (all and "all slots" or slotName))
+      title:SetText(string.format(L["Wishlist: %s"], all and L["all slots"] or slotName))
       for id in pairs(wishlist()) do
         local e = type(id) == "number" and ids[id]
         if not e and type(id) == "number" then -- an item that is not in our data: build a small entry
@@ -1193,7 +1203,7 @@ function UI.CreateGearPlanner(parent)
       for i = #list, 61, -1 do list[i] = nil end
     end
     local short = shortNames()
-    titleHover.head = (search == "" and tab ~= "wish") and ("Suggested: " .. slotName) or title:GetText()
+    titleHover.head = (search == "" and tab ~= "wish") and string.format(L["Suggested: %s"], slotName) or title:GetText()
     titleHover.sources = short
     if short then title:SetText(title:GetText() .. "  |cffb0b0b0" .. short .. "|r") end
     for _, r in ipairs(rows) do r:Hide() end
@@ -1205,12 +1215,12 @@ function UI.CreateGearPlanner(parent)
       -- quality too: quest rewards from QuestieDB come with a name but without quality (legendaries were white)
       if not e.name or not e.q then reqLevel(e) end
       -- quest rewards: the yellow quest "!" right after the name
-      r.name:SetText((e.name or ("Item " .. e.id)) .. (e.qid and " |TInterface\\GossipFrame\\AvailableQuestIcon:0|t" or "")); r.name:SetTextColor(qcolor(e.q))
+      r.name:SetText((e.name or (L["Item"] .. " " .. e.id)) .. (e.qid and " |TInterface\\GossipFrame\\AvailableQuestIcon:0|t" or "")); r.name:SetTextColor(qcolor(e.q))
       local lv = e.req or e.lvl
       if e.qreq and (lv or 0) < e.qreq then lv = e.qreq end
       local parts = {}
-      if lv and lv > 0 then parts[#parts + 1] = (e.req and "lvl " or "lvl ~") .. lv end
-      if search ~= "" or (tab == "wish" and prefs.wishAll) then parts[#parts + 1] = SLOT_NAME[(LOC_SLOTS[e.loc] or {})[1]] end
+      if lv and lv > 0 then parts[#parts + 1] = string.format(L[e.req and N"lvl %d" or N"lvl ~%d"], lv) end
+      if search ~= "" or (tab == "wish" and prefs.wishAll) then parts[#parts + 1] = SW(SLOT_NAME[(LOC_SLOTS[e.loc] or {})[1]]) or "" end
       if e.src then parts[#parts + 1] = e.src end
       r.sub:SetText(table.concat(parts, "  ·  "))
       -- star, then Chain or the map icon in the same place (a chain has its maps in the popup)
@@ -1233,16 +1243,16 @@ function UI.CreateGearPlanner(parent)
       if FLT.GearValue then kind, pct = FLT.GearValue.Change(e.id) end
       if kind == "up" then r.val:SetText(string.format("|cff40ff40+%d%%|r", math.floor(pct + 0.5)))
       elseif kind == "down" then r.val:SetText(string.format("|cffff5050-%d%%|r", math.floor(pct + 0.5)))
-      elseif kind == "new" then r.val:SetText("|cff40ff40new|r")
-      elseif kind == "worn" then r.val:SetText("|cffb0b0b0worn|r")
+      elseif kind == "new" then r.val:SetText("|cff40ff40" .. L["new"] .. "|r")
+      elseif kind == "worn" then r.val:SetText("|cffb0b0b0" .. L["worn"] .. "|r")
       elseif kind == "same" then r.val:SetText("|cffb0b0b0=|r") else r.val:SetText("") end
       r.star:SetItem(e.id)
     end
     child:SetHeight(math.max(1, -y))
     if #list == 0 then
       empty:SetText(short and (tab ~= "wish" and search == "" and FLT.GearValue
-          and "No upgrade among the \"" .. short .. "\" items for this slot in your level range.\nOnly items better than what you wear (for your spec) are listed.\nThe filter button is next to the Wishlist tab."
-          or "Nothing here with the source filter \"" .. short .. "\".\nThe filter button is next to the Wishlist tab.") or search ~= "" and "No item found." or (tab == "wish" and (prefs.wishAll and "Your wishlist is empty.\nClick the star on an item to add it." or "Your wishlist has no item for this slot yet.\nClick the star on an item to add it.") or (FLT.GearValue and "No upgrade for this slot in your level range yet." or "No item from our data fits this slot and level yet.")))
+          and string.format(L["No upgrade among the \"%s\" items for this slot in your level range.\nOnly items better than what you wear (for your spec) are listed.\nThe filter button is next to the Wishlist tab."], short)
+          or string.format(L["Nothing here with the source filter \"%s\".\nThe filter button is next to the Wishlist tab."], short)) or search ~= "" and L["No item found."] or L[tab == "wish" and (prefs.wishAll and N"Your wishlist is empty.\nClick the star on an item to add it." or N"Your wishlist has no item for this slot yet.\nClick the star on an item to add it.") or (FLT.GearValue and N"No upgrade for this slot in your level range yet." or N"No item from our data fits this slot and level yet.")])
       empty:Show()
     else empty:Hide() end
   end
@@ -1260,14 +1270,14 @@ end
 -- Custom weights editor (5.7.3, user 27.10.): one number per stat for this character, used when "Custom weights"
 -- is picked. Starts with the active spec's weights; "Copy from" puts a spec's weights in. Built when first opened.
 local WEIGHT_STATS = {
-  { "str", "Strength" }, { "agi", "Agility" }, { "sta", "Stamina" }, { "int", "Intellect" }, { "spi", "Spirit" },
-  { "ap", "Attack Power" }, { "rap", "Ranged Attack Power" }, { "fap", "Feral Attack Power" }, { "dps", "Weapon DPS" },
-  { "wskill", "Weapon Skill (per 1 %)" }, { "hit", "Hit (per 1 %)" }, { "crit", "Crit (per 1 %)" },
-  { "sp", "Spell Power" }, { "heal", "Healing" }, { "mp5", "Mana per 5 sec." }, { "armor", "Armor" },
-  { "def", "Defense" }, { "dodge", "Dodge (per 1 %)" }, { "parry", "Parry (per 1 %)" }, { "block", "Block (per 1 %)" },
-  { "bv", "Block Value" }, { "fire", "Fire Spell Damage" }, { "frost", "Frost Spell Damage" },
-  { "shadow", "Shadow Spell Damage" }, { "arcane", "Arcane Spell Damage" }, { "nature", "Nature Spell Damage" },
-  { "holy", "Holy Spell Damage" },
+  { "str", N"Strength" }, { "agi", N"Agility" }, { "sta", N"Stamina" }, { "int", N"Intellect" }, { "spi", N"Spirit" },
+  { "ap", N"Attack Power" }, { "rap", N"Ranged Attack Power" }, { "fap", N"Feral Attack Power" }, { "dps", N"Weapon DPS" },
+  { "wskill", N"Weapon Skill (per 1 %)" }, { "hit", N"Hit (per 1 %)" }, { "crit", N"Crit (per 1 %)" },
+  { "sp", N"Spell Power" }, { "heal", N"Healing" }, { "mp5", N"Mana per 5 sec." }, { "armor", N"Armor" },
+  { "def", N"Defense" }, { "dodge", N"Dodge (per 1 %)" }, { "parry", N"Parry (per 1 %)" }, { "block", N"Block (per 1 %)" },
+  { "bv", N"Block Value" }, { "fire", N"Fire Spell Damage" }, { "frost", N"Frost Spell Damage" },
+  { "shadow", N"Shadow Spell Damage" }, { "arcane", N"Arcane Spell Damage" }, { "nature", N"Nature Spell Damage" },
+  { "holy", N"Holy Spell Damage" },
 }
 local editor
 function UI.ShowWeightEditor(onChange)
@@ -1280,15 +1290,15 @@ function UI.ShowWeightEditor(onChange)
     if UISpecialFrames then table.insert(UISpecialFrames, "OneForAllWeightEditor") end
     UI.FramedPanel(f)
     local close = UI.CloseButton(f); close:SetPoint("TOPRIGHT", -12, -12)
-    local t = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalLarge"); t:SetPoint("TOPLEFT", 18, -16); t:SetText("Custom weights")
+    local t = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalLarge"); t:SetPoint("TOPLEFT", 18, -16); t:SetText(L["Custom weights"])
     t:SetTextColor(1, 0.82, 0.20)
     local d = FLT.NewFS(f, nil, "OVERLAY", "GameFontDisableSmall"); d:SetPoint("TOPLEFT", 18, -38); d:SetWidth(520); d:SetJustifyH("LEFT")
-    d:SetText("Value per point of each stat for this character (hit, crit, dodge ... per 1 %). 0 or empty = the stat does not count. Used while \"Custom weights\" is picked.")
+    d:SetText(L["Value per point of each stat for this character (hit, crit, dodge ... per 1 %). 0 or empty = the stat does not count. Used while \"Custom weights\" is picked."])
     f.boxes = {}
     for i, st in ipairs(WEIGHT_STATS) do
       local col, rowN = (i - 1) % 2, math.floor((i - 1) / 2)
       local x, y = 18 + col * 270, -66 - rowN * 25
-      local l = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); l:SetPoint("TOPLEFT", x, y - 4); l:SetText(st[2])
+      local l = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); l:SetPoint("TOPLEFT", x, y - 4); l:SetText(L[st[2]])
       local eb = FLT.SkinBlizz(CreateFrame("EditBox", nil, f, "InputBoxTemplate"))
       eb:SetSize(60, 20); eb:SetPoint("TOPLEFT", x + 190, y); eb:SetAutoFocus(false); eb:SetMaxLetters(7)
       local function save(self)
@@ -1305,17 +1315,17 @@ function UI.ShowWeightEditor(onChange)
       local c = GV.CustomWeights()
       for k, eb in pairs(f.boxes) do local v = c[k]; eb:SetText(v and tostring(v) or "") end
     end
-    local copy = UI.GoldButton(f, "Copy from a spec", 170, 24, nil, 12); copy:SetPoint("BOTTOMLEFT", 16, 14)
+    local copy = UI.GoldButton(f, L["Copy from a spec"], 170, 24, nil, 12); copy:SetPoint("BOTTOMLEFT", 16, 14)
     copy:SetScript("OnClick", function(self)
       local specs = GV.Specs()
-      local opts = { { key = 0, label = "Active spec" } }
-      for i, sp in ipairs(specs) do opts[#opts + 1] = { key = i, label = sp.name } end
+      local opts = { { key = 0, label = L["Active spec"] } }
+      for i, sp in ipairs(specs) do opts[#opts + 1] = { key = i, label = L[sp.name] } end
       UI.OpenDropDown(self, opts, nil, function(k)
         GV.ResetCustom(k ~= 0 and k or nil); f.fill()
         if f.onChange then f.onChange() end
       end, 170)
     end)
-    local done = UI.GoldButton(f, "Done", 110, 24, nil, 12); done:SetPoint("BOTTOMRIGHT", -16, 14)
+    local done = UI.GoldButton(f, L["Done"], 110, 24, nil, 12); done:SetPoint("BOTTOMRIGHT", -16, 14)
     done:SetScript("OnClick", function() f:Hide() end)
     editor = f
   end

@@ -1,4 +1,5 @@
 local ADDON, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 -- Shared UI building blocks and the panel registry used by every tab.
 -- Each tab lives in its own file under UI/ and registers itself with
@@ -30,8 +31,8 @@ function UI.NewMark(parent, tip)
   local f = CreateFrame("Frame", nil, parent); f:SetSize(12, 16); f:EnableMouse(true)
   local t = f:CreateTexture(nil, "OVERLAY"); t:SetAllPoints(); t:SetTexture("Interface\\GossipFrame\\AvailableQuestIcon")
   f:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("New", 1, 0.82, 0)
-    GameTooltip:AddLine(tip or "New in this version.", 1, 1, 1, true); GameTooltip:Show()
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["New"], 1, 0.82, 0)
+    GameTooltip:AddLine(tip or L["New in this version."], 1, 1, 1, true); GameTooltip:Show()
   end)
   f:SetScript("OnLeave", function() GameTooltip:Hide() end)
   return f
@@ -457,7 +458,14 @@ local function GoldButton(parent, text, w, h, icon, fontSize, plain)
     local ic = b:CreateTexture(nil, "ARTWORK"); ic:SetSize(h - 8, h - 8); FLT.SetTex(ic, icon)
     b.icon = ic
   end
-  place(0, 0)
+  -- 6.2.0-beta6: a longer text (German "So bekommst du Gunst") makes the button wider instead of running over its edge
+  local function fit()
+    local tw = label:GetStringWidth() or 0
+    if tw <= 0 then return end
+    local need = math.ceil(tw + 18 + ((b.icon and b.icon:IsShown()) and ((b.icon:GetWidth() or 14) + (b.iconGap or 5)) or 0))
+    if need > (b:GetWidth() or 0) then b:SetWidth(need) end
+  end
+  fit(); place(0, 0)
   b._label, b.plate = label, plate
   function b:SetActive(on)
     plate:SetActive(on)
@@ -468,7 +476,7 @@ local function GoldButton(parent, text, w, h, icon, fontSize, plain)
     if enabled then label:SetTextColor(FLT.SkinC(0.95, 0.82, 0.50)) else label:SetTextColor(FLT.SkinC(0.5, 0.5, 0.5)) end
     if b.icon then FLT.Desat(b.icon, not enabled); b.icon:SetAlpha(enabled and 1 or 0.5) end
   end
-  function b:SetLabel(t) label:SetText(t); place(0, 0) end
+  function b:SetLabel(t) label:SetText(t); fit(); place(0, 0) end
   -- the gold chevron of the "< Dungeons" button as a page arrow (Welcome setup, user 31.10.): dir "prev" / "next" / nil
   function b:SetArrow(dir)
     if not b.icon then b.icon = b:CreateTexture(nil, "ARTWORK"); b.icon:SetSize(h - 10, h - 10); FLT.SetTex(b.icon, ASSET_ROOT .. "icon_back") end
@@ -557,6 +565,10 @@ function UI.AutoHideScrollBar(sf)
   upd()
 end
 
+-- upper() that also handles UTF-8 umlauts and accents (à..þ -> À..Þ, not ÷; ß stays)
+local function upLatin(c) local b = c:byte(2); if b ~= 183 then return "\195" .. string.char(b - 32) end end
+function UI.Upper(s) return (s:upper():gsub("\195[\160-\190]", upLatin)) end
+
 -- "Small caps": first letter of every word larger, the rest in capitals.
 function UI.SmallCaps(parent, text, big, small, color, template)
   local holder = CreateFrame("Frame", nil, parent)
@@ -573,8 +585,10 @@ function UI.SmallCaps(parent, text, big, small, color, template)
   end
   local first = true
   for word in tostring(text):gmatch("%S+") do
-    add(word:sub(1, 1):upper(), big, first and 0 or gap)
-    if #word > 1 then add(word:sub(2):upper(), small, 0) end
+    -- UTF-8 (6.2.0): the first letter may be 2 bytes ("Ä"); upper() leaves ä/ö/ü/é.. alone -> Latin-1 range minus 32
+    local head = word:match("^[\1-\127\192-\255][\128-\191]*") or word:sub(1, 1)
+    add(UI.Upper(head), big, first and 0 or gap)
+    if #word > #head then add(UI.Upper(word:sub(#head + 1)), small, 0) end
     first = false
   end
   holder:SetSize(math.max(1, total), big + 2)
@@ -866,6 +880,12 @@ function UI.NavButton(parent, text, w, h, icon)
   local label = FLT.NewFS(b, nil, "OVERLAY", "GameFontNormal")
   do local font, _, flags = label:GetFont(); if font then label:SetFont(font, 12, flags) end end
   label:SetPoint("LEFT", icon and (h + 2) or 10, 0); label:SetJustifyH("LEFT"); label:SetText(text); label:SetTextColor(unpack(NAV_TEXT))
+  -- a longer name (French / Spanish, beta42) gets a smaller font instead of running over the line on the right
+  local avail = w - (icon and (h + 2) or 10) - 2
+  for _, size in ipairs({ 11, 10 }) do
+    if (label:GetStringWidth() or 0) <= avail then break end
+    local font, _, flags = label:GetFont(); if font then label:SetFont(font, size, flags) end
+  end
   b._label, b.icon = label, ic
   function b:SetActive(on)
     plate:SetActive(on)
@@ -905,7 +925,7 @@ function UI.CloseButton(parent, onClick)
   if b.icon then b.icon:ClearAllPoints(); b.icon:SetSize(14, 14); b.icon:SetPoint("CENTER", 0, 0) end
   b:SetScript("OnMouseDown", nil); b:SetScript("OnMouseUp", nil)
   b:SetScript("OnClick", onClick or function() parent:Hide() end)
-  b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(CLOSE or "Close"); GameTooltip:Show() end)
+  b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(CLOSE or L["Close"]); GameTooltip:Show() end)
   b:SetScript("OnLeave", function() GameTooltip:Hide() end)
   return b
 end
@@ -1021,8 +1041,8 @@ function UI.Confirm(text, onYes, yesLabel, secureMacro)
     UI.FramedPanel(f)
     for _, t in ipairs(OrnateFrame(f, f, 16, 3, "OVERLAY", 4)) do t:SetVertexColor(FLT.SkinC(1, 1, 1, 1)) end
     f.text = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlight"); f.text:SetPoint("TOP", 0, -24); f.text:SetWidth(330); f.text:SetJustifyH("CENTER")
-    f.yes = GoldButton(f, "Yes", 110, 26, nil, 13); f.yes:SetPoint("BOTTOMRIGHT", f, "BOTTOM", -8, 18)
-    f.no = GoldButton(f, "Cancel", 110, 26, nil, 13); f.no:SetPoint("BOTTOMLEFT", f, "BOTTOM", 8, 18)
+    f.yes = GoldButton(f, L["Yes"], 110, 26, nil, 13); f.yes:SetPoint("BOTTOMRIGHT", f, "BOTTOM", -8, 18)
+    f.no = GoldButton(f, L["Cancel"], 110, 26, nil, 13); f.no:SetPoint("BOTTOMLEFT", f, "BOTTOM", 8, 18)
     f.no:SetScript("OnClick", function() f:Hide() end)
     -- the secure twin of the Yes button is made on first use (out of combat)
     f:SetScript("OnHide", function()
@@ -1032,7 +1052,7 @@ function UI.Confirm(text, onYes, yesLabel, secureMacro)
     confirmFrame = f
   end
   local f = confirmFrame
-  f.text:SetText(text); f.yes:SetLabel(yesLabel or "Yes")
+  f.text:SetText(text); f.yes:SetLabel(yesLabel or L["Yes"])
   f:SetHeight(math.max(120, (f.text:GetStringHeight() or 14) + 84))
   f.yes:SetScript("OnClick", function() f:Hide(); if onYes then onYes() end end)
   local combat = InCombatLockdown and InCombatLockdown()
@@ -1056,7 +1076,7 @@ function UI.Confirm(text, onYes, yesLabel, secureMacro)
       if sy:IsShown() then return end -- cannot swap the secure button in combat
     elseif secureMacro then
       sy:SetAttribute("macrotext", secureMacro)
-      sy.label:SetText(yesLabel or "Yes")
+      sy.label:SetText(yesLabel or L["Yes"])
       sy:SetScript("PreClick", function() if onYes then onYes() end end)
       sy:Show(); f.yes:SetAlpha(0)
     else
@@ -1066,11 +1086,9 @@ function UI.Confirm(text, onYes, yesLabel, secureMacro)
   f:Show()
 end
 
--- Bug report window: where to report (GitHub issues or a CurseForge comment) in
--- boxes that can be copied (WoW cannot open a browser), version / class / level and
--- the last caught errors (OneForAllDB.errors, see FLT.SafeCall) to paste along.
-UI.ISSUES_URL = "https://github.com/smoergi/OneForAll_Forever/issues"
-UI.CURSEFORGE_URL = "https://www.curseforge.com/wow/addons/oneforall-forever"
+-- Bug report window: where to report (Discord #bug-reports) in a box that can be copied (WoW cannot open a
+-- browser), version / class / level and the last caught errors (OneForAllDB.errors, see FLT.SafeCall) to paste along.
+-- GitHub issues are switched off (user 07.11.2026); CurseForge comments too (user 07.11.2026), so Discord only.
 UI.DISCORD_URL = "https://discord.gg/bQhjSpdA3S" -- the invite does not expire (user 24.10.)
 local bugFrame
 -- read-only box: typing puts the text back, a click selects it all
@@ -1098,29 +1116,25 @@ end
 function UI.ShowBugReport()
   if not bugFrame then
     local f = CreateFrame("Frame", "OneForAllBugReport", UIParent)
-    f:SetSize(440, 358); f:SetPoint("CENTER", 0, 80); f:SetFrameStrata("FULLSCREEN_DIALOG"); f:EnableMouse(true)
+    f:SetSize(440, 302); f:SetPoint("CENTER", 0, 80); f:SetFrameStrata("FULLSCREEN_DIALOG"); f:EnableMouse(true)
     f:SetMovable(true); f:SetClampedToScreen(true); f:RegisterForDrag("LeftButton")
     f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
     UI.FramedPanel(f)
     for _, t in ipairs(OrnateFrame(f, f, 16, 3, "OVERLAY", 4)) do t:SetVertexColor(FLT.SkinC(1, 1, 1, 1)) end
     local close = UI.CloseButton(f); close:SetPoint("TOPRIGHT", -12, -12)
     local title = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalLarge"); title:SetPoint("TOP", 0, -20)
-    title:SetText("Report a bug or idea"); title:SetTextColor(FLT.SkinC(1, 0.82, 0.20))
+    title:SetText(L["Report a bug or idea"]); title:SetTextColor(FLT.SkinC(1, 0.82, 0.20))
     local text = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); text:SetPoint("TOP", 0, -44); text:SetWidth(390)
     text:SetJustifyH("CENTER")
-    text:SetText("Copy a link (Ctrl+C) and open it in your browser: an issue on GitHub or a comment on CurseForge. A screenshot helps a lot.")
+    text:SetText(L["Copy the link (Ctrl+C) and open it in your browser: a post in #bug-reports or #suggestions on our Discord. A screenshot helps a lot."])
     local function label(t, y)
       local l = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalSmall"); l:SetPoint("TOPLEFT", 28, y); l:SetText(t); l:SetTextColor(FLT.SkinC(0.90, 0.74, 0.42))
     end
-    label("GitHub", -80)
-    f.gh = copyBox(f, 300, 20); f.gh:SetPoint("TOPLEFT", 112, -76)
-    label("CurseForge", -108)
-    f.cf = copyBox(f, 300, 20); f.cf:SetPoint("TOPLEFT", 112, -104)
-    label("Discord", -136)
-    f.dc = copyBox(f, 300, 20); f.dc:SetPoint("TOPLEFT", 112, -132)
-    label("Please add", -166)
-    f.err = copyBox(f, 384, 116, true); f.err.holder:SetPoint("TOPLEFT", 28, -184)
-    local ok = GoldButton(f, "Close", 110, 26, nil, 13); ok:SetPoint("BOTTOM", 0, 16)
+    label("Discord", -80)
+    f.dc = copyBox(f, 300, 20); f.dc:SetPoint("TOPLEFT", 112, -76)
+    label(L["Please add"], -110)
+    f.err = copyBox(f, 384, 116, true); f.err.holder:SetPoint("TOPLEFT", 28, -128)
+    local ok = GoldButton(f, L["Close"], 110, 26, nil, 13); ok:SetPoint("BOTTOM", 0, 16)
     ok:SetScript("OnClick", function() f:Hide() end)
     if UISpecialFrames then table.insert(UISpecialFrames, "OneForAllBugReport") end
     bugFrame = f
@@ -1135,15 +1149,15 @@ function UI.ShowBugReport()
     tostring(level or "?"), GetLocale and GetLocale() or "?") }
   local errs = type(OneForAllDB) == "table" and OneForAllDB.errors
   if type(errs) == "table" and #errs > 0 then
-    lines[#lines + 1] = "Last caught errors:"
+    lines[#lines + 1] = L["Last caught errors:"]
     for i = 1, math.min(5, #errs) do lines[#lines + 1] = tostring(errs[i]) end
   else
-    lines[#lines + 1] = "No errors caught."
+    lines[#lines + 1] = L["No errors caught."]
   end
-  f.gh:SetValue(UI.ISSUES_URL); f.cf:SetValue(UI.CURSEFORGE_URL); f.dc:SetValue(UI.DISCORD_URL)
+  f.dc:SetValue(UI.DISCORD_URL)
   f.err:SetValue(table.concat(lines, "\n"))
   f:Show()
-  f.gh:SetFocus(); f.gh:HighlightText()
+  f.dc:SetFocus(); f.dc:HighlightText()
 end
 
 -- Discord (5.7.3, title bar button): the invite link to copy, built on first use
@@ -1158,12 +1172,12 @@ function UI.ShowDiscord()
     for _, t in ipairs(OrnateFrame(f, f, 16, 3, "OVERLAY", 4)) do t:SetVertexColor(FLT.SkinC(1, 1, 1, 1)) end
     local close = UI.CloseButton(f); close:SetPoint("TOPRIGHT", -12, -12)
     local title = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalLarge"); title:SetPoint("TOP", 0, -20)
-    title:SetText("OneForAll on Discord"); title:SetTextColor(FLT.SkinC(1, 0.82, 0.20))
+    title:SetText(L["OneForAll on Discord"]); title:SetTextColor(FLT.SkinC(1, 0.82, 0.20))
     local text = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); text:SetPoint("TOP", 0, -46); text:SetWidth(350)
     text:SetJustifyH("CENTER")
-    text:SetText("News, questions and ideas. Copy the link (Ctrl+C) and open it in your browser.")
+    text:SetText(L["News, questions and ideas. Copy the link (Ctrl+C) and open it in your browser."])
     f.link = copyBox(f, 300, 20); f.link:SetPoint("TOP", 0, -84)
-    local ok = GoldButton(f, "Close", 110, 26, nil, 13); ok:SetPoint("BOTTOM", 0, 16)
+    local ok = GoldButton(f, L["Close"], 110, 26, nil, 13); ok:SetPoint("BOTTOM", 0, 16)
     ok:SetScript("OnClick", function() f:Hide() end)
     if UISpecialFrames then table.insert(UISpecialFrames, "OneForAllDiscord") end
     discordFrame = f

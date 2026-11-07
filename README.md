@@ -12,6 +12,7 @@ All-in-one companion addon for **WoW Forever**. No other addons required.
 - **Map Landmarks** – dungeon and raid entrances, flight masters, zeppelins, ships, the Deeprun Tram and Library Books on the world map; click an entrance to open that dungeon
 - **Quality of Life** – optional helpers in groups with a search (auto repair, sell junk with your own junk list, hide the chat, quest XP on the experience bar, item compare with Shift, minimap button collector, square minimap, sparkle on herbs and ore, brighter class colors, low spell ranks on your action bars, popups and alerts and more); a welcome setup switches them on page by page
 - **Look** – one gold modern style that can be made see-through, and a logo in five colors
+- **Languages** – English, German, French and Spanish (Settings > General > Language); in a German, French or Spanish game client quest, NPC, item and zone names come in that language too
 
 ## Download
 
@@ -21,8 +22,8 @@ Open the addon with `/ofa` or the minimap button. All commands are listed in `On
 
 ## Bug reports and ideas
 
-Please open an [issue](../../issues) or leave a comment on [CurseForge](https://www.curseforge.com/wow/addons/oneforall-forever) with a short description and, if possible, a screenshot.
-The bug button in the addon's title bar shows both links and your recent errors to copy.
+Please post bugs and ideas in our [Discord](https://discord.gg/bQhjSpdA3S) (#bug-reports or #suggestions) with a short description and, if possible, a screenshot.
+The bug button in the addon's title bar shows the link and your recent errors to copy.
 `/ofa where` prints your current map and coordinates, which helps with wrong map pins.
 
 ## License

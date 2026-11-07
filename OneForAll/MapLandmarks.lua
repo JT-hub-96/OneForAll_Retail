@@ -1,4 +1,6 @@
 local ADDON, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
 
 -- Map Landmarks (Quality of Life, on by default with all parts, user 16.10.): icons on the world map for dungeon and raid
 -- entrances, flight masters, zeppelin towers, ship docks, the Deeprun Tram and zone transitions (6.0.2). Entrances come from DungeonData.lua,
@@ -34,7 +36,7 @@ local KINDS = {
   -- zone transitions (6.0.2): the user's signpost (tools/art/zone_transition.py), places from Carbonite (GPL-3)
   transition = { file = ASSET .. "landmark_transition", w = 21, h = 21, key = "lmTransitions" },
 }
-local SIDE_NAME = { A = "Alliance", H = "Horde" }
+local SIDE_NAME = { A = N"Alliance", H = N"Horde" }
 
 local function Q(key) return FLT.QoL and FLT.QoL.Get(key) end
 
@@ -128,10 +130,10 @@ local function onClick(pin)
   FLT.UI.OpenDropDown(pin, options, nil, function(i) openDungeon(e.list[i]) end, 230)
 end
 
-local KIND_LABEL = { flight = "Flight master", zeppelin = "Zeppelin", shipA = "Ship", shipH = "Ship", tram = "Deeprun Tram",
-  leyline = "Ley Line", convergence = "Elemental Convergence", transition = "Zone transition" }
-local KIND_HINT = { leyline = "Read Leyline here: Attuned for 1 hour (100% regeneration).",
-  convergence = "Skysight here: Charged for 1 hour (30% movement speed)." }
+local KIND_LABEL = { flight = N"Flight master", zeppelin = N"Zeppelin", shipA = N"Ship", shipH = N"Ship", tram = N"Deeprun Tram",
+  leyline = N"Ley Line", convergence = N"Elemental Convergence", transition = N"Zone transition" }
+local KIND_HINT = { leyline = N"Read Leyline here: Attuned for 1 hour (100% regeneration).",
+  convergence = N"Skysight here: Charged for 1 hour (30% movement speed)." }
 local function onEnter(pin)
   local e = pin.entry
   if not e or not GameTooltip then return end
@@ -139,25 +141,25 @@ local function onEnter(pin)
   if e.list then
     for _, d in ipairs(e.list) do
       local lvl = d.level and d.level ~= "?" and ("  |cffb0b0b0" .. d.level .. "|r") or ""
-      GameTooltip:AddLine(d.name .. lvl, 1, 0.82, 0.2)
+      GameTooltip:AddLine((FLT.DungeonName and FLT.DungeonName(d.name) or d.name) .. lvl, 1, 0.82, 0.2)
     end
-    GameTooltip:AddLine(e.kind == "raid" and "Raid entrance" or "Dungeon entrance", 0.8, 0.8, 0.8)
-    GameTooltip:AddLine(#e.list > 1 and "Click: choose one to open in OneForAll" or "Click: open in OneForAll", 0.4, 0.8, 1)
+    GameTooltip:AddLine(e.kind == "raid" and L["Raid entrance"] or L["Dungeon entrance"], 0.8, 0.8, 0.8)
+    GameTooltip:AddLine(#e.list > 1 and L["Click: choose one to open in OneForAll"] or L["Click: open in OneForAll"], 0.4, 0.8, 1)
   elseif e.book then
     local b = e.book
-    GameTooltip:AddLine(b.name, 1, 0.82, 0.2, true)
-    GameTooltip:AddLine("Library Book" .. (b.container and b.container ~= "Library Book" and (" (" .. b.container .. ")") or ""), 0.8, 0.8, 0.8)
-    if b.subzone then GameTooltip:AddLine(b.subzone, 1, 1, 1, true) end
+    GameTooltip:AddLine(FLT.ItemName and FLT.ItemName(b.itemId, b.name) or b.name, 1, 0.82, 0.2, true)
+    GameTooltip:AddLine(L["Library Book"] .. (b.container and b.container ~= "Library Book" and (" (" .. b.container .. ")") or ""), 0.8, 0.8, 0.8)
+    if b.subzone then GameTooltip:AddLine(FLT.ZoneName and FLT.ZoneName(b.subzone) or b.subzone, 1, 1, 1, true) end
     if b.note then GameTooltip:AddLine(b.note, 0.85, 0.85, 0.85, true) end
-    GameTooltip:AddLine("Click: show in Library Books", 0.4, 0.8, 1)
+    GameTooltip:AddLine(L["Click: show in Library Books"], 0.4, 0.8, 1)
   else
-    local title = e.name or KIND_LABEL[e.kind]
-    if e.only then title = title .. "  |cffff6060(" .. e.only .. " only)|r" end
+    local title = (e.name and FLT.Name and FLT.Name(e.name) or e.name) or (KIND_LABEL[e.kind] and L[KIND_LABEL[e.kind]])
+    if e.only then title = title .. "  |cffff6060(" .. string.format(L["%s only"], L[e.only]) .. ")|r" end
     GameTooltip:AddLine(title, 1, 0.82, 0.2)
-    if e.name then GameTooltip:AddLine(KIND_LABEL[e.kind], 0.8, 0.8, 0.8) end
-    for _, d in ipairs(e.dest or {}) do GameTooltip:AddLine("To " .. d, 1, 1, 1) end
-    if KIND_HINT[e.kind] then GameTooltip:AddLine(KIND_HINT[e.kind], 1, 1, 1, true) end
-    if e.to then GameTooltip:AddLine("Click: show that zone", 0.4, 0.8, 1) end
+    if e.name and KIND_LABEL[e.kind] then GameTooltip:AddLine(L[KIND_LABEL[e.kind]], 0.8, 0.8, 0.8) end
+    for _, d in ipairs(e.dest or {}) do GameTooltip:AddLine(string.format(L["To %s"], FLT.PlaceText and FLT.PlaceText(d) or d), 1, 1, 1) end
+    if KIND_HINT[e.kind] then GameTooltip:AddLine(L[KIND_HINT[e.kind]], 1, 1, 1, true) end
+    if e.to then GameTooltip:AddLine(L["Click: show that zone"], 0.4, 0.8, 1) end
   end
   GameTooltip:Show()
 end

@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 -- Crafting List (5.7.3, user 24.10.): plan what to craft. Recipes go on one list for the whole account ("+ List" in
 -- the Professions recipe view); a window of its own shows the materials against what you have in your bags, your bank
@@ -126,8 +127,8 @@ local function stock(id)
   local bags = GetItemCount and GetItemCount(id) or (c and c.bags[id]) or 0
   local bank = c and c.bank[id] or 0
   local total = bags + bank
-  if bags > 0 then places[#places + 1] = "Bags " .. bags end
-  if bank > 0 then places[#places + 1] = "Bank " .. bank end
+  if bags > 0 then places[#places + 1] = L["Bags"] .. " " .. bags end
+  if bank > 0 then places[#places + 1] = L["Bank"] .. " " .. bank end
   local realm = key and key:match("%-(.*)$")
   local fac = c and c.faction
   for k, o in pairs(db("craftInv")) do
@@ -136,8 +137,8 @@ local function stock(id)
       if b + k2 > 0 then
         total = total + b + k2
         local parts = {}
-        if b > 0 then parts[#parts + 1] = b .. " bags" end
-        if k2 > 0 then parts[#parts + 1] = k2 .. " bank" end
+        if b > 0 then parts[#parts + 1] = string.format(L["%d bags"], b) end
+        if k2 > 0 then parts[#parts + 1] = string.format(L["%d bank"], k2) end
         places[#places + 1] = (k:match("^([^%-]+)") or k) .. ": " .. table.concat(parts, ", ")
       end
     end
@@ -213,7 +214,7 @@ function CL.TooltipLine(tt, id)
   if #list() == 0 then return end
   if dirty then compute() end
   local n = shop[id]
-  if n and n > 0 then tt:AddLine(string.format("Crafting List: %d more needed", n), 1, 0.82, 0.25) end
+  if n and n > 0 then tt:AddLine(string.format(L["Crafting List: %d more needed"], n), 1, 0.82, 0.25) end
 end
 
 -- List ------------------------------------------------------------------------------
@@ -259,7 +260,7 @@ local function itemName(id, fallback)
       C_Timer.After(1, function() namePending = nil; if refresh then refresh() end end)
     end
   end
-  return n or fallback or ("Item " .. id), q
+  return n or fallback or (L["Item"] .. " " .. id), q
 end
 local function qcolor(q)
   local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q or 1]
@@ -274,14 +275,14 @@ local function rowTooltip(self)
   if GameTooltip.SetItemByID and r.id then GameTooltip:SetItemByID(r.id) else GameTooltip:AddLine(itemName(r.id, r.name)) end
   if r.need then
     GameTooltip:AddLine(" ")
-    GameTooltip:AddLine("Crafting List", GOLD[1], GOLD[2], GOLD[3])
+    GameTooltip:AddLine(L["Crafting List"], GOLD[1], GOLD[2], GOLD[3])
     stock(r.id)
     if #places > 0 then for _, p in ipairs(places) do GameTooltip:AddLine(p, 1, 1, 1) end
-    else GameTooltip:AddLine("None in your bags, bank or on your other characters.", 0.8, 0.8, 0.8, true) end
+    else GameTooltip:AddLine(L["None in your bags, bank or on your other characters."], 0.8, 0.8, 0.8, true) end
     if r.maker then
-      GameTooltip:AddLine(r.who and ("Can be crafted by " .. r.who .. " (" .. r.maker.prof .. ")") or ("Crafted with " .. r.maker.prof .. " - none of your characters knows the recipe"), 0.6, 0.85, 1, true)
+      GameTooltip:AddLine(r.who and string.format(L["Can be crafted by %s (%s)"], r.who, L[r.maker.prof]) or string.format(L["Crafted with %s - none of your characters knows the recipe"], L[r.maker.prof]), 0.6, 0.85, 1, true)
     end
-    if FLT.VENDOR_REAGENTS and FLT.VENDOR_REAGENTS[r.id] then GameTooltip:AddLine("Sold by vendors", 0.45, 1, 0.45) end
+    if FLT.VENDOR_REAGENTS and FLT.VENDOR_REAGENTS[r.id] then GameTooltip:AddLine(L["Sold by vendors"], 0.45, 1, 0.45) end
   end
   GameTooltip:Show()
 end
@@ -306,7 +307,7 @@ local function newRow()
   if b.del.icon then b.del.icon:ClearAllPoints(); b.del.icon:SetSize(9, 9); b.del.icon:SetPoint("CENTER") end
   b.del:SetPoint("RIGHT", -4, 0); b.plus:SetPoint("RIGHT", b.del, "LEFT", -6, 0); b.minus:SetPoint("RIGHT", b.plus, "LEFT", -28, 0)
   -- small "Craft" (user 24.10.): only the look; the secure button "overlay" is laid over it on mouse-over
-  b.craftBtn = UI.GoldButton(b, "Craft", 46, 20, nil, 11)
+  b.craftBtn = UI.GoldButton(b, L["Craft"], 46, 20, nil, 11)
   b.craftBtn:SetScript("OnEnter", function(self) if CL._hoverCraft then CL._hoverCraft(self) end end)
   b.count = FLT.NewFS(b, nil, "OVERLAY", "GameFontHighlight"); b.count:SetPoint("LEFT", b.minus, "RIGHT", 2, 0); b.count:SetPoint("RIGHT", b.plus, "LEFT", -2, 0)
   b:SetScript("OnEnter", rowTooltip); b:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -368,17 +369,17 @@ refresh = function()
   if #l == 0 then child:SetHeight(1); return end
   local y = -6
   -- planned items
-  y = header(1, "Planned", y)
+  y = header(1, L["Planned"], y)
   for _, e in ipairs(l) do
     local x = bySpell[e.s]
     local b = acquire()
     y = place(b, y, 0)
     local r = x and x.r
     b.icon:SetTexture((r and r.i and GetItemIcon and GetItemIcon(r.i)) or "Interface\\Icons\\Trade_Engraving")
-    local name, q = r and r.i and itemName(r.i, r.n) or (r and r.n or ("Recipe " .. e.s)), r and r.q
+    local name, q = r and r.i and itemName(r.i, r.n) or (r and r.n or (L["Recipe"] .. " " .. e.s)), r and r.q
     b.name:SetText(name); b.name:SetTextColor(qcolor(q)); b.name:SetPoint("RIGHT", b.minus, "LEFT", -6, 0)
     if r and CL.ICanCraft(x.prof, r) then
-      b.craftBtn:ClearAllPoints(); b.craftBtn:SetPoint("RIGHT", b.minus, "LEFT", -6, 0); b.craftBtn:SetLabel("Craft"); b.craftBtn:SetWidth(46); b.craftBtn:Show()
+      b.craftBtn:ClearAllPoints(); b.craftBtn:SetPoint("RIGHT", b.minus, "LEFT", -6, 0); b.craftBtn:SetLabel(L["Craft"]); b.craftBtn:SetWidth(46); b.craftBtn:Show()
       b.craftBtn.target = { prof = x.prof, r = r, n = math.ceil(e.n / (r.c or 1)) }
       b.name:SetPoint("RIGHT", b.craftBtn, "LEFT", -4, 0)
     end
@@ -390,7 +391,7 @@ refresh = function()
     b.del:SetScript("OnClick", function() for j, x in ipairs(l) do if x == e then table.remove(l, j); break end end changed() end)
   end
   -- materials (tree)
-  y = header(2, "Materials", y - 6, { nil, nil, "Have / Need" })
+  y = header(2, L["Materials"], y - 6, { nil, nil, L["Have / Need"] })
   for _, row in ipairs(rows) do
     local b = acquire()
     y = place(b, y, row.depth, true)
@@ -399,12 +400,12 @@ refresh = function()
     local name, q = itemName(row.id, row.name)
     b.name:SetText(name); b.name:SetTextColor(qcolor(q)); b.name:SetPoint("RIGHT", b.c2, "LEFT", -50, 0)
     if row.craft and CL.ICanCraft(row.maker.prof, row.maker.r) then
-      b.craftBtn:ClearAllPoints(); b.craftBtn:SetPoint("RIGHT", b.c2, "LEFT", -2, 0); b.craftBtn:SetLabel("Craft"); b.craftBtn:SetWidth(46); b.craftBtn:Show()
+      b.craftBtn:ClearAllPoints(); b.craftBtn:SetPoint("RIGHT", b.c2, "LEFT", -2, 0); b.craftBtn:SetLabel(L["Craft"]); b.craftBtn:SetWidth(46); b.craftBtn:Show()
       b.craftBtn.target = { prof = row.maker.prof, r = row.maker.r, n = math.ceil(row.craft / (row.maker.r.c or 1)) }
     end
     local col = row.have >= row.need and "|cff59ff73" or (row.craft and "|cff9fd0ff" or "|cffff6060")
     b.c3:SetText(col .. row.have .. "|r / " .. row.need); b.c3:Show()
-    if row.craft then b.c2:SetText("|cff9fd0ffcraft " .. row.craft .. "|r"); b.c2:Show() end
+    if row.craft then b.c2:SetText("|cff9fd0ff" .. string.format(L["craft %s"], row.craft) .. "|r"); b.c2:Show() end
     b.ok:SetShown(row.have >= row.need) -- green only when the material itself is there (not "can be crafted", user 25.10.)
     if row.maker then
       b.mode:SetChecked(row.mode == "craft"); b.mode:Show()
@@ -414,7 +415,7 @@ refresh = function()
         changed()
       end)
       b.mode:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText("Craft yourself"); GameTooltip:Show() -- short (user 24.10.)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(L["Craft yourself"]); GameTooltip:Show() -- short (user 24.10.)
       end)
       b.mode:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end
@@ -423,7 +424,7 @@ refresh = function()
   local ids = {}
   for id in pairs(shop) do ids[#ids + 1] = id end
   table.sort(ids, function(a, b2) return (itemName(a)) < (itemName(b2)) end)
-  y = header(3, "To get", y - 6, { nil, nil, #ids == 0 and "|cff59ff73You have everything|r" or "Missing" })
+  y = header(3, L["To get"], y - 6, { nil, nil, #ids == 0 and "|cff59ff73" .. L["You have everything"] .. "|r" or L["Missing"] })
   for _, id in ipairs(ids) do
     local b = acquire()
     y = place(b, y, 0)
@@ -431,7 +432,7 @@ refresh = function()
     b.icon:SetTexture(GetItemIcon and GetItemIcon(id) or "Interface\\Icons\\INV_Misc_QuestionMark")
     local name, q = itemName(id)
     b.name:SetText(name); b.name:SetTextColor(qcolor(q)); b.name:SetPoint("RIGHT", b.c3, "LEFT", -50, 0)
-    if FLT.VENDOR_REAGENTS and FLT.VENDOR_REAGENTS[id] then b.tag:SetText("Vendor"); b.tag:ClearAllPoints(); b.tag:SetPoint("RIGHT", b.c3, "LEFT", -6, 0); b.tag:Show() end
+    if FLT.VENDOR_REAGENTS and FLT.VENDOR_REAGENTS[id] then b.tag:SetText(L["Vendor"]); b.tag:ClearAllPoints(); b.tag:SetPoint("RIGHT", b.c3, "LEFT", -6, 0); b.tag:Show() end
     b.c3:SetText("|cffff6060" .. shop[id] .. "|r"); b.c3:Show()
   end
   child:SetHeight(-y + 8)
@@ -455,16 +456,16 @@ local function create()
   for _, t in ipairs(UI.OrnateFrame(frame, frame, 16, 3, "OVERLAY", 4)) do t:SetVertexColor(FLT.SkinC(1, 1, 1, 1)) end
   local close = UI.CloseButton(frame); close:SetPoint("TOPRIGHT", -12, -12) -- the only way to close it (user 24.10.)
   local title = FLT.NewFS(frame, nil, "OVERLAY", "GameFontNormal"); title:SetPoint("TOPLEFT", 18, -15)
-  title:SetText("Crafting List"); title:SetTextColor(FLT.SkinC(unpack(GOLD)))
+  title:SetText(L["Crafting List"]); title:SetTextColor(FLT.SkinC(unpack(GOLD)))
   sf = FLT.SkinBlizz(CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate"))
   sf:SetPoint("TOPLEFT", 8, -34); sf:SetPoint("BOTTOMRIGHT", -30, 36)
   child = CreateFrame("Frame", nil, sf); child:SetSize(W - 38, 10); sf:SetScrollChild(child)
   if UI.PlaceScrollBar then UI.PlaceScrollBar(sf) end
   emptyText = FLT.NewFS(frame, nil, "OVERLAY", "GameFontDisable"); emptyText:SetPoint("TOP", 0, -80); emptyText:SetWidth(W - 60)
-  emptyText:SetText("Nothing planned yet.\nOpen a recipe in Professions and click \"+ List\".\n\nCounts your bags, bank and other characters (a character counts once it logged in, its bank once opened).")
-  frame.clear = UI.GoldButton(frame, "Clear list", 80, 20, nil, 11); frame.clear:SetPoint("BOTTOMLEFT", 14, 12)
+  emptyText:SetText(L["Nothing planned yet.\nOpen a recipe in Professions and click \"+ List\".\n\nCounts your bags, bank and other characters (a character counts once it logged in, its bank once opened)."])
+  frame.clear = UI.GoldButton(frame, L["Clear list"], 80, 20, nil, 11); frame.clear:SetPoint("BOTTOMLEFT", 14, 12)
   frame.clear:SetScript("OnClick", function()
-    if UI.Confirm then UI.Confirm("Remove everything from the Crafting List?", function() wipe(list()); changed() end)
+    if UI.Confirm then UI.Confirm(L["Remove everything from the Crafting List?"], function() wipe(list()); changed() end)
     else wipe(list()); changed() end
   end)
   -- one secure Craft button, laid over the small "Craft" of the row under the mouse (secure buttons cannot be
@@ -484,8 +485,8 @@ local function create()
   end)
   ov:SetScript("OnEnter", function(self)
     if not self.t then return end
-    GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine("Craft " .. self.t.n .. "x", 1, 0.82, 0)
-    GameTooltip:AddLine("Opens your profession window if it is closed; click again to craft.", 1, 1, 1, true); GameTooltip:Show()
+    GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(string.format(L["Craft %sx"], self.t.n), 1, 0.82, 0)
+    GameTooltip:AddLine(L["Opens your profession window if it is closed; click again to craft."], 1, 1, 1, true); GameTooltip:Show()
   end)
   ov:SetScript("OnLeave", function(self) GameTooltip:Hide(); if not (InCombatLockdown and InCombatLockdown()) then self:Hide() end end)
   CL._hoverCraft = function(fake)
@@ -535,7 +536,7 @@ local function create()
   grip:SetNormalTexture(GRIP); grip:SetHighlightTexture(GRIP); grip:SetPushedTexture(GRIP)
   local ht = grip:GetHighlightTexture(); if ht and ht.SetBlendMode then ht:SetBlendMode("ADD") end
   if FLT.SkinArtTex then FLT.SkinArtTex(grip:GetNormalTexture()); FLT.SkinArtTex(grip:GetHighlightTexture()); FLT.SkinArtTex(grip:GetPushedTexture()) end
-  dragGrip(grip, "Resize", "Drag to scale the whole list.", function()
+  dragGrip(grip, L["Resize"], L["Drag to scale the whole list."], function()
     local cx = GetCursorPosition()
     local w = cx - frame:GetLeft() * frame:GetEffectiveScale()
     if w > 0 then
@@ -546,7 +547,7 @@ local function create()
   local hgrip = CreateFrame("Button", nil, frame); hgrip:SetSize(90, 14); hgrip:SetPoint("BOTTOM", 0, 3)
   local bar = hgrip:CreateTexture(nil, "ARTWORK"); bar:SetSize(48, 12); bar:SetPoint("CENTER"); FLT.SetTex(bar, UI.ASSET_ROOT .. "grip_height"); bar:SetAlpha(0.8)
   local hi = hgrip:CreateTexture(nil, "HIGHLIGHT"); hi:SetSize(48, 12); hi:SetPoint("CENTER"); FLT.SetTex(hi, UI.ASSET_ROOT .. "grip_height"); hi:SetBlendMode("ADD")
-  dragGrip(hgrip, "Height", "Drag up or down to show more or fewer rows.", function()
+  dragGrip(hgrip, L["Height"], L["Drag up or down to show more or fewer rows."], function()
     local _, cy = GetCursorPosition()
     local eff = frame:GetEffectiveScale()
     local h = math.floor(math.max(220, math.min(760, (frame:GetTop() * eff - cy) / eff)) + 0.5)
@@ -572,8 +573,7 @@ function CL.Show() CL.Toggle(true) end
 -- Craft: our own profession window cannot be opened by an addon, only by a real click; so the button is a secure
 -- one that opens the profession (cast of the profession spell) when its window is not open, and crafts when it is
 -- (DoTradeSkill / C_TradeSkillUI.CraftRecipe / DoCraft for the old Enchanting window). Needs a check in the game.
-local PROF_SPELL = { Alchemy = 2259, Blacksmithing = 2018, Enchanting = 7411, Engineering = 4036, Leatherworking = 2108,
-  Tailoring = 3908, Cooking = 2550, ["First Aid"] = 3273 }
+local PROF_SPELL = FLT.PROF_SPELLS or {} -- Core.lua
 local function spellName(id)
   if C_Spell and C_Spell.GetSpellName then return C_Spell.GetSpellName(id) end
   return GetSpellInfo and (GetSpellInfo(id))
@@ -601,7 +601,7 @@ local function craft(prof, r, n, how)
     local info = C_TradeSkillUI.GetRecipeInfo and call(C_TradeSkillUI.GetRecipeInfo, r.s)
     local can = type(info) == "table" and tonumber(info.numAvailable)
     if can and can > 0 and n > can then n = can end
-    if call(C_TradeSkillUI.CraftRecipe, r.s, n) == nil and not C_TradeSkillUI.CraftRecipe then say("Crafting is not possible here.") end
+    if call(C_TradeSkillUI.CraftRecipe, r.s, n) == nil and not C_TradeSkillUI.CraftRecipe then say(L["Crafting is not possible here."]) end
     return
   end
   if how == 2 then
@@ -615,7 +615,7 @@ local function craft(prof, r, n, how)
       if sid == r.s or call(GetTradeSkillInfo, i) == want then if DoTradeSkill then DoTradeSkill(i, n) end return end
     end
   end
-  say(want .. " was not found in the profession window (a search or filter there may hide it).")
+  say(string.format(L["%s was not found in the profession window (a search or filter there may hide it)."], want))
 end
 
 -- secure craft behaviour for a SecureActionButton: target() returns prof, recipe, crafts; onState(text) shows
@@ -640,8 +640,8 @@ secureCraft = function(btn, target, onState)
     lastClick = t
     local prof, r, n = target()
     if not prof then return end
-    if openHow then craft(prof, r, n, openHow); onState("Craft")
-    else onState("Craft now") end -- the profession window opens: the next click crafts
+    if openHow then craft(prof, r, n, openHow); onState(L["Craft"])
+    else onState(L["Craft now"]) end -- the profession window opens: the next click crafts
   end)
 end
 CL._secureCraft = secureCraft
@@ -657,17 +657,17 @@ function CL.RecipeBar(parent)
   amount:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
   amount:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
   local function n() return math.max(1, tonumber(amount:GetText()) or 1) end
-  local add = UI.GoldButton(bar, "+ List", 60, 24, nil, 12); add:SetPoint("TOPRIGHT", 0, 0)
+  local add = UI.GoldButton(bar, L["+ List"], 60, 24, nil, 12); add:SetPoint("TOPRIGHT", 0, 0)
   local onList = FLT.NewFS(bar, nil, "OVERLAY", "GameFontDisableSmall"); onList:SetPoint("TOP", bar, "TOP", 0, -56)
   add:SetScript("OnClick", function()
     if not cur then return end
     CL.Add(cur.prof, cur.r.s, n()); amount:ClearFocus()
-    onList:SetText(CL.Count(cur.r.s) .. " on the list"); CL.Show()
+    onList:SetText(string.format(L["%d on the list"], CL.Count(cur.r.s))); CL.Show()
     if bar.onChange then bar.onChange() end -- the recipe view makes room for the "on the list" line
   end)
   add:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine("Add to the Crafting List", 1, 0.82, 0)
-    GameTooltip:AddLine("Plans this many and shows the materials you have and still need.", 1, 1, 1, true); GameTooltip:Show()
+    GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L["Add to the Crafting List"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["Plans this many and shows the materials you have and still need."], 1, 1, 1, true); GameTooltip:Show()
   end)
   add:SetScript("OnLeave", function() GameTooltip:Hide() end)
   -- secure, so it may open the profession window
@@ -675,16 +675,16 @@ function CL.RecipeBar(parent)
   cb:SetSize(104, 24); cb:SetPoint("TOPRIGHT", 0, -28)
   UI.Plate(cb, 24)
   cb.label = FLT.NewFS(cb, nil, "OVERLAY", "GameFontNormal"); cb.label:SetPoint("CENTER")
-  cb.label:SetTextColor(FLT.SkinC(0.95, 0.82, 0.50)); cb.label:SetText("Craft")
+  cb.label:SetTextColor(FLT.SkinC(0.95, 0.82, 0.50)); cb.label:SetText(L["Craft"])
   secureCraft(cb, function() if cur then return cur.prof, cur.r, n() end end, function(t) cb.label:SetText(t) end)
   cb:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine("Craft", 1, 0.82, 0)
-    GameTooltip:AddLine("Opens your profession window if it is closed; click again to craft the amount on the left.", 1, 1, 1, true)
+    GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L["Craft"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["Opens your profession window if it is closed; click again to craft the amount on the left."], 1, 1, 1, true)
     GameTooltip:Show()
   end)
   cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
   -- in combat the button leaves the OneForAll window (else the window could not be closed in combat, user 30.10.)
-  UI.CombatDetach(cb, function() if cur then cb:SetShown(CL.ICanCraft(cur.prof, cur.r)); cb.label:SetText("Craft") end end)
+  UI.CombatDetach(cb, function() if cur then cb:SetShown(CL.ICanCraft(cur.prof, cur.r)); cb.label:SetText(L["Craft"]) end end)
   -- height actually used: the "N on the list" line only when something is on the list (no empty line, user 24.10.)
   function bar:UsedHeight() return (onList:GetText() or "") ~= "" and 68 or 52 end
   -- the bar holds the secure Craft button, so in combat it may not be shown / hidden (ADDON_ACTION_BLOCKED,
@@ -694,7 +694,7 @@ function CL.RecipeBar(parent)
   after:SetScript("OnEvent", function(f)
     f:UnregisterAllEvents()
     bar:SetAlpha(1); bar:SetShown(wantShown)
-    if cur then cb:SetShown(CL.ICanCraft(cur.prof, cur.r)); cb.label:SetText("Craft") end
+    if cur then cb:SetShown(CL.ICanCraft(cur.prof, cur.r)); cb.label:SetText(L["Craft"]) end
   end)
   local function show(on)
     wantShown = on
@@ -706,11 +706,11 @@ function CL.RecipeBar(parent)
     cur = (prof and r) and { prof = prof, r = r } or nil
     show(cur ~= nil)
     if not cur then return end
-    onList:SetText(CL.Count(r.s) > 0 and (CL.Count(r.s) .. " on the list") or "")
+    onList:SetText(CL.Count(r.s) > 0 and string.format(L["%d on the list"], CL.Count(r.s)) or "")
     -- the secure button can only be shown / hidden outside combat
     if not (InCombatLockdown and InCombatLockdown()) then
       cb:SetShown(CL.ICanCraft(prof, r))
-      cb.label:SetText("Craft")
+      cb.label:SetText(L["Craft"])
     end
   end
   return bar

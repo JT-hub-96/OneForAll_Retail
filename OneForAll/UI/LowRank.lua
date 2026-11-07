@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 local UI = FLT.UI
 
 -- Quality of Life: "Check low spell ranks" (switch "lowRank", on by default since 5.6.1).
@@ -151,10 +152,10 @@ local function fill()
       r = CreateFrame("Frame", nil, f); r:SetSize(f:GetWidth() - 36, 30)
       r.icon = r:CreateTexture(nil, "ARTWORK"); r.icon:SetSize(24, 24); r.icon:SetPoint("LEFT", 2, 0); r.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
       r.text = FLT.NewFS(r, nil, "OVERLAY", "GameFontHighlight"); r.text:SetPoint("LEFT", 34, 0); r.text:SetJustifyH("LEFT")
-      r.keep = UI.GoldButton(r, "Keep", 64, 20, nil, 11); r.keep:SetPoint("RIGHT", 0, 0)
+      r.keep = UI.GoldButton(r, L["Keep"], 64, 20, nil, 11); r.keep:SetPoint("RIGHT", 0, 0)
       r.keep:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Keep this rank", 1, 0.82, 0)
-        GameTooltip:AddLine("For spells you use in a low rank on purpose. This rank is not reported again; Quality of Life > Spells lists the kept ranks.", 1, 1, 1, true)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Keep this rank"], 1, 0.82, 0)
+        GameTooltip:AddLine(L["For spells you use in a low rank on purpose. This rank is not reported again; Quality of Life > Spells lists the kept ranks."], 1, 1, 1, true)
         GameTooltip:Show()
       end)
       r.keep:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -171,8 +172,8 @@ local function fill()
     r:ClearAllPoints(); r:SetPoint("TOPLEFT", 18, y); y = y - 32
     r.e = e
     r.icon:SetTexture(spellIcon(e.newID))
-    local slots = #e.slots > 1 and ("  |cff9d9d9d(" .. #e.slots .. " buttons)|r") or ""
-    r.text:SetText(e.name .. "   |cff9d9d9dRank " .. e.rank .. "|r  >  " .. FLT.SkinHex("ffd35a") .. "Rank " .. e.newRank .. "|r" .. slots)
+    local slots = #e.slots > 1 and ("  |cff9d9d9d(" .. string.format(L["%d buttons"], #e.slots) .. ")|r") or ""
+    r.text:SetText(e.name .. "   |cff9d9d9d" .. string.format(L["Rank %s"], e.rank) .. "|r  >  " .. FLT.SkinHex("ffd35a") .. string.format(L["Rank %s"], e.newRank) .. "|r" .. slots)
     r.keep:SetScript("OnClick", function()
       keepList()[e.id] = true
       LR.Check(true)
@@ -180,7 +181,7 @@ local function fill()
     r:Show()
   end
   local more = #current - MAX_ROWS
-  f.more:SetText(more > 0 and ("+ " .. more .. " more") or "")
+  f.more:SetText(more > 0 and string.format(L["+%d more"], more) or "")
   f:SetHeight(-y + 58)
 end
 
@@ -193,24 +194,24 @@ local function createPopup()
   UI.FramedPanel(f)
   for _, t in ipairs(UI.OrnateFrame(f, f, 16, 3, "OVERLAY", 4)) do t:SetVertexColor(FLT.SkinC(1, 1, 1, 1)) end
   local title = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalLarge"); title:SetPoint("TOPLEFT", 18, -16)
-  title:SetText("Low spell ranks"); title:SetTextColor(FLT.SkinC(1, 0.82, 0.20))
+  title:SetText(L["Low spell ranks"]); title:SetTextColor(FLT.SkinC(1, 0.82, 0.20))
   local sub = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); sub:SetPoint("TOPLEFT", 18, -38)
-  sub:SetText("These action buttons use a lower rank than you know."); sub:SetTextColor(FLT.SkinC(0.80, 0.77, 0.70))
+  sub:SetText(L["These action buttons use a lower rank than you know."]); sub:SetTextColor(FLT.SkinC(0.80, 0.77, 0.70))
   local close = UI.CloseButton(f); close:SetPoint("TOPRIGHT", -12, -12)
   f.rows = {}
   f.more = FLT.NewFS(f, nil, "OVERLAY", "GameFontDisableSmall"); f.more:SetPoint("BOTTOMLEFT", 20, 22)
-  local upd = UI.GoldButton(f, "Update all", 120, 24, nil, 12); upd:SetPoint("BOTTOMRIGHT", -18, 16)
-  local later = UI.GoldButton(f, "Later", 90, 24, nil, 12); later:SetPoint("RIGHT", upd, "LEFT", -8, 0)
+  local upd = UI.GoldButton(f, L["Update all"], 120, 24, nil, 12); upd:SetPoint("BOTTOMRIGHT", -18, 16)
+  local later = UI.GoldButton(f, L["Later"], 90, 24, nil, 12); later:SetPoint("RIGHT", upd, "LEFT", -8, 0)
   upd:SetScript("OnClick", function()
-    if inCombat() then msg("Spells can be updated after combat."); return end
+    if inCombat() then msg(L["Spells can be updated after combat."]); return end
     local n = 0
     for _, e in ipairs(current) do n = n + update(e) end
-    if n > 0 then msg(n == 1 and "1 action button updated to the highest rank." or (n .. " action buttons updated to the highest rank.")) end
+    if n > 0 then msg(n == 1 and L["1 action button updated to the highest rank."] or string.format(L["%d action buttons updated to the highest rank."], n)) end
     LR.Check(true)
   end)
   upd:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine("Update all", 1, 0.82, 0)
-    GameTooltip:AddLine("Puts the highest rank you know on these buttons (same place, same key).", 1, 1, 1, true); GameTooltip:Show()
+    GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L["Update all"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["Puts the highest rank you know on these buttons (same place, same key)."], 1, 1, 1, true); GameTooltip:Show()
   end)
   upd:SetScript("OnLeave", function() GameTooltip:Hide() end)
   later:SetScript("OnClick", function() f:Hide() end)
@@ -226,7 +227,7 @@ function LR.Check(force)
   current = LR.Scan()
   if #current == 0 then
     if popup and popup:IsShown() then popup:Hide() end
-    if force == "button" then msg("No low spell ranks on your action bars.") end
+    if force == "button" then msg(L["No low spell ranks on your action bars."]) end
     return
   end
   local new = false
@@ -288,7 +289,7 @@ function LR.GetKept()
     id = tonumber(id)
     if id then
       local name, r = spellNameRank(id)
-      out[#out + 1] = { key = id, label = (name or ("Spell " .. id)) .. (r and ("  (Rank " .. r .. ")") or "") }
+      out[#out + 1] = { key = id, label = (name or (L["Spell"] .. " " .. id)) .. (r and ("  (" .. string.format(L["Rank %s"], r) .. ")") or "") }
     end
   end
   table.sort(out, function(a, b) return a.label < b.label end)
