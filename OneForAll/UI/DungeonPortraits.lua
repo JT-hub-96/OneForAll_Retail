@@ -1,5 +1,8 @@
 local _, FLT = ...
 local UI = FLT.UI
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
+-- creature types of Data/BossInfo.lua, shown with L[...] (the ones learned in game already come in the client's language)
+local function _types() return N"Humanoid", N"Undead", N"Elemental", N"Beast", N"Demon", N"Dragonkin", N"Mechanical", N"Giant" end
 
 -- Boss portraits ----------------------------------------------------------------
 -- Order: an icon set in the data (customIcon), the display ID from the data,
@@ -108,9 +111,9 @@ function FLT:GetBossType(boss)
 end
 function FLT:GetBossRank(boss)
   if not boss then return nil end
-  if boss.rare then return "Rare" end
-  if boss.npcID and FLT.BOSS_SUMMONED and FLT.BOSS_SUMMONED[boss.npcID] then return "Summoned" end
-  return "Elite"
+  if boss.rare then return N"Rare" end
+  if boss.npcID and FLT.BOSS_SUMMONED and FLT.BOSS_SUMMONED[boss.npcID] then return N"Summoned" end
+  return N"Elite"
 end
 
 -- Learn level and display ID of dungeon bosses when you target or mouse over

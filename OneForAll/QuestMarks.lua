@@ -1,4 +1,5 @@
 local _, FLT = ...
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
 
 -- Quest marks on nameplates (6.0.2, user 31.10.; idea from ForeverQuestMark by Ugge Zen, MIT - own code, nothing
 -- copied). A sword when you must kill the unit for a quest, a bag when it drops a quest item, with the progress
@@ -12,8 +13,8 @@ local _, FLT = ...
 
 local QM = {}
 FLT.QuestMarks = QM
-QM.POS_OPTIONS = { { key = "left", label = "Left" }, { key = "topleft", label = "Top left" }, { key = "top", label = "Top" },
-  { key = "topright", label = "Top right" }, { key = "right", label = "Right" } } -- top left / right: user 31.10.
+QM.POS_OPTIONS = { { key = "left", label = N"Left" }, { key = "topleft", label = N"Top left" }, { key = "top", label = N"Top" },
+  { key = "topright", label = N"Top right" }, { key = "right", label = N"Right" } } -- top left / right: user 31.10.
 
 local KILL_ATLAS, LOOT_ATLAS = "Crosshair_Attack_32", "Crosshair_pickup_32"
 local KILL_TEX, LOOT_TEX = "Interface\\Cursor\\Attack", "Interface\\Cursor\\Pickup" -- when the client has no atlas

@@ -1,5 +1,7 @@
 local _, FLT = ...
 local UI = FLT.UI
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
 local makeTexture, makeButton = UI.makeTexture, UI.makeButton
 
 -- Settings tab (gear icon, leftmost). Collects all options of the addon.
@@ -20,7 +22,7 @@ local function createSettingsPanel(parent)
   local panel = CreateFrame("Frame", nil, parent)
   UI.PlacePanel(panel, parent)
   UI.TitleBand(panel, { emblem = UI.ASSET_ROOT .. "emblem_settings", art = UI.ASSET_ROOT .. "settings_banner",
-    title = "Settings", subtitle = "Options are saved in the profile this character uses (see Profiles).", fadeRight = 200 })
+    title = L["Settings"], subtitle = L["Options are saved in the profile this character uses (see Profiles)."], fadeRight = 200 })
   -- scrollable page below the title band (at the normal window height not everything fits)
   local sf = FLT.SkinBlizz(CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate"))
   sf:SetPoint("TOPLEFT", 0, -74); sf:SetPoint("BOTTOMRIGHT", -8, 4)
@@ -99,7 +101,7 @@ local function createSettingsPanel(parent)
   -- LEFT COLUMN ----------------------------------------------------------------
   -- Tabs (per character), two per row in tab-bar order. The arrows move a
   -- tab left / right in the tab bar; Settings stays at the right edge.
-  local tabs = section(1, "Shown tabs", "Interface\\Icons\\INV_Misc_Book_09")
+  local tabs = section(1, L["Shown tabs"], "Interface\\Icons\\INV_Misc_Book_09")
   local cells = {}
   local function sortable() return UI.SortableTabs and UI.SortableTabs() or {} end
   local function refreshCells()
@@ -107,7 +109,7 @@ local function createSettingsPanel(parent)
     for i, c in ipairs(cells) do
       local spec = list[i]
       c.key = spec and spec.key
-      c.label:SetText(spec and spec.label or "")
+      c.label:SetText(spec and L[spec.label] or "")
       c.cb:SetChecked(spec and UI.IsTabVisible(spec.key) or false)
       c.left:SetEnabled(i > 1); c.right:SetEnabled(i < #list)
       c.left:SetAlpha(i > 1 and 1 or 0.3); c.right:SetAlpha(i < #list and 1 or 0.3)
@@ -131,19 +133,21 @@ local function createSettingsPanel(parent)
     local cb = FLT.SkinBlizz(CreateFrame("CheckButton", nil, tabs.box, "UICheckButtonTemplate"))
     cb:SetSize(24, 24); cb:SetPoint("TOPLEFT", x, y)
     local l = FLT.NewFS(tabs.box, nil, "OVERLAY", "GameFontHighlight"); l:SetPoint("TOPLEFT", cb, "TOPRIGHT", 4, -5)
+    -- German names are longer ("Dungeons & Schlachtzüge" ran under the arrows, user 07.11.): fixed width, no wrap
+    l:SetWidth(150); l:SetJustifyH("LEFT"); l:SetWordWrap(false)
     cb:SetScript("OnClick", function(btn) if cell.key then UI.SetTabVisible(cell.key, btn:GetChecked() and true or false) end end)
-    cb:SetScript("OnEnter", function(btn) GameTooltip:SetOwner(btn, "ANCHOR_RIGHT"); GameTooltip:AddLine("Show or hide this tab for the current character.", 1, 1, 1, true); GameTooltip:Show() end)
+    cb:SetScript("OnEnter", function(btn) GameTooltip:SetOwner(btn, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Show or hide this tab for the current character."], 1, 1, 1, true); GameTooltip:Show() end)
     cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
     cell.cb, cell.label = cb, l
-    cell.left = arrow(tabs.box, x + 160, y - 2, "Interface\\Buttons\\UI-SpellbookIcon-PrevPage", "Move left in the tab bar", -1, cell)
-    cell.right = arrow(tabs.box, x + 182, y - 2, "Interface\\Buttons\\UI-SpellbookIcon-NextPage", "Move right in the tab bar", 1, cell)
+    cell.left = arrow(tabs.box, x + 184, y - 2, "Interface\\Buttons\\UI-SpellbookIcon-PrevPage", L["Move left in the tab bar"], -1, cell)
+    cell.right = arrow(tabs.box, x + 206, y - 2, "Interface\\Buttons\\UI-SpellbookIcon-NextPage", L["Move right in the tab bar"], 1, cell)
     cells[i] = cell
     tabs.rowMax = math.min(tabs.rowMax, y - 30)
     if i % 2 == 0 then tabs:nextRow() end
   end
   tabs:nextRow()
-  local ro = tabs:button("Reset order", 120, function() if UI.ResetTabOrder then UI.ResetTabOrder(); refreshCells() end end)
-  ro:SetScript("OnEnter", function(btn) GameTooltip:SetOwner(btn, "ANCHOR_RIGHT"); GameTooltip:AddLine("Back to the default tab order for this character.", 1, 1, 1, true); GameTooltip:Show() end)
+  local ro = tabs:button(L["Reset order"], 120, function() if UI.ResetTabOrder then UI.ResetTabOrder(); refreshCells() end end)
+  ro:SetScript("OnEnter", function(btn) GameTooltip:SetOwner(btn, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Back to the default tab order for this character."], 1, 1, 1, true); GameTooltip:Show() end)
   ro:SetScript("OnLeave", function() GameTooltip:Hide() end)
   tabs:nextRow()
   refreshers[#refreshers + 1] = refreshCells
@@ -162,24 +166,24 @@ local function createSettingsPanel(parent)
       if (d.minLevel or 0) >= br.min and (d.minLevel or 0) <= br.max then used[br.id] = true end
     end
   end
-  local dun = section(1, "Dungeons | Raids", "Interface\\Icons\\INV_Misc_Map_01")
+  local dun = section(1, L["Dungeons | Raids"], "Interface\\Icons\\INV_Misc_Map_01")
   -- Left: the level brackets one below the other. Right: the other switches.
   local left, right = {}, {}
   for _, br in ipairs(UI.DUNGEON_BRACKETS or {}) do
     if used[br.id] then
       local id = br.id
-      left[#left + 1] = { br.label, "Hide a bracket you no longer need, e.g. once you have outleveled it.",
+      left[#left + 1] = { L[br.label], L["Hide a bracket you no longer need, e.g. once you have outleveled it."],
         function() return not browseCfg().hiddenBrackets[id] end,
         function(v) browseCfg().hiddenBrackets[id] = (not v) or nil; if UI.RefreshDungeonList then UI.RefreshDungeonList() end end }
     end
   end
-  right[#right + 1] = { "Only dungeons for my level", "Hides dungeons that are more than 3 levels above you or that you have clearly outleveled.",
+  right[#right + 1] = { L["Only dungeons for my level"], L["Hides dungeons that are more than 3 levels above you or that you have clearly outleveled."],
     function() return browseCfg().onlyFit and true or false end,
     function(v) browseCfg().onlyFit = v or nil; if UI.RefreshDungeonList then UI.RefreshDungeonList() end end }
-  right[#right + 1] = { "Highest levels first", "Shows the high-level brackets at the top of the dungeon list and sorts the dungeons from the highest level down.",
+  right[#right + 1] = { L["Highest levels first"], L["Shows the high-level brackets at the top of the dungeon list and sorts the dungeons from the highest level down."],
     function() return browseCfg().highFirst and true or false end,
     function(v) browseCfg().highFirst = v or nil; if UI.RefreshDungeonList then UI.RefreshDungeonList() end end }
-  right[#right + 1] = { "Show recipe drops in boss loot", "Lists the recipes a boss can drop below its loot, with the yellow / green / blue markers.",
+  right[#right + 1] = { L["Show recipe drops in boss loot"], L["Lists the recipes a boss can drop below its loot, with the yellow / green / blue markers."],
     function() return db().dungeonRecipes ~= false end,
     function(v) db().dungeonRecipes = v end }
   -- "Dungeon map on M" moved to Quality of Life > World Map (5.6.8, user 22.10.)
@@ -192,28 +196,57 @@ local function createSettingsPanel(parent)
   dun:finish()
 
   -- RIGHT COLUMN ---------------------------------------------------------------
-  local gen = section(2, "General", "Interface\\Icons\\INV_Misc_Gear_01")
-  gen:check("Tell me about new versions", "Prints a short note in the chat when another OneForAll user (guild, group or recipe sharing) runs a newer version.",
+  local gen = section(2, L["General"], "Interface\\Icons\\INV_Misc_Gear_01")
+  gen:check(L["Tell me about new versions"], L["Prints a short note in the chat when another OneForAll user (guild, group or recipe sharing) runs a newer version."],
     function() return db().versionNotice ~= false end,
     function(v) db().versionNotice = v end); gen:nextRow()
   -- "Share recipes with other OneForAll users" moved to Quality of Life > Social (6.1.0, user 03.11.)
+  -- the language (6.2.0, user 07.11.: a drop-down with every language, in every client, default English; a change
+  -- offers a reload in a popup)
+  if FLT.LANGUAGES then
+    local box = gen.box
+    local ll = FLT.NewFS(box, nil, "OVERLAY", "GameFontHighlight"); ll:SetPoint("TOPLEFT", 14, gen.y - 6); ll:SetText(L["Language"])
+    local pick = UI.GoldButton(box, "", 200, 24, nil, 12); pick:SetPoint("TOPLEFT", 190, gen.y - 2)
+    local function current() return FLT.Language() end
+    local function refresh()
+      local cur = current()
+      for _, l in ipairs(FLT.LANGUAGES) do if l.key == cur then pick:SetLabel(l.label .. "  |cff9d9d9dv|r") end end
+    end
+    pick:SetScript("OnClick", function(btn)
+      UI.OpenDropDown(btn, FLT.LANGUAGES, current(), function(key)
+        if key == current() then return end
+        db().language = key; refresh()
+        UI.Confirm(L["The language changes after a reload of the interface."], nil, L["Reload"], "/reload")
+      end)
+    end)
+    pick:SetScript("OnEnter", function(btn)
+      GameTooltip:SetOwner(btn, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Language"], 1, 0.82, 0)
+      GameTooltip:AddLine(L["The language of OneForAll's texts. Names of items, spells and zones come from your game client."], 1, 1, 1, true)
+      GameTooltip:Show()
+    end)
+    pick:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    refreshers[#refreshers + 1] = refresh
+    refresh()
+    gen.rowMax = math.min(gen.rowMax, gen.y - 34); gen:nextRow()
+  end
   gen:finish()
 
   -- "Popups & alerts" moved to Quality of Life (5.6.8, user 22.10.)
 
   -- the Skin section is gone since 5.7.3: one look (Gold Modern) for everyone (user 27.10.)
-  local win = section(2, "Window", "Interface\\Icons\\INV_Misc_Spyglass_02")
-  local rb = win:button("Reset size & position", 180, function() if UI.ResetWindow then UI.ResetWindow() end end)
+  local win = section(2, L["Window"], "Interface\\Icons\\INV_Misc_Spyglass_02")
+  local rb = win:button(L["Reset size & position"], 180, function() if UI.ResetWindow then UI.ResetWindow() end end)
   -- the grip hint lives in the tooltip to keep the page compact
   rb:SetScript("OnEnter", function(btn)
-    GameTooltip:SetOwner(btn, "ANCHOR_RIGHT"); GameTooltip:AddLine("Window size", 1, 0.82, 0)
-    GameTooltip:AddLine("Bottom-right grip: scale the window (60-140 %). Bottom-middle grip: change its height.", 1, 1, 1, true); GameTooltip:Show()
+    GameTooltip:SetOwner(btn, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Window size"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["Bottom-right grip: scale the window (60-140 %). Bottom-middle grip: change its height."], 1, 1, 1, true); GameTooltip:Show()
   end)
   rb:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  win:button("Noteworthy changes", 160, function() if FLT.ShowNews then FLT.ShowNews() end end, 192)
+  -- next to it by the real width (GoldButton grows with its text: German ran into it, user 07.11.)
+  win:button(L["Noteworthy changes"], 160, function() if FLT.ShowNews then FLT.ShowNews() end end, (rb:GetWidth() or 180) + 12)
   win:nextRow()
   -- the welcome setup again (5.7.3, user 27.10.)
-  local sb = win:button("Welcome setup", 180, function() if FLT.ShowWelcome then FLT.ShowWelcome() end end)
+  local sb = win:button(L["Welcome setup"], 180, function() if FLT.ShowWelcome then FLT.ShowWelcome() end end)
   win:nextRow()
   -- window opacity (backgrounds only, applies at once)
   local function opacityRow(label, tip, minV, get, set)
@@ -237,7 +270,7 @@ local function createSettingsPanel(parent)
     end
     win.rowMax = math.min(win.rowMax, win.y - 30); win:nextRow()
   end
-  opacityRow("Window opacity", "Lets the world shine through the window's backgrounds. Text and pictures stay solid. Mouse wheel or drag.", 70,
+  opacityRow(L["Window opacity"], L["Lets the world shine through the window's backgrounds. Text and pictures stay solid. Mouse wheel or drag."], 70,
     function() return UI.GetWindowAlpha and UI.GetWindowAlpha() end,
     function(a) if UI.SetWindowAlpha then UI.SetWindowAlpha(a) end end)
   win:finish()
@@ -245,13 +278,14 @@ local function createSettingsPanel(parent)
   -- Profiles (6.0.1, user 31.10.): Settings + Quality of Life options + shown tabs, chosen per character (UI/Profiles.lua)
   local PR = FLT.Profiles
   if PR then
-    local pro = section(2, "Profiles", "Interface\\Icons\\INV_Misc_Note_01")
-    local l = FLT.NewFS(pro.box, nil, "OVERLAY", "GameFontHighlight"); l:SetPoint("TOPLEFT", 14, pro.y - 6); l:SetText("This character uses")
+    local pro = section(2, L["Profiles"], "Interface\\Icons\\INV_Misc_Note_01")
+    local l = FLT.NewFS(pro.box, nil, "OVERLAY", "GameFontHighlight"); l:SetPoint("TOPLEFT", 14, pro.y - 6); l:SetText(L["This character uses"])
     local pick = UI.GoldButton(pro.box, "", 200, 24, nil, 12); pick:SetPoint("TOPLEFT", 190, pro.y - 2)
-    local function refresh() pick:SetLabel(PR.Active() .. "  |cff9d9d9dv|r") end
+    local function pname(n) return n == "Default" and L["Default"] or n end
+    local function refresh() pick:SetLabel(pname(PR.Active()) .. "  |cff9d9d9dv|r") end
     pick:SetScript("OnClick", function(btn)
       local opts = {}
-      for _, name in ipairs(PR.Names()) do opts[#opts + 1] = { key = name, label = name } end
+      for _, name in ipairs(PR.Names()) do opts[#opts + 1] = { key = name, label = pname(name) } end
       UI.OpenDropDown(btn, opts, PR.Active(), PR.Switch)
     end)
     pro.rowMax = math.min(pro.rowMax, pro.y - 34); pro:nextRow()
@@ -260,28 +294,28 @@ local function createSettingsPanel(parent)
       b:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s, "ANCHOR_RIGHT"); GameTooltip:AddLine(tip, 1, 1, 1, true); GameTooltip:Show() end)
       b:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end
-    btn("New", 0, PR.New, "A new profile with the default options.")
-    btn("Copy", 116, PR.Copy, "A new profile with the options of the current one.")
-    btn("Rename", 232, PR.Rename, "Renames the current profile (not Default).")
-    btn("Delete", 348, PR.Delete, "Deletes the current profile (not Default). Its characters go back to Default.")
+    btn(L["New"], 0, PR.New, L["A new profile with the default options."])
+    btn(L["Copy"], 116, PR.Copy, L["A new profile with the options of the current one."])
+    btn(L["Rename"], 232, PR.Rename, L["Renames the current profile (not Default)."])
+    btn(L["Delete"], 348, PR.Delete, L["Deletes the current profile (not Default). Its characters go back to Default."])
     pro:nextRow()
-    btn("Export", 0, PR.Export, "The current profile as text to copy.")
-    btn("Import", 116, PR.Import, "Paste a profile text; it is saved as a new profile.")
-    btn("Send", 232, PR.SendDialog, "Sends the current profile to a player. They are asked first.")
+    btn(L["Export"], 0, PR.Export, L["The current profile as text to copy."])
+    btn(L["Import"], 116, PR.Import, L["Paste a profile text; it is saved as a new profile."])
+    btn(L["Send"], 232, PR.SendDialog, L["Sends the current profile to a player. They are asked first."])
     -- receiving shared profiles: off by default, so nobody can spam you with them (user 31.10.)
     local rcv = FLT.SkinBlizz(CreateFrame("CheckButton", nil, pro.box, "UICheckButtonTemplate"))
     rcv:SetSize(24, 24); rcv:SetPoint("TOPLEFT", 360, pro.y)
-    local rl = FLT.NewFS(pro.box, nil, "OVERLAY", "GameFontHighlight"); rl:SetPoint("LEFT", rcv, "RIGHT", 4, 0); rl:SetText("Receive")
+    local rl = FLT.NewFS(pro.box, nil, "OVERLAY", "GameFontHighlight"); rl:SetPoint("LEFT", rcv, "RIGHT", 4, 0); rl:SetText(L["Receive"])
     rcv:SetScript("OnClick", function(b) PR.SetReceive(b:GetChecked()) end)
     rcv:SetScript("OnEnter", function(b)
-      GameTooltip:SetOwner(b, "ANCHOR_RIGHT"); GameTooltip:AddLine("Receive shared profiles", 1, 0.82, 0)
-      GameTooltip:AddLine("Other players may send you their profile. You are always asked before it is saved. When off, they get a note that you turned it off.", 1, 1, 1, true)
+      GameTooltip:SetOwner(b, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Receive shared profiles"], 1, 0.82, 0)
+      GameTooltip:AddLine(L["Other players may send you their profile. You are always asked before it is saved. When off, they get a note that you turned it off."], 1, 1, 1, true)
       GameTooltip:Show()
     end)
     rcv:SetScript("OnLeave", function() GameTooltip:Hide() end)
     refreshers[#refreshers + 1] = function() rcv:SetChecked(PR.ReceiveEnabled()) end
     pro:nextRow()
-    pro:text("A profile holds the Settings and Quality of Life options and the shown tabs. Window size and position, lists and collected data are not part of it. Switching reloads the interface.")
+    pro:text(L["A profile holds the Settings and Quality of Life options and the shown tabs. Window size and position, lists and collected data are not part of it. Switching reloads the interface."])
     refreshers[#refreshers + 1] = refresh
     PR.onChange = refresh
     pro:finish()
@@ -289,13 +323,13 @@ local function createSettingsPanel(parent)
 
   local bottom = math.min(colY[1], colY[2])
   local footer = FLT.NewFS(page, nil, "OVERLAY", "GameFontDisableSmall")
-  footer:SetPoint("TOPLEFT", 14, bottom - 2)
-  footer:SetText("Like OneForAll or have an idea? Leave a comment on CurseForge or GitHub (bug button in the title bar) - feedback and suggestions are always welcome.")
-  page:SetHeight(-bottom + 24)
+  footer:SetPoint("TOPLEFT", 14, bottom - 2); footer:SetWidth(COL_X[2] + COL_W - 24); footer:SetJustifyH("LEFT") -- wraps (German was cut off)
+  footer:SetText(L["Like OneForAll or have an idea? Post on our Discord (bug button in the title bar) - feedback and suggestions are always welcome."])
+  page:SetHeight(-bottom + 12 + math.max(12, footer:GetStringHeight() or 12))
 
   panel:SetScript("OnShow", function() for _, f in ipairs(refreshers) do f() end end)
   panel:Hide()
   return panel
 end
 
-UI.RegisterPanel({ key="settings", label="Settings", order=0, tabWidth=27, icon="Interface\\Icons\\INV_Misc_Gear_01", create=createSettingsPanel })
+UI.RegisterPanel({ key="settings", label=N"Settings", order=0, tabWidth=27, icon="Interface\\Icons\\INV_Misc_Gear_01", create=createSettingsPanel })

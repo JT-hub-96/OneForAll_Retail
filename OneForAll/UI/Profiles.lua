@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 local UI = FLT.UI
 
 -- Profiles (6.0.1, user 31.10.2026): a profile holds the Settings options, the Quality of Life options and the
@@ -100,23 +101,23 @@ end
 
 -- switch this character to a profile; the interface reloads (secure "/reload" button)
 function P.Switch(name)
-  if InCombatLockdown and InCombatLockdown() then FLT.Msg("Profiles cannot be switched in combat."); return end
+  if InCombatLockdown and InCombatLockdown() then FLT.Msg(L["Profiles cannot be switched in combat."]); return end
   if not store()[name] or name == P.Active() then return end
-  UI.Confirm("Switch this character to the profile |cffffd100" .. name .. "|r?\nThe interface reloads.", function()
+  UI.Confirm(string.format(L["Switch this character to the profile %s?\nThe interface reloads."], "|cffffd100" .. name .. "|r"), function()
     P.Save()
     OneForAllCharDB.profile = name
     apply(store()[name])
-  end, "Reload", "/reload")
+  end, L["Reload"], "/reload")
 end
 
 -- after New / Copy / Import: offer to switch right away
 local function offerSwitch(name, what)
-  if InCombatLockdown and InCombatLockdown() then FLT.Msg(what .. " Switch to it in Settings > Profiles."); return end
-  UI.Confirm(what .. "\nSwitch this character to it now? The interface reloads.", function()
+  if InCombatLockdown and InCombatLockdown() then FLT.Msg(what .. " " .. L["Switch to it in Settings > Profiles."]); return end
+  UI.Confirm(what .. "\n" .. L["Switch this character to it now? The interface reloads."], function()
     P.Save()
     OneForAllCharDB.profile = name
     apply(store()[name])
-  end, "Switch", "/reload")
+  end, L["Switch"], "/reload")
 end
 
 -- Text format ----------------------------------------------------------------
@@ -245,7 +246,7 @@ function P.Send(name, target)
   C_Timer.After(5, function()
     if outgoing[id] then
       outgoing[id] = nil
-      FLT.Msg(string.format("%s did not answer (offline, or no OneForAll 6.0.1 or newer).", target))
+      FLT.Msg(string.format(L["%s did not answer (offline, or no OneForAll 6.0.1 or newer)."], target))
     end
   end)
 end
@@ -258,18 +259,18 @@ local function sendParts(id)
     -- a short gap between the parts, so the server does not drop them
     C_Timer.After((i - 1) * 0.15, function() addonSend(part, o.target) end)
   end
-  FLT.Msg(string.format("Profile \"%s\" sent to %s. They are asked whether to save it.", o.name, o.target))
+  FLT.Msg(string.format(L["Profile \"%s\" sent to %s. They are asked whether to save it."], o.name, o.target))
 end
 
 local function received(sender, data)
   local p, name = decode(data)
   if not p then return end
-  UI.Confirm(string.format("|cffffd100%s|r sends you the OneForAll profile |cffffd100%s|r.\nSave it as a new profile? (Nothing changes until you switch to it.)", short(sender), name),
+  UI.Confirm(string.format(L["|cffffd100%s|r sends you the OneForAll profile |cffffd100%s|r.\nSave it as a new profile? (Nothing changes until you switch to it.)"], short(sender), name),
     function()
       local saved = addProfile(name, p)
-      FLT.Msg(string.format("Profile \"%s\" saved. Switch to it in Settings > Profiles.", saved))
+      FLT.Msg(string.format(L["Profile \"%s\" saved. Switch to it in Settings > Profiles."], saved))
       if P.onChange then P.onChange() end
-    end, "Save")
+    end, L["Save"])
 end
 
 local function onMessage(msg, sender)
@@ -287,7 +288,7 @@ local function onMessage(msg, sender)
     local o = outgoing[tonumber(qid)]
     if o and short(o.target):lower() == short(sender):lower() then
       outgoing[tonumber(qid)] = nil
-      FLT.Msg(string.format("%s has turned off receiving shared profiles.", short(sender)))
+      FLT.Msg(string.format(L["%s has turned off receiving shared profiles."], short(sender)))
     end
     return
   end
@@ -378,31 +379,31 @@ end
 local function changed() if P.onChange then P.onChange() end end
 local function nameOK(name)
   name = clean(name)
-  if name == "" then FLT.Msg("Please enter a name."); return end
-  if store()[name] then FLT.Msg("A profile named \"" .. name .. "\" already exists."); return end
+  if name == "" then FLT.Msg(L["Please enter a name."]); return end
+  if store()[name] then FLT.Msg(string.format(L["A profile named \"%s\" already exists."], name)); return end
   return name
 end
 
 -- actions for the Settings section ----------------------------------------------------
 function P.New()
-  popup("New profile", "A new profile starts with the default options.", { input = "", okLabel = "Create", onOK = function(name)
+  popup(L["New profile"], L["A new profile starts with the default options."], { input = "", okLabel = L["Create"], onOK = function(name)
     name = nameOK(name); if not name then return false end
     store()[name] = {}; changed()
-    offerSwitch(name, "Profile \"" .. name .. "\" created.")
+    offerSwitch(name, string.format(L["Profile \"%s\" created."], name))
   end })
 end
 function P.Copy()
   local src = P.Active()
-  popup("Copy profile", "Copies the profile \"" .. src .. "\" with all its options.", { input = freeName(src), okLabel = "Copy", onOK = function(name)
+  popup(L["Copy profile"], string.format(L["Copies the profile \"%s\" with all its options."], src), { input = freeName(src), okLabel = L["Copy"], onOK = function(name)
     name = nameOK(name); if not name then return false end
     store()[name] = snapshot(); changed()
-    offerSwitch(name, "Profile \"" .. name .. "\" created.")
+    offerSwitch(name, string.format(L["Profile \"%s\" created."], name))
   end })
 end
 function P.Rename()
   local old = P.Active()
-  if old == DEFAULT then FLT.Msg("The Default profile cannot be renamed."); return end
-  popup("Rename profile", "New name for the profile \"" .. old .. "\".", { input = old, okLabel = "Rename", onOK = function(name)
+  if old == DEFAULT then FLT.Msg(L["The Default profile cannot be renamed."]); return end
+  popup(L["Rename profile"], string.format(L["New name for the profile \"%s\"."], old), { input = old, okLabel = L["Rename"], onOK = function(name)
     name = nameOK(name); if not name then return false end
     local list = store()
     list[name], list[old] = list[old], nil
@@ -413,36 +414,36 @@ function P.Rename()
 end
 function P.Delete()
   local name = P.Active()
-  if name == DEFAULT then FLT.Msg("The Default profile cannot be deleted."); return end
-  if InCombatLockdown and InCombatLockdown() then FLT.Msg("Profiles cannot be deleted in combat."); return end
-  UI.Confirm("Delete the profile |cffffd100" .. name .. "|r?\nThis character and all others using it go back to Default. The interface reloads.", function()
+  if name == DEFAULT then FLT.Msg(L["The Default profile cannot be deleted."]); return end
+  if InCombatLockdown and InCombatLockdown() then FLT.Msg(L["Profiles cannot be deleted in combat."]); return end
+  UI.Confirm(string.format(L["Delete the profile %s?\nThis character and all others using it go back to Default. The interface reloads."], "|cffffd100" .. name .. "|r"), function()
     store()[name] = nil
     if OneForAllDB.profileRenames then
       for k, v in pairs(OneForAllDB.profileRenames) do if v == name then OneForAllDB.profileRenames[k] = nil end end
     end
     OneForAllCharDB.profile = DEFAULT
     apply(store()[DEFAULT])
-  end, "Delete", "/reload")
+  end, L["Delete"], "/reload")
 end
 function P.Export()
-  popup("Export profile", "Copy this text (Ctrl+C) and give it to a friend or keep it. Import pastes it back.",
-    { box = encode(P.Active()), readOnly = true, okLabel = "Close" })
+  popup(L["Export profile"], L["Copy this text (Ctrl+C) and give it to a friend or keep it. Import pastes it back."],
+    { box = encode(P.Active()), readOnly = true, okLabel = L["Close"] })
 end
 function P.Import()
-  popup("Import profile", "Paste a profile text (Ctrl+V). It is saved as a new profile.", { box = "", okLabel = "Import", onOK = function(_, text)
+  popup(L["Import profile"], L["Paste a profile text (Ctrl+V). It is saved as a new profile."], { box = "", okLabel = L["Import"], onOK = function(_, text)
     local p, name = decode(text)
-    if not p then FLT.Msg("That is not a OneForAll profile text."); return false end
+    if not p then FLT.Msg(L["That is not a OneForAll profile text."]); return false end
     name = addProfile(name, p); changed()
-    offerSwitch(name, "Profile \"" .. name .. "\" imported.")
+    offerSwitch(name, string.format(L["Profile \"%s\" imported."], name))
   end })
 end
 function P.SendDialog()
   local name = P.Active()
-  popup("Send profile", "Sends the profile \"" .. name .. "\" to a player who also uses OneForAll and has \"Receive shared profiles\" switched on. They are asked first and only get a copy.",
-    { input = (UnitExists and UnitExists("target") and UnitIsPlayer("target") and UnitName("target")) or "", okLabel = "Send",
+  popup(L["Send profile"], string.format(L["Sends the profile \"%s\" to a player who also uses OneForAll and has \"Receive shared profiles\" switched on. They are asked first and only get a copy."], name),
+    { input = (UnitExists and UnitExists("target") and UnitIsPlayer("target") and UnitName("target")) or "", okLabel = L["Send"],
       onOK = function(target)
         target = clean(target)
-        if target == "" then FLT.Msg("Please enter a player name."); return false end
+        if target == "" then FLT.Msg(L["Please enter a player name."]); return false end
         P.Send(name, target)
       end })
 end

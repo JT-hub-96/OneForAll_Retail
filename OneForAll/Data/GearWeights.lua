@@ -308,7 +308,7 @@ FLT.GEAR_WEIGHTS = {
   },
   MAGE = {
     specs = {
-      { name = "Arcane", raid = {arcane=1.69,fire=0.24,frost=0.07,int=0.68,mp5=0.86,scrit=16.5,shit=29.7,sp=2,spi=0.53}, curve = "Leveling" },
+      { name = "Arcane", raid = {arcane=1.69,fire=0.24,frost=0.07,int=0.68,mp5=0.86,scrit=16.5,shit=29.7,sp=2,spi=0.53}, curve = "Leveling_Arcane" },
       { name = "Fire", raid = {fire=2,int=1.13,mp5=1.45,scrit=19.3,shit=20.1,sp=2,spi=1.19}, curve = "Leveling_Fire" },
       { name = "Frost", raid = {frost=2,int=0.29,scrit=15.7,shit=24.9,sp=2}, curve = "Leveling" },
     },
@@ -328,6 +328,22 @@ FLT.GEAR_WEIGHTS = {
         {50,{agi=0.12,arcane=0.3,armor=0.06,dps=6,dpsmelee=0,fire=2.7,frost=12,hp5=1.1,hp=0.22,int=16,mana=1.02,mp5=15,scrit=37.5,shit=79.8,sp=15,spi=5.4,sta=2.2}},
         {55,{agi=0.12,arcane=0.3,armor=0.06,dps=5.2,dpsmelee=0,fire=2.7,frost=12,hp5=0.9,hp=0.17,int=15.1,mana=0.96,mp5=15,scrit=40.1,shit=85.2,sp=15,spi=4.7,sta=1.7}},
         {59,{agi=0.1,arcane=0.3,armor=0.05,dps=4.7,dpsmelee=0,fire=2.7,frost=12,hp5=0.7,hp=0.15,int=16.4,mana=1.05,mp5=15,scrit=49.4,shit=105,sp=15,spi=5.4,sta=1.5}},
+      },
+      Leveling_Arcane = {
+        {1,{agi=0.05,arcane=0.5,armor=0.025,dps=22,dpsmelee=8,fire=14,frost=0.5,hp=0.1,hp5=0.5,int=24.8,mana=1.6,mp5=14,scrit=3,shit=6.6,sp=15,spi=3.5,sta=1}},
+        {10,{agi=0.05,arcane=9.9,armor=0.025,dps=19.5,dpsmelee=0,fire=5.83,frost=0.88,hp=0.15,hp5=0.8,int=16.8,mana=1.07,mp5=15,scrit=5.5,shit=11.8,sp=16.5,spi=2.7,sta=1.5}},
+        {15,{agi=0.05,arcane=12.3,armor=0.025,dps=15.2,dpsmelee=0,fire=2.4,frost=0.3,hp=0.14,hp5=0.7,int=12.4,mana=0.79,mp5=12.6,scrit=6.6,shit=14.1,sp=15,spi=2,sta=1.4}},
+        {20,{agi=0.06,arcane=12.3,armor=0.03,dps=12.6,dpsmelee=0,fire=2.4,frost=0.3,hp=0.18,hp5=0.9,int=10.9,mana=0.7,mp5=10.8,scrit=8.5,shit=18,sp=15,spi=2.3,sta=1.8}},
+        {25,{agi=0.08,arcane=12.3,armor=0.04,dps=10.9,dpsmelee=0,fire=2.4,frost=0.3,hp=0.21,hp5=1,int=9.7,mana=0.62,mp5=9.7,scrit=9.7,shit=20.7143,sp=15,spi=1.8,sta=2.1}},
+        {30,{agi=0.08,arcane=12,armor=0.04,dps=9.3,dpsmelee=0,fire=2.7,frost=0.3,hp=0.2,hp5=1,int=9.8,mana=0.62,mp5=10.1,scrit=13,shit=30.4,sp=15,spi=2,sta=2}},
+        {33,{agi=0.1,arcane=12,armor=0.05,dps=8.5,dpsmelee=0,fire=2.7,frost=0.3,hp=0.21,hp5=1,int=10.6,mana=0.67,mp5=11.1,scrit=15.8,shit=34.8,sp=15,spi=2.3,sta=2.1}},
+        {34,{agi=0.1,arcane=12,armor=0.05,dps=8.3,dpsmelee=0,fire=2.7,frost=0.3,hp=0.21,hp5=1,int=10.9,mana=0.69,mp5=11.4,scrit=16.8,shit=36.2,sp=15,spi=3.4,sta=2.1}},
+        {35,{agi=0.1,arcane=12,armor=0.05,dps=8,dpsmelee=0,fire=2.7,frost=0.3,hp=0.21,hp5=1,int=11.2,mana=0.71,mp5=11.7,scrit=17.7,shit=37.6,sp=15,spi=3.5,sta=2.1}},
+        {40,{agi=0.1,arcane=12,armor=0.05,dps=7,dpsmelee=0,fire=2.7,frost=0.3,hp=0.2,hp5=1,int=12.7,mana=0.81,mp5=13.5,scrit=23.3,shit=49.4,sp=15,spi=4.1,sta=2}},
+        {45,{agi=0.12,arcane=12,armor=0.06,dps=6.5,dpsmelee=0,fire=2.7,frost=0.3,hp=0.23,hp5=1.2,int=14.2,mana=0.91,mp5=15,scrit=30.1,shit=64,sp=15,spi=4.7,sta=2.3}},
+        {50,{agi=0.12,arcane=12,armor=0.06,dps=6,dpsmelee=0,fire=2.7,frost=0.3,hp=0.22,hp5=1.1,int=16,mana=1.02,mp5=15,scrit=37.5,shit=79.8,sp=15,spi=5.4,sta=2.2}},
+        {55,{agi=0.12,arcane=12,armor=0.06,dps=5.2,dpsmelee=0,fire=2.7,frost=0.3,hp=0.17,hp5=0.9,int=15.1,mana=0.96,mp5=15,scrit=40.1,shit=85.2,sp=15,spi=4.7,sta=1.7}},
+        {59,{agi=0.1,arcane=12,armor=0.05,dps=4.7,dpsmelee=0,fire=2.7,frost=0.3,hp=0.15,hp5=0.7,int=16.4,mana=1.05,mp5=15,scrit=49.4,shit=105,sp=15,spi=5.4,sta=1.5}},
       },
       Leveling_Fire = {
         {10,{agi=0.05,arcane=0.5,armor=0.025,dps=22.5,dpsmelee=0,fire=13.5,frost=1,hp5=1,hp=0.2,int=17.6,mana=1.13,mp5=11.4,scrit=5.5,shit=12.5,sp=15,spi=2.8,sta=2}},

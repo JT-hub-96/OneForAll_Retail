@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 -- Gear Planner "Value" (5.6.3): sum of the item's stats x the stat weights of the active spec (the talent tree
 -- with the most points; user 16.10.: standard specs only, no choice yet). Weights: Data/GearWeights.lua (Sharpie's
@@ -312,7 +313,7 @@ local UP = OFA .. "|T" .. ASSET .. "icon_arrow_up:16:16:0:0|t "
 local DOWN = OFA .. "|T" .. ASSET .. "icon_arrow_down:16:16:0:0|t "
 GV.UP, GV.DOWN = UP, DOWN
 -- "OFA <gold star> Wishlist" in item tooltips (user 03.11.), the star tinted like the wishlist star
-GV.WISH = OFA .. "|T" .. ASSET .. "icon_star:16:16:0:0:64:64:0:64:0:64:255:209:64|t Wishlist"
+GV.WISH = OFA .. "|T" .. ASSET .. "icon_star:16:16:0:0:64:64:0:64:0:64:255:209:64|t " -- the word "Wishlist" is added where shown (translated)
 -- tooltip: green "Upgrade: 30%" with an arrow up, red "Downgrade: 12%" with an arrow down (like the user's example);
 -- Quality of Life switch "gearValue", on by default (user 16.10.)
 function GV.TooltipLine(tt, id, itemLink)
@@ -323,10 +324,10 @@ function GV.TooltipLine(tt, id, itemLink)
   -- only for upgrades: a downgrade replaces nothing (user 22.10.)
   local link = kind == "up" and slot and GetInventoryItemLink("player", slot)
   local which = link and link:match("%[(.-)%]")
-  which = which and ("  |cffb0b0b0(replaces " .. which .. ")|r") or ""
-  if kind == "up" then tt:AddLine(UP .. string.format("Upgrade: %d%%", math.floor(pct + 0.5)) .. which, 0.25, 1, 0.25)
-  elseif kind == "new" then tt:AddLine(UP .. "Upgrade (slot empty)", 0.25, 1, 0.25)
-  elseif kind == "down" then tt:AddLine(DOWN .. string.format("Downgrade: %d%%", math.floor(pct + 0.5)) .. which, 1, 0.3, 0.3) end
+  which = which and ("  |cffb0b0b0" .. string.format(L["(replaces %s)"], which) .. "|r") or ""
+  if kind == "up" then tt:AddLine(UP .. string.format(L["Upgrade: %d%%"], math.floor(pct + 0.5)) .. which, 0.25, 1, 0.25)
+  elseif kind == "new" then tt:AddLine(UP .. L["Upgrade (slot empty)"], 0.25, 1, 0.25)
+  elseif kind == "down" then tt:AddLine(DOWN .. string.format(L["Downgrade: %d%%"], math.floor(pct + 0.5)) .. which, 1, 0.3, 0.3) end
 end
 
 -- refresh: talents / level change the weights, gear changes the worn values

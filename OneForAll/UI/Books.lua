@@ -1,4 +1,17 @@
 local _, FLT = ...
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
+local ZN = FLT.ZoneName or function(z) return z end
+local LN = FLT.LNum or function(t) return t end
+local function _rewardTexts() return N"Neck - +%s Stamina, +%s Spirit", N"Neck - +%s Agility, +%s Stamina", N"Ring - +%s Agility, +%s Stamina",
+  N"Ring - +%s Intellect, up to +%s spell power", N"Bow - +%s Agility, +%s Stamina", N"Shield - +%s Spirit, healing",
+  N"Off-hand - +%s Stamina, fire damage" end -- ExtraData.lua BOOK_REWARD_TIERS, shown with FLT.LNum
+local function setName(id) -- "Set 1 - Level 20" (Data.lua FLT.SETS), translated
+  local n = FLT.SETS[id] or id
+  local a, b = tostring(n):match("^Set (%d+) %- Level (%d+)$")
+  return a and string.format(L["Set %d - Level %d"], tonumber(a), tonumber(b)) or n
+end
+local function bookName(b) return FLT.ItemName and FLT.ItemName(b.itemId, b.name) or b.name end -- German from the client
 local UI = FLT.UI
 local makeTexture, makeButton = UI.makeTexture, UI.makeButton
 local unpack = unpack or table.unpack
@@ -8,47 +21,47 @@ local unpack = unpack or table.unpack
 local relayout
 
 local STATE = {
-  done={text="Turned in", color={0.45,0.85,0.45}},
-  manual={text="Manual", color={0.72,0.58,0.90}},
-  bag={text="Bag", color={0.92,0.78,0.35}},
-  bank={text="Bank", color={0.45,0.68,0.92}},
-  questflag={text="Quest flagged", color={0.92,0.58,0.28}},
-  missing={text="Missing", color={0.55,0.53,0.50}},
+  done={text=N"Turned in", color={0.45,0.85,0.45}},
+  manual={text=N"Manual", color={0.72,0.58,0.90}},
+  bag={text=N"Bag", color={0.92,0.78,0.35}},
+  bank={text=N"Bank", color={0.45,0.68,0.92}},
+  questflag={text=N"Quest flagged", color={0.92,0.58,0.28}},
+  missing={text=N"Missing", color={0.55,0.53,0.50}},
 }
 local TERRITORY = {
-  Alliance={text="Alliance", short="A", color={0.30,0.62,1.00}},
-  Horde={text="Horde", short="H", color={1.00,0.28,0.23}},
-  Contested={text="Contested", short="C", color={1.00,0.74,0.18}},
+  Alliance={text=N"Alliance", short="A", color={0.30,0.62,1.00}},
+  Horde={text=N"Horde", short="H", color={1.00,0.28,0.23}},
+  Contested={text=N"Contested", short="C", color={1.00,0.74,0.18}},
 }
 
 
 local function showBookTooltip(row, book)
   GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
-  GameTooltip:AddLine(book.name, 1, 0.82, 0)
-  GameTooltip:AddLine((book.zone or "?") .. (book.subzone and (" - " .. book.subzone) or ""), 0.84, 0.84, 0.84)
+  GameTooltip:AddLine(bookName(book), 1, 0.82, 0)
+  GameTooltip:AddLine((ZN(book.zone) or "?") .. (book.subzone and (" - " .. book.subzone) or ""), 0.84, 0.84, 0.84)
 
   local territory = FLT:GetTerritory(book.zone)
   local t = TERRITORY[territory] or TERRITORY.Contested
-  GameTooltip:AddLine("Territory: " .. t.text, unpack(t.color))
+  GameTooltip:AddLine(string.format(L["Territory: %s"], L[t.text]), unpack(t.color))
 
-  if book.x then GameTooltip:AddLine(string.format("Coordinates: %.1f, %.1f", book.x, book.y), 0.95, 0.88, 0.40) end
-  GameTooltip:AddLine("Object: " .. (book.container or "Unknown"), 0.65, 0.85, 1)
+  if book.x then GameTooltip:AddLine(string.format(L["Coordinates: %.1f, %.1f"], book.x, book.y), 0.95, 0.88, 0.40) end
+  GameTooltip:AddLine(string.format(L["Object: %s"], book.container or L["Unknown"]), 0.65, 0.85, 1)
   if book.note then GameTooltip:AddLine(book.note, 1, 0.82, 0, true) end
 
-  if book.status == "unknown" then GameTooltip:AddLine("Location status: unconfirmed", 1, 0.35, 0.2)
-  elseif book.status == "not-in-forever" then GameTooltip:AddLine("Location status: currently unavailable", 1, 0.35, 0.2)
-  elseif book.status == "reported" then GameTooltip:AddLine("Location status: player report", 1, 0.75, 0.2)
-  elseif book.status == "confirmed" then GameTooltip:AddLine("Location status: confirmed in Forever beta", 0.2, 1, 0.2)
-  elseif book.status == "wowhead" then GameTooltip:AddLine("Location status: database location", 0.65, 0.85, 1) end
+  if book.status == "unknown" then GameTooltip:AddLine(L["Location status: unconfirmed"], 1, 0.35, 0.2)
+  elseif book.status == "not-in-forever" then GameTooltip:AddLine(L["Location status: currently unavailable"], 1, 0.35, 0.2)
+  elseif book.status == "reported" then GameTooltip:AddLine(L["Location status: player report"], 1, 0.75, 0.2)
+  elseif book.status == "confirmed" then GameTooltip:AddLine(L["Location status: confirmed in Forever"], 0.2, 1, 0.2)
+  elseif book.status == "wowhead" then GameTooltip:AddLine(L["Location status: database location"], 0.65, 0.85, 1) end
 
   GameTooltip:AddLine(" ")
   local apiDone = FLT:IsQuestDone(book.questId)
-  GameTooltip:AddLine(string.format("Quest ID: %d   Item ID: %d", book.questId or 0, book.itemId or 0), 0.65, 0.65, 0.65)
-  GameTooltip:AddLine("Server completion flag: " .. (apiDone and "true" or "false"), apiDone and 1 or 0.65, apiDone and 0.55 or 0.65, apiDone and 0.15 or 0.65)
+  GameTooltip:AddLine(string.format(L["Quest ID: %d   Item ID: %d"], book.questId or 0, book.itemId or 0), 0.65, 0.65, 0.65)
+  GameTooltip:AddLine(string.format(L["Server completion flag: %s"], L[apiDone and N"yes" or N"no"]), apiDone and 1 or 0.65, apiDone and 0.55 or 0.65, apiDone and 0.15 or 0.65)
   if apiDone and not OneForAllCharDB.confirmedDone[book.itemId] then
-    GameTooltip:AddLine("Unverified: the server reports this quest completed, but this addon did not observe the turn-in.", 1, 0.55, 0.15, true)
+    GameTooltip:AddLine(L["Unverified: the server reports this quest completed, but this addon did not observe the turn-in."], 1, 0.55, 0.15, true)
   end
-  GameTooltip:AddLine("Right-click: toggle a manual ownership/completion note", 0.7, 0.7, 0.7, true)
+  GameTooltip:AddLine(L["Right-click: toggle a manual ownership/completion note"], 0.7, 0.7, 0.7, true)
   GameTooltip:Show()
 end
 
@@ -75,19 +88,19 @@ local function showBookRewardsPopup(frame)
     local icon=iconBG:CreateTexture(nil,"ARTWORK"); icon:SetPoint("TOPLEFT",4,-4); icon:SetPoint("BOTTOMRIGHT",-4,4); FLT.SetTex(icon, "Interface\\Icons\\INV_Misc_Book_09")
     local ib=iconBG:CreateTexture(nil,"OVERLAY"); ib:SetAllPoints(); FLT.SetTex(ib, "Interface\\Buttons\\UI-Quickslot2"); ib:SetVertexColor(FLT.SkinC(0.9,0.65,0.2,1))
 
-    local title=FLT.NewFS(p, nil,"OVERLAY","GameFontNormalLarge"); title:SetPoint("TOPLEFT",78,-18); title:SetText("Library Books"); title:SetTextColor(FLT.SkinC(1,0.82,0.20))
-    local sub=FLT.NewFS(p, nil,"OVERLAY","GameFontHighlightSmall"); sub:SetPoint("TOPLEFT",78,-43); sub:SetText("Turn-ins, rewards and librarian locations"); sub:SetTextColor(FLT.SkinC(0.78,0.76,0.70))
+    local title=FLT.NewFS(p, nil,"OVERLAY","GameFontNormalLarge"); title:SetPoint("TOPLEFT",78,-18); title:SetText(L["Library Books"]); title:SetTextColor(FLT.SkinC(1,0.82,0.20))
+    local sub=FLT.NewFS(p, nil,"OVERLAY","GameFontHighlightSmall"); sub:SetPoint("TOPLEFT",78,-43); sub:SetText(L["Turn-ins, rewards and librarian locations"]); sub:SetTextColor(FLT.SkinC(0.78,0.76,0.70))
     local line=makeTexture(p,"ARTWORK",0.72,0.50,0.12,0.52); line:SetPoint("TOPLEFT",18,-78); line:SetPoint("TOPRIGHT",-18,-78); line:SetHeight(1)
 
     local body=FLT.NewFS(p, nil,"OVERLAY","GameFontHighlightSmall"); body:SetPoint("TOPLEFT",24,-90); body:SetPoint("TOPRIGHT",-24,-90); body:SetJustifyH("LEFT"); body:SetJustifyV("TOP"); body:SetSpacing(3)
-    body:SetText(FLT.SkinHex("ffd35a") .. "Turn in:|r  Alliance: Garion Wendell, Stormwind Mage Quarter (37.6, 80.8)   |   Horde: Owen Thadd, Undercity Magic Quarter (73.4, 33.0)\nEvery different book is its own turn-in. Each reward tier is a separate quest at the librarian - pick one item per tier. Mages can also unlock Research Access / Study.")
+    body:SetText(FLT.SkinHex("ffd35a") .. L["Turn in:"] .. "|r  " .. L["Alliance: Garion Wendell, Stormwind Mage Quarter (37.6, 80.8)   |   Horde: Owen Thadd, Undercity Magic Quarter (73.4, 33.0)"] .. "\n" .. L["Every different book is its own turn-in. Each reward tier is a separate quest at the librarian - pick one item per tier. Mages can also unlock Research Access / Study."])
     body:SetTextColor(FLT.SkinC(0.86,0.84,0.78))
 
     local H=FLT.UI.DungeonHelpers
     local y=-90-math.max(40,(body:GetStringHeight() or 40))-16
     for _,tier in ipairs(FLT.BOOK_REWARD_TIERS or {}) do
       local head=FLT.NewFS(p, nil,"OVERLAY","GameFontNormal"); head:SetPoint("TOPLEFT",24,y)
-      head:SetText(string.format("%s  |cffbbbbbb- %s%s|r", tier.books, tier.quest, (tier.req and tier.req>1) and (", requires level "..tier.req) or ""))
+      head:SetText(string.format("%s  |cffbbbbbb- %s%s|r", string.format(L["%d books"], tonumber(tier.books:match("%d+")) or 0) .. (tier.books:find("?", 1, true) and " (?)" or ""), (FLT.Name and FLT.Name(tier.quest) or tier.quest), (tier.req and tier.req>1) and (", " .. string.format(L["requires level %d"], tier.req)) or ""))
       head:SetTextColor(FLT.SkinC(1,0.82,0.20))
       y=y-22
       local x=24
@@ -98,14 +111,14 @@ local function showBookRewardsPopup(frame)
         local hi=makeTexture(b,"HIGHLIGHT",0.55,0.36,0.10,0.22); hi:SetAllPoints()
         local ic=b:CreateTexture(nil,"ARTWORK"); ic:SetSize(30,30); ic:SetPoint("LEFT",5,0)
         FLT.SetTex(ic, (H and H.dungeonItemIcon and H.dungeonItemIcon(rec)) or "Interface\\Icons\\INV_Misc_QuestionMark")
-        local n=FLT.NewFS(b, nil,"OVERLAY","GameFontNormalSmall"); n:SetPoint("TOPLEFT",40,-5); n:SetWidth(146); n:SetJustifyH("LEFT"); n:SetText(it[2])
+        local n=FLT.NewFS(b, nil,"OVERLAY","GameFontNormalSmall"); n:SetPoint("TOPLEFT",40,-5); n:SetWidth(146); n:SetJustifyH("LEFT"); n:SetText(FLT.ItemName and FLT.ItemName(it[1], it[2]) or it[2])
         if H and H.colorDungeonItemText then H.colorDungeonItemText(n,rec,0.12,1,0) end
         p.itemTexts=p.itemTexts or {}; p.itemTexts[#p.itemTexts+1]={n,rec}
-        local d=FLT.NewFS(b, nil,"OVERLAY","GameFontDisableSmall"); d:SetPoint("TOPLEFT",40,-21); d:SetWidth(146); d:SetJustifyH("LEFT"); d:SetWordWrap(false); d:SetText(it[4] or "")
+        local d=FLT.NewFS(b, nil,"OVERLAY","GameFontDisableSmall"); d:SetPoint("TOPLEFT",40,-21); d:SetWidth(146); d:SetJustifyH("LEFT"); d:SetWordWrap(false); d:SetText(LN(it[4] or ""))
         b:SetScript("OnEnter",function(self)
           if H and H.colorDungeonItemText then H.colorDungeonItemText(n,rec,0.12,1,0) end
           if not (H and H.tryShowItemTooltip and H.tryShowItemTooltip(self,rec)) then
-            GameTooltip:SetOwner(self,"ANCHOR_RIGHT"); GameTooltip:AddLine(it[2],0.25,0.55,1); GameTooltip:AddLine(it[4] or "",1,1,1); GameTooltip:Show()
+            GameTooltip:SetOwner(self,"ANCHOR_RIGHT"); GameTooltip:AddLine(it[2],0.25,0.55,1); GameTooltip:AddLine(LN(it[4] or ""),1,1,1); GameTooltip:Show()
           end
         end)
         b:SetScript("OnLeave",function() GameTooltip:Hide() end)
@@ -114,9 +127,9 @@ local function showBookRewardsPopup(frame)
       y=y-52
     end
     local note=FLT.NewFS(p, nil,"OVERLAY","GameFontDisableSmall"); note:SetPoint("TOPLEFT",24,y-2); note:SetPoint("RIGHT",-24,0); note:SetJustifyH("LEFT")
-    note:SetText("The book count for the third tier is not confirmed yet. WoW Forever is still in beta, so rewards may change. Ctrl-click an item to try it on.")
+    note:SetText(L["The book count for the third tier is not confirmed yet. Rewards may change. Ctrl-click an item to try it on."])
 
-    local okay=UI.GoldButton(p,"Okay",120,26,nil,13); okay:SetPoint("BOTTOM",0,18); okay:SetScript("OnClick",function() p:Hide() end)
+    local okay=UI.GoldButton(p,L["Okay"],120,26,nil,13); okay:SetPoint("BOTTOM",0,18); okay:SetScript("OnClick",function() p:Hide() end)
     local close=UI.CloseButton(p); close:SetPoint("TOPRIGHT",-10,-10)
     p:SetScript("OnHide",function() GameTooltip:Hide() end)
     p:Hide()
@@ -139,7 +152,7 @@ local function createBooksPanel(frame)
   -- Title band with the library emblem and the tab's banner art.
   local band = UI.TitleBand(panel, {
     emblem = UI.ASSET_ROOT .. "emblem_books", art = UI.ASSET_ROOT .. "books_banner",
-    title = "Library Books", subtitle = "Status from observed turn-ins, your bags and the last scanned bank. Right-click a book for a manual note.",
+    title = L["Library Books"], subtitle = L["Status from observed turn-ins, your bags and the last scanned bank. Right-click a book for a manual note."],
     fadeRight = 320,
   })
   progress = FLT.NewFS(band, nil, "OVERLAY", "GameFontNormal")
@@ -151,15 +164,15 @@ local function createBooksPanel(frame)
 
   -- Action row: rewards button, nearby alerts and a colour legend.
   -- ht8 (user 30.10.): the side list like every tab - the counts, "What can I do?", the sets to jump to, the legend
-  local nav, ny = UI.SideNav(panel, -74, "emblem_books", "Library Books")
+  local nav, ny = UI.SideNav(panel, -74, "emblem_books", L["Library Books"])
   progress:SetParent(nav); progress2:SetParent(nav)
   progress:ClearAllPoints(); progress:SetPoint("TOPLEFT", UI.NAV.entryX + 8, ny); progress:SetJustifyH("LEFT")
   do local font, _, flags = progress:GetFont(); if font then progress:SetFont(font, 12, flags) end end
   progress2:ClearAllPoints(); progress2:SetPoint("TOPLEFT", progress, "BOTTOMLEFT", 0, -4); progress2:SetJustifyH("LEFT")
   ny = ny - 40
-  local reward; reward, ny = UI.NavEntry(nav, ny, "What can I do?", "Interface\\Icons\\INV_Misc_Book_09")
+  local reward; reward, ny = UI.NavEntry(nav, ny, L["What can I do?"], "Interface\\Icons\\INV_Misc_Book_09")
   reward:SetScript("OnClick", function() showBookRewardsPopup(frame) end)
-  reward:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("What can I do with the books?", 1, 0.82, 0); GameTooltip:Show() end)
+  reward:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["What can I do with the books?"], 1, 0.82, 0); GameTooltip:Show() end)
   reward:SetScript("OnLeave", function() GameTooltip:Hide() end)
   ny = UI.NavSeparator(nav, ny)
   local setJump = {} -- filled when the sets exist (below)
@@ -178,14 +191,14 @@ local function createBooksPanel(frame)
     local st = STATE[legendKeys[i]]
     local hold = CreateFrame("Frame", nil, nav)
     local d = gem(hold, 12); d:SetPoint("LEFT", 0, 0); d:SetVertexColor(unpack(st.color))
-    local t = FLT.NewFS(hold, nil, "OVERLAY", "GameFontHighlightSmall"); t:SetPoint("LEFT", d, "RIGHT", 6, 0); t:SetText(st.text); t:SetTextColor(FLT.SkinC(0.84, 0.81, 0.74))
+    local t = FLT.NewFS(hold, nil, "OVERLAY", "GameFontHighlightSmall"); t:SetPoint("LEFT", d, "RIGHT", 6, 0); t:SetText(L[st.text]); t:SetTextColor(FLT.SkinC(0.84, 0.81, 0.74))
     hold:SetSize(140, 18)
     legendHolds[i] = hold
     if legendKeys[i] == "questflag" then
       hold:EnableMouse(true)
       hold:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine("Quest flagged", 1, 0.55, 0.15)
-        GameTooltip:AddLine("The server says this book quest is completed, but this addon did not see the turn-in. Use /ofa debug for IDs.", 1, 1, 1, true)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L["Quest flagged"], 1, 0.55, 0.15)
+        GameTooltip:AddLine(L["The server says this book quest is completed, but this addon did not see the turn-in. Use /ofa debug for IDs."], 1, 1, 1, true)
         GameTooltip:Show()
       end)
       hold:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -198,11 +211,11 @@ local function createBooksPanel(frame)
   local COL = { status = 14, name = 130, side = 440, zone = 510, actions = 712 }
   local COL_W = { status = 110, name = 300, side = 60, zone = 190, actions = 92 }
   local colHead = UI.ColumnHeader(panel, {
-    { x = COL.status + BOX_PAD - 6, w = COL_W.status, text = "Status" },
-    { x = COL.name + BOX_PAD - 4, w = COL_W.name, text = "Book Title" },
-    { x = COL.side + BOX_PAD, w = COL_W.side, text = "Territory", justify = "CENTER" },
-    { x = COL.zone + BOX_PAD, w = COL_W.zone, text = "Zone / Coordinates" },
-    { x = COL.actions + BOX_PAD, w = COL_W.actions, text = "Actions", justify = "CENTER" },
+    { x = COL.status + BOX_PAD - 6, w = COL_W.status, text = L["Status"] },
+    { x = COL.name + BOX_PAD - 4, w = COL_W.name, text = L["Book Title"] },
+    { x = COL.side + BOX_PAD, w = COL_W.side, text = L["Territory"], justify = "CENTER" },
+    { x = COL.zone + BOX_PAD, w = COL_W.zone, text = L["Zone / Coordinates"] },
+    { x = COL.actions + BOX_PAD, w = COL_W.actions, text = L["Actions"], justify = "CENTER" },
   }, W, -74)
   colHead:ClearAllPoints(); colHead:SetPoint("TOPLEFT", 182, -74)
 
@@ -219,7 +232,7 @@ local function createBooksPanel(frame)
   for _, book in ipairs(FLT.BOOKS) do
     if lastSet ~= book.set then
       local setId = book.set
-      current = UI.SectionBand(content, FLT.SETS[book.set] or book.set, #sections, W, function()
+      current = UI.SectionBand(content, setName(book.set), #sections, W, function()
         OneForAllDB.collapsedSets[setId] = not OneForAllDB.collapsedSets[setId] or nil
         if relayout then relayout() end
       end)
@@ -241,7 +254,7 @@ local function createBooksPanel(frame)
     row.statusText = status
 
     local name = FLT.NewFS(row, nil, "OVERLAY", "GameFontHighlight")
-    name:SetPoint("LEFT", COL.name, 0); name:SetWidth(COL_W.name); name:SetJustifyH("LEFT"); name:SetText(book.name)
+    name:SetPoint("LEFT", COL.name, 0); name:SetWidth(COL_W.name); name:SetJustifyH("LEFT"); name:SetText(bookName(book))
     if name.SetWordWrap then name:SetWordWrap(false) end
     name:SetTextColor(FLT.SkinC(0.95, 0.93, 0.88))
 
@@ -251,10 +264,10 @@ local function createBooksPanel(frame)
 
     local zone = FLT.NewFS(row, nil, "OVERLAY", "GameFontHighlightSmall")
     zone:SetPoint("LEFT", COL.zone + 10, 0); zone:SetWidth(COL_W.zone - 10); zone:SetJustifyH("LEFT")
-    zone:SetText(book.x and string.format("%s  |cff9d9480%.1f, %.1f|r", book.zone, book.x, book.y) or (book.zone .. "  |cff9d9480?|r"))
+    zone:SetText(book.x and string.format("%s  |cff9d9480%.1f, %.1f|r", ZN(book.zone), book.x, book.y) or (ZN(book.zone) .. "  |cff9d9480?|r"))
     zone:SetTextColor(FLT.SkinC(0.90, 0.88, 0.84))
 
-    local map = UI.GoldButton(row, "Map", 74, 22, UI.ASSET_ROOT .. "icon_map", 12)
+    local map = UI.GoldButton(row, L["Map"], 74, 22, UI.ASSET_ROOT .. "icon_map", 12)
     map:SetPoint("CENTER", row, "LEFT", COL.actions + COL_W.actions / 2, 0)
     if book.x then
       map:SetScript("OnClick", function() FLT:ShowOnMap(book) end)
@@ -277,7 +290,7 @@ local function createBooksPanel(frame)
 
   -- the sets in the side list (jump to them), then the legend under them
   for i, section in ipairs(sections) do
-    local b; b, navY = UI.NavEntry(nav, navY, FLT.SETS[section.id] or section.id)
+    local b; b, navY = UI.NavEntry(nav, navY, setName(section.id))
     b.count = FLT.NewFS(b, nil, "OVERLAY", "GameFontDisableSmall"); b.count:SetPoint("RIGHT", -5, 0)
     do local font, _, flags = b.count:GetFont(); if font then b.count:SetFont(font, 10, flags) end end
     b._label:SetPoint("RIGHT", b.count, "LEFT", -4, 0); b._label:SetWordWrap(false)
@@ -321,13 +334,13 @@ local function createBooksPanel(frame)
 
   function panel:Refresh()
     local done, owned = FLT:GetCounts()
-    progress:SetText(string.format("Turned in  %d / %d", done, #FLT.BOOKS))
-    progress2:SetText(string.format("Owned or turned in  %d / %d", owned, #FLT.BOOKS))
+    progress:SetText(string.format(L["Turned in  %d / %d"], done, #FLT.BOOKS))
+    progress2:SetText(string.format(L["Owned or turned in  %d / %d"], owned, #FLT.BOOKS))
     local perSet = {}
     for _, row in ipairs(rows) do
       local st = FLT:GetBookState(row.book)
       local s = STATE[st] or STATE.missing
-      row.statusText:SetText(s.text); row.statusText:SetTextColor(unpack(s.color))
+      row.statusText:SetText(L[s.text]); row.statusText:SetTextColor(unpack(s.color))
       row.statusDot:SetVertexColor(unpack(s.color))
       local territory = FLT:GetTerritory(row.book.zone)
       local tc = CREST_TC[territory] or CREST_TC.Contested
@@ -337,7 +350,7 @@ local function createBooksPanel(frame)
     end
     for _, section in ipairs(sections) do
       local c = perSet[section.id] or { done = 0, n = #section.rows }
-      section.info:SetText(string.format("%d / %d turned in", c.done, c.n))
+      section.info:SetText(string.format(L["%d / %d turned in"], c.done, c.n))
       if section.nav then section.nav.count:SetText(c.done .. "/" .. c.n) end
     end
   end
@@ -366,4 +379,4 @@ local function createBooksPanel(frame)
   return panel
 end
 
-UI.RegisterPanel({ key="books", label="Library Books", order=6, tabWidth=132, create=createBooksPanel })
+UI.RegisterPanel({ key="books", label=N"Library Books", order=6, tabWidth=132, create=createBooksPanel })

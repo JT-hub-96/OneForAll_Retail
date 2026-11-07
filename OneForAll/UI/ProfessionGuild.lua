@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 -- Recipe sharing for the "All recipes" browser.
 --   * GUILD (prefix OFAPR, unchanged since 5.6): guild members send the recipe spell IDs they know
@@ -225,6 +226,16 @@ function FLT.RequestGuildRoster()
 end
 
 -- Guild members that know a recipe (without the player): list of {name, online, zone}.
+-- true when a guild member (in the roster) knows it; no tables made (the recipe filter asks for every recipe, 6.2.0)
+function FLT.GuildKnowsRecipe(prof, spell)
+  local db = guildDB(false)
+  if not db then return false end
+  for member, data in pairs(db) do
+    if type(data) == "table" and data[prof] and data[prof][spell] and not isMe(member)
+      and (rosterCount == 0 or rosterInfo(member) ~= nil) then return true end
+  end
+  return false
+end
 function FLT.GetGuildRecipeKnowers(prof, spell)
   local db = guildDB(false)
   if not db then return nil end
@@ -391,9 +402,9 @@ function FLT.LeaveStaleChannels(quiet)
     -- harmless, OneForAll sends nothing there); only when asked by hand
     if quiet then return end
     if #left > 0 and FLT.Msg then
-      FLT.Msg("The game keeps the old OneForAll channels (it blocks them, /leave does nothing). They are harmless - OneForAll does not use them any more.")
+      FLT.Msg(L["The game keeps the old OneForAll channels (it blocks them, /leave does nothing). They are harmless - OneForAll does not use them any more."])
     elseif FLT.Msg then
-      FLT.Msg("Old OneForAll channels left.")
+      FLT.Msg(L["Old OneForAll channels left."])
     end
   end)
 end

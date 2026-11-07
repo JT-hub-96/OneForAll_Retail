@@ -41,7 +41,10 @@ Gear Planner in Data/QuestRewards.lua, which reagents vendors sell for the Craft
 Data/VendorReagents.lua, class quests with their givers for the trainer window in
 Data/ClassQuests.lua, quest givers and turn-ins for the quest icons on the world map in
 Data/QuestPins.lua, mobs that drop quest items for the quest marks on nameplates in Data/QuestDrops.lua,
-vendors, mobs and objects for the reagents of the profession recipes in Data/ReagentSources.lua)
+vendors, mobs and objects for the reagents of the profession recipes in Data/ReagentSources.lua,
+the German, French and Spanish names of quests, NPCs, objects and items and the quest objectives in
+Locales/Names_deDE.lua, Names_frFR.lua and Names_esES.lua
+from its l10n translations)
 were generated
 from the QuestieDB Forever data, which is derived from Questie.
 Sources: https://github.com/Questie/questiedb and https://github.com/Questie/Questie

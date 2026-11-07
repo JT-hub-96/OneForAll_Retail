@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 local UI = FLT.UI
 local unpack = unpack or table.unpack
 
@@ -211,7 +212,7 @@ local function create()
     UI.FramedPanel(bar)
   end
   bar.empty = FLT.NewFS(bar, nil, "OVERLAY", "GameFontDisableSmall"); bar.empty:SetPoint("CENTER")
-  bar.empty:SetText("No minimap buttons of other addons found.")
+  bar.empty:SetText(L["No minimap buttons of other addons found."])
 
   collector:SetScript("OnClick", function(_, mouse)
     if mouse == "RightButton" then
@@ -226,10 +227,10 @@ local function create()
   collector:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine(FLT.DISPLAY_NAME or "OneForAll", 1, 0.82, 0)
-    GameTooltip:AddLine("Left-click: Minimap buttons", 1, 1, 1)
-    GameTooltip:AddLine("Right-click: Open / close OneForAll", 1, 1, 1)
-    GameTooltip:AddLine("Shift-right-click: Crafting List", 1, 1, 1)
-    GameTooltip:AddLine("Drag: Move", 0.75, 0.75, 0.75)
+    GameTooltip:AddLine(L["Left-click: Minimap buttons"], 1, 1, 1)
+    GameTooltip:AddLine(L["Right-click: Open / close OneForAll"], 1, 1, 1)
+    GameTooltip:AddLine(L["Shift-right-click: Crafting List"], 1, 1, 1)
+    GameTooltip:AddLine(L["Drag: Move"], 0.75, 0.75, 0.75)
     GameTooltip:Show()
   end)
   collector:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -257,7 +258,7 @@ end
 -- /ofa buttons: what the collector found (for bug reports)
 function FLT.PrintMinimapCollector()
   local say = FLT.Msg or print
-  if not bar then say("Minimap button collector is off."); return end
+  if not bar then say(L["Minimap button collector is off."]); return end
   say(("Collector bar: strata %s, level %d, shown %s"):format(bar:GetFrameStrata(), bar:GetFrameLevel(), tostring(bar:IsShown())))
   for _, f in ipairs(sortedFrames()) do
     local p, _, _, x, y = f:GetPoint(1)

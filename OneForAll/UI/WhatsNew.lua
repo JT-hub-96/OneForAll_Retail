@@ -1,4 +1,6 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
 local UI = FLT.UI
 local makeTexture, makeButton = UI.makeTexture, UI.makeButton
 
@@ -7,23 +9,18 @@ local makeTexture, makeButton = UI.makeTexture, UI.makeButton
 -- 5.6.3 (user 16.10.): only the Gear Planner. 5.7.0 (user 22.10.): Quality of Life, enchants, set buttons.
 -- 6.0.2 (user 01.11.): World Map, dungeon quests, Gear Planner filters, talent import - not shown automatically.
 
-local NEWS_AUTO = false -- set true (and a new NEWS_ID) for the next release with news
--- 6.1.6 (agreed with the user 06.11.): more reagent sources and more quest "!" on the world map, not shown automatically;
--- /ofa news and Settings > Window show them (6.1.5 before: reagent sources, flights)
-local NEWS_ID = "6.1.6"
+local NEWS_AUTO = true -- set true (and a new NEWS_ID) for the next release with news
+-- 6.1.6 (agreed with the user 06.11.): more reagent sources and more quest "!" on the world map, not shown automatically.
+-- 6.2.0 (user 07.11.): only the languages, shown automatically once.
+local NEWS_ID = "6.2.0"
 
 -- images (optional): pictures in a row under the lines, each { tex, shown width, shown height, texcoord right,
 -- texcoord bottom } (made by tools/art/proc_news.py from the user's screenshots in source_images/news)
 local NEWS = {
-  { icon = "Interface\\Icons\\INV_Misc_Bag_10", title = "Professions - more reagent sources", tab = "professions", button = "Open Professions",
+  { icon = "Interface\\Icons\\INV_Misc_Book_11", title = N"OneForAll speaks your language", tab = "settings", button = N"Open Settings",
     lines = {
-      "Click a reagent in the recipe details: now also smelted bars, skinned leather and scales, the best fishing zones and disenchanting.",
-      "Mobs and vendors inside a dungeon or raid show too - the map button points to its entrance.",
-    } },
-  { icon = "Interface\\Icons\\INV_Misc_Map_01", title = "World map - more quest icons",
-    lines = {
-      "The quest data now comes with every correction of QuestieDB: about 370 more WoW Forever quests show their \"!\" at the right giver.",
-      "Class quests only show for their class, and clicks on a quest icon reach the game's own icon below.",
+      N"OneForAll now speaks German, French and Spanish. Choose it in Settings > General > Language.",
+      N"The translations have not been proofread yet. Please post improvements on our Discord.",
     } },
 }
 
@@ -50,9 +47,9 @@ local function create()
 
   local logo = f:CreateTexture(nil, "OVERLAY"); logo:SetSize(34, 34); logo:SetPoint("TOPLEFT", 12, -8)
   FLT.SetTex(logo, "Interface\\AddOns\\OneForAll\\Assets\\minimap_icon")
-  local title = UI.SmallCaps(f, "OneForAll - Noteworthy changes", 19, 15, {1, 0.82, 0.20}, "GameFontNormalLarge"); title:SetPoint("TOPLEFT", 54, -9)
+  local title = UI.SmallCaps(f, L["OneForAll - Noteworthy changes"], 19, 15, {1, 0.82, 0.20}, "GameFontNormalLarge"); title:SetPoint("TOPLEFT", 54, -9)
   local ver = FLT.NewFS(f, nil, "OVERLAY", "GameFontDisableSmall"); ver:SetPoint("TOPLEFT", 54, -30)
-  ver:SetText("Version " .. addonVersion())
+  ver:SetText(L["Version"] .. " " .. addonVersion())
 
   local close = UI.CloseButton(f); close:SetPoint("TOPRIGHT", -12, -12)
 
@@ -67,10 +64,10 @@ local function create()
       end
       local icf = f:CreateTexture(nil, "OVERLAY"); FLT.SetTex(icf, UI.ASSET_ROOT .. "talent_frame"); icf:SetPoint("TOPLEFT", ic, -3, 3); icf:SetPoint("BOTTOMRIGHT", ic, 3, -3); icf:SetVertexColor(FLT.SkinC(0.98, 0.76, 0.30, 1))
       local h = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormal"); h:SetPoint("TOPLEFT", 62, y - 2)
-      h:SetText(entry.title .. (entry.note and ("  |cff9d9d9d" .. entry.note .. "|r") or "")); h:SetTextColor(FLT.SkinC(1, 0.82, 0.20))
+      h:SetText(L[entry.title] .. (entry.note and ("  |cff9d9d9d" .. L[entry.note] .. "|r") or "")); h:SetTextColor(FLT.SkinC(1, 0.82, 0.20))
       -- the button only for characters that have that tab (Hunter Pets: hunters)
       if entry.tab and (not entry.buttonClass or entry.buttonClass == class) then
-        local b = UI.GoldButton(f, entry.button, 150, 24, nil, 12); b:SetPoint("TOPRIGHT", -16, y)
+        local b = UI.GoldButton(f, L[entry.button], 150, 24, nil, 12); b:SetPoint("TOPRIGHT", -16, y)
         b:SetScript("OnClick", function() f:Hide(); if FLT.OpenPanel then FLT:OpenPanel(entry.tab) end end)
       end
       local ly = y - 24
@@ -78,7 +75,7 @@ local function create()
         local dot = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); dot:SetPoint("TOPLEFT", 64, ly); dot:SetText(FLT.SkinHex("d9a63a") .. "•|r")
         local t = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); t:SetPoint("TOPLEFT", 76, ly)
         -- the lines stay left of the buttons column (user 22.10.); full width only for entries without a button
-        t:SetWidth(entry.tab and 308 or 460); t:SetJustifyH("LEFT"); t:SetText(line); t:SetTextColor(FLT.SkinC(0.90, 0.88, 0.82))
+        t:SetWidth(entry.tab and 308 or 460); t:SetJustifyH("LEFT"); t:SetText(L[line]); t:SetTextColor(FLT.SkinC(0.90, 0.88, 0.82))
         ly = ly - math.max(16, (t:GetStringHeight() or 12) + 5)
       end
       if entry.images then
@@ -97,8 +94,8 @@ local function create()
   end
 
   local foot = FLT.NewFS(f, nil, "OVERLAY", "GameFontDisableSmall"); foot:SetPoint("BOTTOMLEFT", 16, 16)
-  foot:SetText("Type /ofa news to show this again.")
-  local ok = UI.GoldButton(f, "Got it", 110, 26, nil, 13); ok:SetPoint("BOTTOMRIGHT", -16, 14)
+  foot:SetText(L["Type /ofa news to show this again."])
+  local ok = UI.GoldButton(f, L["Got it"], 110, 26, nil, 13); ok:SetPoint("BOTTOMRIGHT", -16, 14)
   ok:SetScript("OnClick", function() f:Hide() end)
 
   f:SetHeight(-y + 40)

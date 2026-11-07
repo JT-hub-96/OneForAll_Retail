@@ -1,4 +1,5 @@
 local ADDON, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 FLT.mapNameToID = {}
 
@@ -452,9 +453,9 @@ local function ensureMarker()
   -- the outline of an area goes with the pin (6.1.5: where a mob or herb spawns)
   marker:HookScript("OnHide", function(self) if self.areaFrame then self.areaFrame:Hide() end end)
   marker:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("OneForAll marker", 1, 0.82, 0)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["OneForAll marker"], 1, 0.82, 0)
     if self.label then GameTooltip:AddLine(self.label, 1, 1, 1, true) end
-    GameTooltip:AddLine("Click: remove the marker", 0.4, 0.8, 1); GameTooltip:Show()
+    GameTooltip:AddLine(L["Click: remove the marker"], 0.4, 0.8, 1); GameTooltip:Show()
   end)
   marker:SetScript("OnLeave", function() GameTooltip:Hide() end)
   marker:Hide()

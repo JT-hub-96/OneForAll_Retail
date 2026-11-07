@@ -1,4 +1,6 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
 -- Item API: newer clients only have these under C_Item.
 local GetItemInfo = GetItemInfo or (C_Item and C_Item.GetItemInfo)
 local GetItemIcon = GetItemIcon or (C_Item and C_Item.GetItemIconByID)
@@ -26,7 +28,9 @@ local function getQuestLogInfo(q)
     for i=1,n do
       local info = C_QuestLog.GetInfo(i)
       if info and not info.isHeader and logEntryMatches(wantedID, wantedTitle, info.questID, info.title) then
-        return true, info.isComplete and true or false
+        -- Forever's log entries carry no isComplete: ask C_QuestLog.IsComplete like the XP bar (QoL.lua) does (beta39)
+        local done = info.isComplete or (C_QuestLog.IsComplete and info.questID and C_QuestLog.IsComplete(info.questID))
+        return true, done and true or false
       end
     end
   elseif GetNumQuestLogEntries and GetQuestLogTitle then
@@ -51,10 +55,11 @@ local function dungeonQuestEligible(q)
 end
 
 local QUEST_STATUS_LABELS = {
-  completed = "Completed",
-  inlog = "In log",
-  available = "Available",
-  unavailable = "Unavailable",
+  completed = N"Completed",
+  inlog = N"In log",
+  ready = N"Ready to turn in",
+  available = N"Available",
+  unavailable = N"Unavailable",
 }
 
 -- If the quest has a known chain and one of its earlier steps is in the quest
@@ -89,8 +94,8 @@ local function getDungeonQuestStatus(d, q)
 
   if q.id and FLT.IsQuestDone and FLT:IsQuestDone(q.id) then return "completed" end
 
-  local inLog = getQuestLogInfo(q)
-  if inLog then return "inlog" end
+  local inLog, ready = getQuestLogInfo(q)
+  if inLog then return ready and "ready" or "inlog" end -- ready: every objective done (beta38, user 07.11.)
   -- Working on an earlier step of this quest's chain counts as "in log" too.
   if getChainProgress(q) then return "inlog" end
 
@@ -289,10 +294,10 @@ tryShowItemTooltip = function(owner, item)
         local q = rec.quality
         local c = q and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
         GameTooltip:AddLine(rec.name, c and c.r or 1, c and c.g or 1, c and c.b or 1)
-        if rec.slot then GameTooltip:AddLine(rec.slot, 1, 1, 1) end
+        if rec.slot then GameTooltip:AddLine(FLT.SlotText and FLT.SlotText(rec.slot) or rec.slot, 1, 1, 1) end
         if rec.summary then GameTooltip:AddLine(rec.summary, 0.85, 0.85, 0.85, true) end
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("The beta server does not send the details of this item yet.", 0.60, 0.60, 0.60, true)
+        GameTooltip:AddLine(L["The beta server does not send the details of this item yet."], 0.60, 0.60, 0.60, true)
         GameTooltip:Show(); finishItemTooltip()
       end)
     end
@@ -419,7 +424,7 @@ local function openQuestInLog(id, name)
       if not isHeader and logEntryMatches(id, name, qid, t) then index = i; break end
     end
   end
-  if not index then if FLT.Msg then FLT.Msg((name or "This quest") .. " is not in your quest log.") end return false end
+  if not index then if FLT.Msg then FLT.Msg(name and string.format(L["%s is not in your quest log."], name) or L["This quest is not in your quest log."]) end return false end
   if QuestLog_SetSelection and QuestLogFrame and ShowUIPanel then
     ShowUIPanel(QuestLogFrame); QuestLog_SetSelection(index)
     if QuestLog_Update then pcall(QuestLog_Update) end
@@ -437,7 +442,7 @@ local function questLogButton(parent)
   local t = b:CreateTexture(nil, "ARTWORK"); t:SetAllPoints(); FLT.SetTex(t, "Interface\\Icons\\INV_Scroll_03"); t:SetTexCoord(0.08, 0.92, 0.08, 0.92)
   local h = b:CreateTexture(nil, "HIGHLIGHT"); h:SetAllPoints(); FLT.SetTex(h, "Interface\\Buttons\\ButtonHilight-Square"); h:SetBlendMode("ADD")
   b:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:SetText("Open in quest log", 1, 0.82, 0.20)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:SetText(L["Open in quest log"], 1, 0.82, 0.20)
     if self.questName then GameTooltip:AddLine(self.questName, 0.92, 0.90, 0.84, true) end
     GameTooltip:Show()
   end)

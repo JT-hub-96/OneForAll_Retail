@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 -- Flight times (6.1.5, user 05.11.): from the length of the flight paths in the client data (Data/FlightPaths.lua,
 -- yards / taxi speed, summed over the stops of the route), corrected by the flights you take: per route "From>To" the
@@ -122,7 +123,7 @@ local function makeBar()
   bar:SetScript("OnEnter", function(self)
     if not flight then return end
     GameTooltip:SetOwner(self, "ANCHOR_BOTTOM"); GameTooltip:AddLine(flight.to, 1, 0.82, 0)
-    GameTooltip:AddLine("Drag to move.", 0.75, 0.75, 0.75); GameTooltip:Show()
+    GameTooltip:AddLine(L["Drag to move."], 0.75, 0.75, 0.75); GameTooltip:Show()
   end)
   bar:SetScript("OnLeave", function() GameTooltip:Hide() end)
   bar:Hide()
@@ -197,7 +198,7 @@ local function tipFor(button)
   if not on() or not (button and button.GetID) then return end
   local t, about = timeTo(button:GetID())
   if not t then return end
-  GameTooltip:AddLine("Flight time: " .. (about and "about " or "") .. fmt(t), 1, 0.82, 0)
+  GameTooltip:AddLine(string.format(about and L["Flight time: about %s"] or L["Flight time: %s"], fmt(t)), 1, 0.82, 0)
   GameTooltip:Show()
 end
 if hooksecurefunc and type(TaxiNodeOnButtonEnter) == "function" then

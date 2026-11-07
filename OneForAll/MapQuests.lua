@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 -- Quest icons on the world map (6.0.2, user 01.11.; wish from Discord, "like Questie"): a yellow "!" at quest givers
 -- with a quest you can take now - only quests for your level (not grey, not too high), your side, race and class,
@@ -188,7 +189,7 @@ end
 local function title(q)
   local t = C_QuestLog and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(q.id or q)
   if type(t) == "string" and t ~= "" and not (FLT.IsSecret and FLT.IsSecret(t)) then return t end
-  return q.name or "?"
+  return q.name and FLT.Name and FLT.Name(q.name) or q.name or "?"
 end
 
 -- Pins -----------------------------------------------------------------------------------------------------------------
@@ -268,8 +269,8 @@ onEnter = function(pin)
   local s = pin.spot
   if not s or not GameTooltip then return end
   GameTooltip:SetOwner(pin, "ANCHOR_RIGHT")
-  GameTooltip:AddLine(s.name, 1, 0.82, 0.2)
-  for _, id in ipairs(s.turnin) do GameTooltip:AddLine("Turn in: " .. (titles[id] or title({ id = id })), 0.4, 0.9, 0.4, true) end
+  GameTooltip:AddLine(FLT.Name and FLT.Name(s.name) or s.name, 1, 0.82, 0.2)
+  for _, id in ipairs(s.turnin) do GameTooltip:AddLine(string.format(L["Turn in: %s"], titles[id] or title({ id = id })), 0.4, 0.9, 0.4, true) end
   for _, q in ipairs(s.avail) do
     local c = GetQuestDifficultyColor and GetQuestDifficultyColor(q.lvl) or { r = 1, g = 1, b = 1 }
     local lo, hi = xpRange(q)

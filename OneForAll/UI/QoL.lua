@@ -1,4 +1,8 @@
 local _, FLT = ...
+local function N(s) return s end -- marks an English text translated where it is shown (tools/locale/extract.py)
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
+-- 6.2.0: the builders below (category, group, row, check, check2, choice, button, hint) get the ENGLISH texts (N"...")
+-- and translate them where they are shown; the search finds both the English and the translated words
 local UI = FLT.UI
 
 -- Quality of Life tab: one switch per feature (defaults in QoL.lua DEFAULTS).
@@ -11,14 +15,12 @@ local openDropDown -- below
 -- Yellow "!" (tooltip "New") next to options added since the last live release.
 -- Kept for all versions of a minor line (5.7.0 ... 5.7.x); emptied when the next minor line
 -- (5.8.0) starts (TODO.md "Neu-Markierungen").
-local NEW_TAGS = { -- all marks removed for 6.0.0, a clean start (user 27.10.); new ones from 6.1.0 on (user 06.11.)
-  buffFlash = "6.1.4", buffSnoozeBtn = "6.1.4", flightMapNow = "6.1.5", flightTimes = "6.1.5",
-  mapQuestGivers = "6.1.9", mapQuestTurnins = "6.1.9",
+local NEW_TAGS = { -- the 6.1.x marks removed when 6.2.0 started (rule: marks stay one minor line)
 }
 -- placed left of the checkbox (or of the label when there is none), user 16.10.
 local function newTag(parent, anchor, key, dx)
   if not NEW_TAGS[key] then return end
-  local m = UI.NewMark(parent, "New in OneForAll " .. NEW_TAGS[key] .. ".")
+  local m = UI.NewMark(parent, string.format(L["New in OneForAll %s."], NEW_TAGS[key]))
   m:SetPoint("RIGHT", anchor, "LEFT", dx or -2, 0)
   return m
 end
@@ -30,25 +32,25 @@ openDropDown = function(...) return UI.OpenDropDown(...) end
 -- Preview popup: a framed picture that shows what a feature looks like in game.
 -- previews[key] = { tex, width, height (shown size), texcoord bottom }
 local PREVIEWS = {
-  questSparkles = { title = "Quest loot sparkles", tex = "preview_sparkles", w = 300, h = 300, t = 1 },
-  bagsFull = { title = "Bags full helper", tex = "preview_bagsfull", w = 560, h = 183, t = 167 / 256 },
-  questXP = { title = "Quest XP on the experience bar", tex = "preview_questxp", w = 640, h = 119, t = 190 / 256 },
-  nodeGlow = { title = "Sparkle on herbs & ore", tex = "preview_nodeglow", w = 300, h = 300, t = 1 }, -- user 26.10.
+  questSparkles = { title = N"Quest loot sparkles", tex = "preview_sparkles", w = 300, h = 300, t = 1 },
+  bagsFull = { title = N"Bags full helper", tex = "preview_bagsfull", w = 560, h = 183, t = 167 / 256 },
+  questXP = { title = N"Quest XP on the experience bar", tex = "preview_questxp", w = 640, h = 119, t = 190 / 256 },
+  nodeGlow = { title = N"Sparkle on herbs & ore", tex = "preview_nodeglow", w = 300, h = 300, t = 1 }, -- user 26.10.
   -- the user's screenshots of 01.11.2026 (tools/art/proc_qol_previews.py, source_images/qol_previews)
-  bossDrops = { title = "Boss drops", tex = "preview_bossdrops", w = 462, h = 285, r = 462/512, t = 285/512 },
-  buffIconOnly = { title = "Buff reminder - icon only", tex = "preview_bufficononly", w = 158, h = 178, r = 99/128, t = 111/128 },
-  buffReminder = { title = "Buff reminder", tex = "preview_buffreminder", w = 451, h = 124, r = 451/512, t = 124/128 },
-  classBright = { title = "Brighter colors", tex = "preview_classbright", w = 301, h = 78, r = 301/512, t = 78/128 },
-  classColors = { title = "Class colors", tex = "preview_classcolors", w = 301, h = 81, r = 301/512, t = 81/128 },
-  gearValue = { title = "Gear Value", tex = "preview_gearvalue", w = 352, h = 237, r = 352/512, t = 237/256 },
-  lowRank = { title = "Check low spell ranks", tex = "preview_lowrank", w = 600, h = 217, r = 823/1024, t = 297/512 },
-  mapButton = { title = "OneForAll button on the map", tex = "preview_mapbutton", w = 312, h = 322, r = 312/512, t = 322/512 },
-  mapZoneLevel = { title = "Zone level range", tex = "preview_mapzonelevel", w = 442, h = 82, r = 442/512, t = 82/128 },
-  mmCollect = { title = "Collect minimap buttons", tex = "preview_collector", w = 276, h = 97, r = 276/512, t = 97/128 },
-  mmSquare = { title = "Square minimap", tex = "preview_mmsquare", w = 418, h = 498, r = 418/512, t = 498/512 },
-  questMarks = { title = "Quest marks on nameplates", tex = "preview_questmarks", w = 462, h = 195, r = 462/512, t = 195/256 },
-  shortStats = { title = "Short green stats", tex = "preview_shortstats", w = 465, h = 402, r = 465/512, t = 402/512 },
-  spellbookTrainer = { title = "Trainer button in the spellbook", tex = "preview_spellbooktrainer", w = 600, h = 128, r = 1024/1024, t = 219/256 },
+  bossDrops = { title = N"Boss drops", tex = "preview_bossdrops", w = 462, h = 285, r = 462/512, t = 285/512 },
+  buffIconOnly = { title = N"Buff reminder - icon only", tex = "preview_bufficononly", w = 158, h = 178, r = 99/128, t = 111/128 },
+  buffReminder = { title = N"Buff reminder", tex = "preview_buffreminder", w = 451, h = 124, r = 451/512, t = 124/128 },
+  classBright = { title = N"Brighter colors", tex = "preview_classbright", w = 301, h = 78, r = 301/512, t = 78/128 },
+  classColors = { title = N"Class colors", tex = "preview_classcolors", w = 301, h = 81, r = 301/512, t = 81/128 },
+  gearValue = { title = N"Gear Value", tex = "preview_gearvalue", w = 352, h = 237, r = 352/512, t = 237/256 },
+  lowRank = { title = N"Check low spell ranks", tex = "preview_lowrank", w = 600, h = 217, r = 823/1024, t = 297/512 },
+  mapButton = { title = N"OneForAll button on the map", tex = "preview_mapbutton", w = 312, h = 322, r = 312/512, t = 322/512 },
+  mapZoneLevel = { title = N"Zone level range", tex = "preview_mapzonelevel", w = 442, h = 82, r = 442/512, t = 82/128 },
+  mmCollect = { title = N"Collect minimap buttons", tex = "preview_collector", w = 276, h = 97, r = 276/512, t = 97/128 },
+  mmSquare = { title = N"Square minimap", tex = "preview_mmsquare", w = 418, h = 498, r = 418/512, t = 498/512 },
+  questMarks = { title = N"Quest marks on nameplates", tex = "preview_questmarks", w = 462, h = 195, r = 462/512, t = 195/256 },
+  shortStats = { title = N"Short green stats", tex = "preview_shortstats", w = 465, h = 402, r = 465/512, t = 402/512 },
+  spellbookTrainer = { title = N"Trainer button in the spellbook", tex = "preview_spellbooktrainer", w = 600, h = 128, r = 1024/1024, t = 219/256 },
 }
 local previewFrame
 local function showPreview(key)
@@ -65,12 +67,12 @@ local function showPreview(key)
     f.picFrame = CreateFrame("Frame", nil, f); f.picFrame:SetAllPoints(f.pic)
     UI.OrnateFrame(f.picFrame, f.picFrame, 10, 2, "OVERLAY", 1)
     f.note = FLT.NewFS(f, nil, "OVERLAY", "GameFontDisableSmall"); f.note:SetPoint("BOTTOMLEFT", 16, 10)
-    f.note:SetText("Example from the game. Click and drag to move, Escape to close.")
+    f.note:SetText(L["Example from the game. Click and drag to move, Escape to close."])
     if UISpecialFrames then table.insert(UISpecialFrames, "OneForAllPreviewFrame") end
     previewFrame = f
   end
   local f = previewFrame
-  f.title:SetText(pv.title)
+  f.title:SetText(L[pv.title])
   FLT.SetTex(f.pic, UI.ASSET_ROOT .. pv.tex); f.pic:SetTexCoord(0, pv.r or 1, 0, pv.t)
   f.pic:SetSize(pv.w, pv.h)
   f:SetSize(math.max(pv.w + 32, 360), pv.h + 74)
@@ -107,9 +109,9 @@ local function showNeverList(owner, onChange, src)
     m.catcher, m.rows, m.offset = catcher, {}, 0
     m.title = FLT.NewFS(m, nil, "OVERLAY", "GameFontNormal"); m.title:SetPoint("TOPLEFT", 12, -10); m.title:SetTextColor(FLT.SkinC(1, 0.82, 0.20))
     m.empty = FLT.NewFS(m, nil, "OVERLAY", "GameFontDisableSmall"); m.empty:SetPoint("TOPLEFT", 12, -32); m.empty:SetWidth(276); m.empty:SetJustifyH("LEFT")
-    m.empty:SetText("Nothing on the list. In the bags full helper, the X button puts an item here so it is never suggested again.")
+    m.empty:SetText(L["Nothing on the list. In the bags full helper, the X button puts an item here so it is never suggested again."])
     m.more = FLT.NewFS(m, nil, "OVERLAY", "GameFontDisableSmall")
-    m.clear = UI.GoldButton(m, "Remove all", 110, 22, nil, 11); m.clear:SetPoint("BOTTOMRIGHT", -10, 10)
+    m.clear = UI.GoldButton(m, L["Remove all"], 110, 22, nil, 11); m.clear:SetPoint("BOTTOMRIGHT", -10, 10)
     m.more:SetPoint("BOTTOMLEFT", 12, 16)
     for i = 1, NEVER_ROWS do
       local r = CreateFrame("Frame", nil, m); r:SetSize(280, 22); r:SetPoint("TOPLEFT", 10, -30 - (i - 1) * 24)
@@ -119,7 +121,7 @@ local function showNeverList(owner, onChange, src)
       r.text = FLT.NewFS(r, nil, "OVERLAY", "GameFontHighlight"); r.text:SetPoint("LEFT", 26, 0); r.text:SetWidth(222); r.text:SetJustifyH("LEFT"); r.text:SetWordWrap(false)
       r.x = CreateFrame("Button", nil, r); r.x:SetSize(16, 16); r.x:SetPoint("RIGHT", -4, 0)
       r.x:SetNormalTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up"); r.x:SetHighlightTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Highlight", "ADD")
-      r.x:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:SetText("Remove from the list"); GameTooltip:AddLine(neverMenu.src.removeTip, 1, 1, 1, true); GameTooltip:Show() end)
+      r.x:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:SetText(L["Remove from the list"]); GameTooltip:AddLine(L[neverMenu.src.removeTip], 1, 1, 1, true); GameTooltip:Show() end)
       r.x:SetScript("OnLeave", function() GameTooltip:Hide() end)
       r:SetScript("OnEnter", function(self)
         hi:Show()
@@ -137,16 +139,16 @@ local function showNeverList(owner, onChange, src)
   end
   local m = neverMenu
   if m:IsShown() and m.owner == owner then m:Hide(); return end
-  src = src or { get = Q.GetNeverItems, remove = Q.RemoveNever, clear = Q.ClearNever, title = "Never suggested",
-    empty = "Nothing on the list. In the bags full helper, the X button puts an item here so it is never suggested again.",
-    removeTip = "The bags full helper may suggest this item again.", confirm = "Remove all items from the\n\"never suggest\" list?" }
+  src = src or { get = Q.GetNeverItems, remove = Q.RemoveNever, clear = Q.ClearNever, title = N"Never suggested",
+    empty = N"Nothing on the list. In the bags full helper, the X button puts an item here so it is never suggested again.",
+    removeTip = N"The bags full helper may suggest this item again.", confirm = N"Remove all items from the\n\"never suggest\" list?" }
   m.src = src
-  m.empty:SetText(src.empty)
+  m.empty:SetText(L[src.empty])
   local retried = false
   m.fill = function()
     local ids = src.get(); m.ids = ids
     m.offset = math.max(0, math.min(m.offset, #ids - NEVER_ROWS))
-    m.title:SetText(src.title .. "  |  " .. #ids .. (#ids == 1 and " item" or " items"))
+    m.title:SetText(L[src.title] .. "  |  " .. (#ids == 1 and L["1 item"] or string.format(L["%d items"], #ids)))
     m.empty:SetShown(#ids == 0)
     local missing = false
     for i, r in ipairs(m.rows) do
@@ -156,7 +158,7 @@ local function showNeverList(owner, onChange, src)
         if not name then missing = true end
         r.id = id
         r.icon:SetTexture(icon)
-        r.text:SetText(name or ("Item " .. id))
+        r.text:SetText(name or (L["Item"] .. " " .. id))
         local c = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
         if c then r.text:SetTextColor(c.r, c.g, c.b) else r.text:SetTextColor(0.92, 0.90, 0.84) end
         r.x:SetScript("OnClick", function() src.remove(id); m.fill(); if onChange then onChange() end end)
@@ -166,7 +168,7 @@ local function showNeverList(owner, onChange, src)
       end
     end
     local shown = math.min(#ids, NEVER_ROWS)
-    if #ids > NEVER_ROWS then m.more:SetText("Scroll for more"); m.more:Show() else m.more:Hide() end
+    if #ids > NEVER_ROWS then m.more:SetText(L["Scroll for more"]); m.more:Show() else m.more:Hide() end
     m.clear:SetEnabled(#ids > 0); m.clear:SetLook(#ids > 0)
     m:SetHeight(#ids == 0 and 110 or (30 + shown * 24 + 40))
     if missing and not retried and C_Timer and C_Timer.After then
@@ -176,7 +178,7 @@ local function showNeverList(owner, onChange, src)
   end
   m.clear:SetScript("OnClick", function()
     m:Hide()
-    UI.Confirm(src.confirm, function() src.clear(); if onChange then onChange() end end, "Remove all")
+    UI.Confirm(L[src.confirm], function() src.clear(); if onChange then onChange() end end, L["Remove all"])
   end)
   m.offset = 0
   m.fill()
@@ -195,15 +197,15 @@ local function createQoLPanel(parent)
   local panel = CreateFrame("Frame", nil, parent)
   UI.PlacePanel(panel, parent)
   UI.TitleBand(panel, { emblem = UI.ASSET_ROOT .. "emblem_qol", art = UI.ASSET_ROOT .. "qol_banner",
-    title = "Quality of Life", subtitle = "Small helpers for everyday play. Switch on what you like.", fadeRight = 200 })
+    title = L["Quality of Life"], subtitle = L["Small helpers for everyday play. Switch on what you like."], fadeRight = 200 })
 
-  local nav, navTop = UI.SideNav(panel, -74, "emblem_qol", "Quality of Life") -- ht8: the same side list in every tab
+  local nav, navTop = UI.SideNav(panel, -74, "emblem_qol", L["Quality of Life"]) -- ht8: the same side list in every tab
   local body = CreateFrame("Frame", nil, panel)
   body:SetPoint("TOPLEFT", 182, -74); body:SetPoint("BOTTOMRIGHT", -8, 4)
 
   -- header of the right side: icon, group name, one line about it, search (UI.PageHeader, shared with Dungeons / Hunter Pets)
   local onSearch -- below
-  local head = UI.PageHeader(body, { placeholder = "Search all settings...", onSearch = function(t) if onSearch then onSearch(t) end end })
+  local head = UI.PageHeader(body, { placeholder = L["Search all settings..."], onSearch = function(t) if onSearch then onSearch(t) end end })
   local hIcon, hTitle, hSub = head.icon, head.title, head.sub
   -- ht7 (user 30.10.): no line under the group header any more
 
@@ -211,7 +213,7 @@ local function createQoLPanel(parent)
   sf:SetPoint("TOPLEFT", 10, -60); sf:SetPoint("BOTTOMRIGHT", -28, 8)
   local child = CreateFrame("Frame", nil, sf); child:SetSize(CHILD_W, 10); sf:SetScrollChild(child)
   UI.PlaceScrollBar(sf)
-  local empty = FLT.NewFS(child, nil, "OVERLAY", "GameFontDisable"); empty:SetPoint("TOPLEFT", 12, -12); empty:SetText("No setting matches your search."); empty:Hide()
+  local empty = FLT.NewFS(child, nil, "OVERLAY", "GameFontDisable"); empty:SetPoint("TOPLEFT", 12, -12); empty:SetText(L["No setting matches your search."]); empty:Hide()
 
   local refreshers, cats, current, search = {}, {}, nil, ""
   local layout, updateCounts -- below
@@ -228,8 +230,8 @@ local function createQoLPanel(parent)
       else
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
       end
-      GameTooltip:AddLine(title, FLT.SkinC(1, 0.82, 0))
-      if text then GameTooltip:AddLine(text, 1, 1, 1, true) end
+      GameTooltip:AddLine(L[title], FLT.SkinC(1, 0.82, 0))
+      if text then GameTooltip:AddLine(L[text], 1, 1, 1, true) end
       GameTooltip:Show()
     end
     if not at then
@@ -256,28 +258,34 @@ local function createQoLPanel(parent)
   -- nav = shorter name for the button on the left (when the full one touches the count)
   local function category(key, label, icon, desc, nav)
     local c = { key = key, label = label, icon = icon, desc = desc, nav = nav, groups = {}, checks = {} }
-    c.title = UI.SectionTitle(child, label, 8, 0, -8); c.title:Hide(); c.title.divider:Hide() -- heading in search results
+    c.title = UI.SectionTitle(child, L[label], 8, 0, -8); c.title:Hide(); c.title.divider:Hide() -- heading in search results
     cats[#cats + 1] = c
     return c
   end
   local function group(cat, title)
     local g = { cat = cat, rows = {} }
-    g.title = UI.SectionTitle(child, title, 8, 0, -8); g.title:Hide(); g.title.divider:Hide()
+    g.title = UI.SectionTitle(child, L[title], 8, 0, -8); g.title:Hide(); g.title.divider:Hide()
     g.name = title
     cat.groups[#cat.groups + 1] = g
     return g
   end
 
+  -- search text of a row: the English and the shown (translated) words
+  local function findText(...)
+    local t = {}
+    for i = 1, select("#", ...) do local v = select(i, ...); if v then t[#t + 1] = v; if L[v] ~= v then t[#t + 1] = L[v] end end end
+    return table.concat(t, " "):lower()
+  end
   -- one option row: name and a short grey line below; tip = the longer text in the tooltip
   local function row(g, label, desc, tip, indent)
     local r = CreateFrame("Button", nil, child); r:SetSize(ROW_W, 34); r:Hide() -- 40 -> 34 (user 01.11.: tighter)
     local hl = r:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(); hl:SetColorTexture(FLT.SkinC(0.90, 0.66, 0.22, 0.06))
     r.indent = indent or 0
-    r.label = FLT.NewFS(r, nil, "OVERLAY", "GameFontHighlight"); r.label:SetPoint("TOPLEFT", 60 + r.indent, -3); r.label:SetText(label) -- 12 pt, rows closer (user 01.11.); room for the switch (was 42)
+    r.label = FLT.NewFS(r, nil, "OVERLAY", "GameFontHighlight"); r.label:SetPoint("TOPLEFT", 60 + r.indent, -3); r.label:SetText(L[label]) -- 12 pt, rows closer (user 01.11.); room for the switch (was 42)
     r.desc = FLT.NewFS(r, nil, "OVERLAY", "GameFontDisableSmall"); r.desc:SetPoint("TOPLEFT", r.label, "BOTTOMLEFT", 0, -3)
-    r.desc:SetJustifyH("LEFT"); r.desc:SetWordWrap(false); r.desc:SetText(desc or "")
+    r.desc:SetJustifyH("LEFT"); r.desc:SetWordWrap(false); r.desc:SetText(desc and L[desc] or "")
     r.rightW = 0
-    r.find = (label .. " " .. (desc or "") .. " " .. (tip or "") .. " " .. g.name .. " " .. g.cat.label):lower()
+    r.find = findText(label, desc, tip, g.name, g.cat.label)
     if tip then hint(r, label, tip, r.label) end
     r.name, r.tip = label, tip
     g.rows[#g.rows + 1] = r
@@ -289,7 +297,7 @@ local function createQoLPanel(parent)
     r.rightW = r.rightW + w:GetWidth() + (gap or 6)
   end
   local function button(r, text, w, tip, onClick)
-    local b = UI.GoldButton(r, text, w, 22, nil, 11); place(r, b)
+    local b = UI.GoldButton(r, L[text], w, 22, nil, 11); place(r, b)
     b:SetScript("OnClick", onClick)
     if tip then hint(b, text, tip) end
     return b
@@ -319,7 +327,7 @@ local function createQoLPanel(parent)
         local pic = pb:CreateTexture(nil, "ARTWORK"); pic:SetAllPoints(); FLT.SetTex(pic, "Interface\\Icons\\INV_Misc_Spyglass_02"); pic:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         pb:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
         pb:SetScript("OnClick", function() showPreview(key) end)
-        hint(pb, "Show preview", "A picture of how it looks in the game.")
+        hint(pb, N"Show preview", N"A picture of how it looks in the game.")
       end
     end
     r.cb = cb
@@ -338,12 +346,12 @@ local function createQoLPanel(parent)
     r.rightW = ROW_W - half - (indent or 0) -- the left text ends at the middle
     local h = CreateFrame("Button", nil, r); h:SetSize(ROW_W - half - (indent or 0), 34); h:SetPoint("TOPLEFT", half + (indent or 0), 0)
     h.indent = 0
-    h.label = FLT.NewFS(h, nil, "OVERLAY", "GameFontHighlight"); h.label:SetPoint("TOPLEFT", 60, -3); h.label:SetText(b[1])
+    h.label = FLT.NewFS(h, nil, "OVERLAY", "GameFontHighlight"); h.label:SetPoint("TOPLEFT", 60, -3); h.label:SetText(L[b[1]])
     h.desc = FLT.NewFS(h, nil, "OVERLAY", "GameFontDisableSmall"); h.desc:SetPoint("TOPLEFT", h.label, "BOTTOMLEFT", 0, -3)
-    h.desc:SetJustifyH("LEFT"); h.desc:SetWordWrap(false); h.desc:SetText(b[2] or ""); h.desc:SetWidth(h:GetWidth() - 76)
+    h.desc:SetJustifyH("LEFT"); h.desc:SetWordWrap(false); h.desc:SetText(b[2] and L[b[2]] or ""); h.desc:SetWidth(h:GetWidth() - 76)
     h.name, h.tip = b[1], b[3]
     if b[3] then hint(h, b[1], b[3], h.label) end
-    r.find = r.find .. " " .. (b[1] .. " " .. (b[2] or "") .. " " .. (b[3] or "")):lower()
+    r.find = r.find .. " " .. findText(b[1], b[2], b[3])
     switch(h, g, b[4])
     return r
   end
@@ -354,13 +362,17 @@ local function createQoLPanel(parent)
     local function show()
       local cur, text = Q.Get(key), options[1].label
       for _, o in ipairs(options) do if o.key == cur then text = o.label end end
-      b:SetLabel(text)
+      b:SetLabel(L[text])
       if onKey then
         local on = Q.Get(onKey) and true or false
         b:SetLook(on); b:SetEnabled(on); arrow:SetAlpha(on and 1 or 0.35)
       end
     end
-    b:SetScript("OnClick", function(self) openDropDown(self, options, Q.Get(key), function(v) Q.Set(key, v); show() end) end)
+    b:SetScript("OnClick", function(self)
+      local shown = {} -- the option labels in the chosen language (the tables keep the English ones)
+      for i, o in ipairs(options) do shown[i] = { key = o.key, label = L[o.label] } end
+      openDropDown(self, shown, Q.Get(key), function(v) Q.Set(key, v); show() end)
+    end)
     if tip then hint(b, label, tip) end
     if onKey then switch(r, g, onKey, nil, nil, show) else newTag(r, r.label, key) end
     refreshers[#refreshers + 1] = show
@@ -369,23 +381,23 @@ local function createQoLPanel(parent)
 
   ---------------------------------------------------------------------------------------------------
   -- INTERFACE (first, the tab opens here; user 22.10.)
-  local c = category("iface", "Interface", "Interface\\Icons\\INV_Misc_Gear_01", "Camera, bags, windows, the minimap and other helpers for the game's interface.")
-  local g = group(c, "General")
-  check(g, "Farther camera zoom", "Lets you zoom the camera out further.", nil, "cameraZoom")
-  check(g, "Free bag slots on the backpack", "Shows the number of free slots on your backpack.", "Counts all normal bags (quivers, ammo and profession bags are not counted).", "bagSlots")
-  check(g, "Hide error messages", "Hides the red messages in the middle of the screen.", "Messages like \"Out of range\" or \"Not enough rage\" are no longer shown. Still shown: inventory or bags full, quest log full, not enough money, carrying too many of an item.", "hideErrors")
-  g = group(c, "Windows")
+  local c = category("iface", N"Interface", "Interface\\Icons\\INV_Misc_Gear_01", N"Camera, bags, windows, the minimap and other helpers for the game's interface.")
+  local g = group(c, N"General")
+  check(g, N"Farther camera zoom", N"Lets you zoom the camera out further.", nil, "cameraZoom")
+  check(g, N"Free bag slots on the backpack", N"Shows the number of free slots on your backpack.", N"Counts all normal bags (quivers, ammo and profession bags are not counted).", "bagSlots")
+  check(g, N"Hide error messages", N"Hides the red messages in the middle of the screen.", N"Messages like \"Out of range\" or \"Not enough rage\" are no longer shown. Still shown: inventory or bags full, quest log full, not enough money, carrying too many of an item.", "hideErrors")
+  g = group(c, N"Windows")
   do
-    local r = check(g, "Move Blizzard windows", "Drag windows like the character or quest log window anywhere.", "Drag windows such as the character, merchant or quest log window with the left mouse button. Positions are remembered.", "moveWindows")
-    button(r, "Reset", 60, "Moved Blizzard windows go back to their default place.", function() Q.ResetWindowPositions() end)
+    local r = check(g, N"Move Blizzard windows", N"Drag windows like the character or quest log window anywhere.", N"Drag windows such as the character, merchant or quest log window with the left mouse button. Positions are remembered.", "moveWindows")
+    button(r, N"Reset", 60, N"Moved Blizzard windows go back to their default place.", function() Q.ResetWindowPositions() end)
   end
   do
-    local r = check(g, "Resize Blizzard windows", "Drag a window with the right mouse button to change its size.", "Hold the right mouse button on a window like the character or quest log window and drag: right or down makes it larger, left or up smaller (50 - 150 %). The size shows at the cursor and is remembered.", "resizeWindows")
-    button(r, "Reset", 60, "Resized Blizzard windows go back to their normal size.", function() Q.ResetWindowSizes() end)
+    local r = check(g, N"Resize Blizzard windows", N"Drag a window with the right mouse button to change its size.", N"Hold the right mouse button on a window like the character or quest log window and drag: right or down makes it larger, left or up smaller (50 - 150 %). The size shows at the cursor and is remembered.", "resizeWindows")
+    button(r, N"Reset", 60, N"Resized Blizzard windows go back to their normal size.", function() Q.ResetWindowSizes() end)
   end
-  g = group(c, "Minimap")
+  g = group(c, N"Minimap")
   do -- the logo colours as small logos to click (like the welcome setup; user 31.10.: no drop-down)
-    local r = row(g, "Logo color", "The color of the OneForAll minimap button.", "Also the button of the minimap button collector.")
+    local r = row(g, N"Logo color", N"The color of the OneForAll minimap button.", N"Also the button of the minimap button collector.")
     local marks = {}
     for i = #Q.LOGO_COLORS, 1, -1 do
       local o = Q.LOGO_COLORS[i]
@@ -396,7 +408,7 @@ local function createQoLPanel(parent)
       sel:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight"); sel:SetBlendMode("ADD")
       b:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight", "ADD")
       b:SetScript("OnClick", function() Q.Set("logoColor", o.key); for k, m in pairs(marks) do m:SetShown(k == o.key) end end)
-      b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(o.label); GameTooltip:Show() end)
+      b:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(L[o.label]); GameTooltip:Show() end)
       b:SetScript("OnLeave", function() GameTooltip:Hide() end)
       marks[o.key] = sel
     end
@@ -412,26 +424,24 @@ local function createQoLPanel(parent)
     look(hideRow, not Q.Get("mmCollect")); look(collectRow, not Q.Get("mmHide"))
   end
   do
-    collectRow = row(g, "Collect minimap buttons", "Puts the minimap buttons of other addons into one bar.", "The bar opens from a bigger OneForAll button that you can drag anywhere (it is not tied to the minimap). Right-click that button to open OneForAll. Switching this off puts all buttons back on the minimap. Not together with \"Hide the OneForAll button\".")
+    collectRow = row(g, N"Collect minimap buttons", N"Puts the minimap buttons of other addons into one bar.", N"The bar opens from a bigger OneForAll button that you can drag anywhere (it is not tied to the minimap). Right-click that button to open OneForAll. Switching this off puts all buttons back on the minimap. Not together with \"Hide the OneForAll button\".")
     switch(collectRow, g, "mmCollect", nil, nil, paintMinimap)
-    button(collectRow, "Reset", 60, "Puts the minimap button collector back to its default place next to the minimap.", function() if FLT.ResetMinimapCollector then FLT.ResetMinimapCollector() end end)
+    button(collectRow, N"Reset", 60, N"Puts the minimap button collector back to its default place next to the minimap.", function() if FLT.ResetMinimapCollector then FLT.ResetMinimapCollector() end end)
   end
-  choice(g, "Bar opens", "Where the bar opens next to the OneForAll button.", "Automatic: towards the middle of the screen.", "mmDir", Q.MM_DIR_OPTIONS, nil, 24)
-  hideRow = row(g, "Hide the OneForAll button", "No OneForAll button at the minimap.", "Open OneForAll from the game's AddOns list at the minimap or with /ofa. Not together with \"Collect minimap buttons\": the bar needs its button.")
+  choice(g, N"Bar opens", N"Where the bar opens next to the OneForAll button.", N"Automatic: towards the middle of the screen.", "mmDir", Q.MM_DIR_OPTIONS, nil, 24)
+  hideRow = row(g, N"Hide the OneForAll button", N"No OneForAll button at the minimap.", N"Open OneForAll from the game's AddOns list at the minimap or with /ofa. Not together with \"Collect minimap buttons\": the bar needs its button.")
   switch(hideRow, g, "mmHide", nil, nil, paintMinimap)
   refreshers[#refreshers + 1] = paintMinimap
-  do
-    local mr = check(g, "Move the minimap", "Hold Shift and drag the minimap to move it.", "Moves the whole minimap with its zone text and buttons. A click without Shift still pings as usual.", "mmMove")
-    button(mr, "Reset", 60, "Puts the minimap back to its default place.", function() if FLT.ResetMinimapPosition then FLT.ResetMinimapPosition() end end)
-  end
-  check(g, "Square minimap", "A square minimap with a thin black frame.", "The round border and the compass are hidden; minimap buttons of other addons follow the square edge. Does nothing with ElvUI or when another addon already makes the minimap square.", "mmSquare")
+  -- beta44 (user 07.11.): no own switch any more - the game's Edit Mode moves the minimap (ours fought it)
+  row(g, N"Move the minimap", N"Use the game's Edit Mode: Game Menu > Edit Mode, then drag the minimap.", N"OneForAll no longer moves the minimap itself: it fought with the Edit Mode, the minimap jumped back and could not be moved any more.")
+  check(g, N"Square minimap", N"A square minimap with a thin black frame.", N"The round border and the compass are hidden; minimap buttons of other addons follow the square edge. Does nothing with ElvUI or when another addon already makes the minimap square.", "mmSquare")
 
   ---------------------------------------------------------------------------------------------------
   -- CHAT (own entry in the list, user 31.10.)
-  c = category("chat", "Chat", "Interface\\Icons\\INV_Scroll_03", "The chat windows and the chat box.")
-  g = group(c, "Chat windows")
+  c = category("chat", N"Chat", "Interface\\Icons\\INV_Scroll_03", N"The chat windows and the chat box.")
+  g = group(c, N"Chat windows")
   do -- chat font size: -, value, +
-    local r = row(g, "Chat font size", "The same font size for every chat window.", "Go below 10 to switch it off (then the game's own setting is kept).")
+    local r = row(g, N"Chat font size", N"The same font size for every chat window.", N"Go below 10 to switch it off (then the game's own setting is kept).")
     local function step(d)
       local v = tonumber(Q.Get("chatFont"))
       if not v then v = 14 else v = v + d end
@@ -441,108 +451,108 @@ local function createQoLPanel(parent)
     button(r, "+", 26, nil, function() step(1) end)
     local val = FLT.NewFS(r, nil, "OVERLAY", "GameFontNormal"); val:SetWidth(46); val:SetJustifyH("CENTER"); val:SetHeight(20); place(r, val, 4)
     button(r, "-", 26, nil, function() step(-1) end)
-    r.show = function() local v = tonumber(Q.Get("chatFont")); val:SetText(v and tostring(v) or "Off") end
+    r.show = function() local v = tonumber(Q.Get("chatFont")); val:SetText(v and tostring(v) or L["Off"]) end
     refreshers[#refreshers + 1] = r.show
   end
-  check(g, "Copy chat button", "Adds a button to every chat window to copy its text.", "A small button at the top right of every chat window. It opens the chat text so you can select and copy it (Ctrl+C).", "copyChat")
-  check(g, "Hide chat button", "A button next to the chat hides and shows it.", "It sits above the chat menu button. Also as a key: Key Bindings > OneForAll > Hide / show chat. Pressing Enter to type brings the chat back.", "chatHide")
-  choice(g, "Hide chat after", "Hides the chat after that long without a new message.", "A new message or typing shows it again. Not while the mouse is on the chat.", "chatAutoHide", Q.CHAT_HIDE_OPTIONS)
-  g = group(c, "Typing")
-  check(g, "Message history", "Arrow up / down in the chat box brings back your last 5 messages.", "Type, send, open the chat again and press arrow up: the message is there again, Enter sends it. While typing, the arrow keys no longer turn your character.", "chatHistory")
+  check(g, N"Copy chat button", N"Adds a button to every chat window to copy its text.", N"A small button at the top right of every chat window. It opens the chat text so you can select and copy it (Ctrl+C).", "copyChat")
+  check(g, N"Hide chat button", N"A button next to the chat hides and shows it.", N"It sits above the chat menu button. Also as a key: Key Bindings > OneForAll > Hide / show chat. Pressing Enter to type brings the chat back.", "chatHide")
+  choice(g, N"Hide chat after", N"Hides the chat after that long without a new message.", N"A new message or typing shows it again. Not while the mouse is on the chat.", "chatAutoHide", Q.CHAT_HIDE_OPTIONS)
+  g = group(c, N"Typing")
+  check(g, N"Message history", N"Arrow up / down in the chat box brings back your last 5 messages.", N"Type, send, open the chat again and press arrow up: the message is there again, Enter sends it. While typing, the arrow keys no longer turn your character.", "chatHistory")
 
   ---------------------------------------------------------------------------------------------------
   -- LOOT & VENDORS
-  c = category("loot", "Loot & Vendors", "Interface\\Icons\\INV_Misc_Bag_10", "Looting, merchants, full bags and the loot feed.")
-  g = group(c, "Looting")
-  check(g, "Auto loot", "The game's own Auto Loot setting.", "Same as Options > Controls > Auto Loot.", nil, nil,
+  c = category("loot", N"Loot & Vendors", "Interface\\Icons\\INV_Misc_Bag_10", N"Looting, merchants, full bags and the loot feed.")
+  g = group(c, N"Looting")
+  check(g, N"Auto loot", N"The game's own Auto Loot setting.", N"Same as Options > Controls > Auto Loot.", nil, nil,
     function() return Q.GetCVarSwitch("autoLoot") end, function(v) Q.SetCVarSwitch("autoLoot", v) end)
-  check(g, "Quicker loot", "Takes everything at once when the game auto loots.", "Instead of item by item.", "quickLoot")
-  g = group(c, "Merchants")
-  check(g, "Auto repair", "Repairs all gear at merchants that can repair.", nil, "autoRepair")
-  check(g, "Sell junk", "Sells all grey items when you open a merchant.", "Also the items on your own junk list: Alt+right-click an item in your bags to put it on the list or take it off. Hold Shift at the merchant to skip.", "sellJunk")
+  check(g, N"Quicker loot", N"Takes everything at once when the game auto loots.", N"Instead of item by item.", "quickLoot")
+  g = group(c, N"Merchants")
+  check(g, N"Auto repair", N"Repairs all gear at merchants that can repair.", nil, "autoRepair")
+  check(g, N"Sell junk", N"Sells all grey items when you open a merchant.", N"Also the items on your own junk list: Alt+right-click an item in your bags to put it on the list or take it off. Hold Shift at the merchant to skip.", "sellJunk")
   do -- own junk list (5.7.3, GitHub #22)
-    local r = row(g, "Junk list", "Items you added with Alt+right-click in your bags.", "This character's list. Sell junk sells these items too.", 24)
+    local r = row(g, N"Junk list", N"Items you added with Alt+right-click in your bags.", N"This character's list. Sell junk sells these items too.", 24)
     local b = dropButton(r, 110)
-    local function show() local n = #Q.GetJunkItems(); b:SetLabel(n == 1 and "1 item" or (n .. " items")) end
-    local JUNK = { get = Q.GetJunkItems, remove = Q.RemoveJunk, clear = Q.ClearJunk, title = "Junk list",
-      empty = "Nothing on the list. Alt+right-click an item in your bags to add it - Sell junk then sells it at merchants.",
-      removeTip = "Sell junk will not sell this item any more.", confirm = "Remove all items from your junk list?" }
+    local function show() local n = #Q.GetJunkItems(); b:SetLabel(n == 1 and L["1 item"] or string.format(L["%d items"], n)) end
+    local JUNK = { get = Q.GetJunkItems, remove = Q.RemoveJunk, clear = Q.ClearJunk, title = N"Junk list",
+      empty = N"Nothing on the list. Alt+right-click an item in your bags to add it - Sell junk then sells it at merchants.",
+      removeTip = N"Sell junk will not sell this item any more.", confirm = N"Remove all items from your junk list?" }
     b:SetScript("OnClick", function(self) showNeverList(self, show, JUNK) end)
     refreshers[#refreshers + 1] = show
     newTag(r, r.label, "junkList")
   end
-  g = group(c, "Full bags")
-  check(g, "Bags full helper", "When loot does not fit, offers to destroy the cheapest item.", "Suggests the cheapest item in your bags (value x stack), destroys it and loots with one click. Quest items, library books, recipes, set pieces, profession tools and items without value are never suggested. Items better than grey need a second click. /ofa cheapest shows it any time.", "bagsFull")
-  check(g, "Only grey and white items", "The helper only suggests poor and common items.", nil, "bagsLowOnly", 24)
+  g = group(c, N"Full bags")
+  check(g, N"Bags full helper", N"When loot does not fit, offers to destroy the cheapest item.", N"Suggests the cheapest item in your bags (value x stack), destroys it and loots with one click. Quest items, library books, recipes, set pieces, profession tools and items without value are never suggested. Items better than grey need a second click. /ofa cheapest shows it any time.", "bagsFull")
+  check(g, N"Only grey and white items", N"The helper only suggests poor and common items.", nil, "bagsLowOnly", 24)
   do -- items the player put on the "never suggest" list
-    local r = row(g, "Never suggested", "Items you blocked with the X button in the helper.", "Open the list to allow single items again, or remove all.", 24)
+    local r = row(g, N"Never suggested", N"Items you blocked with the X button in the helper.", N"Open the list to allow single items again, or remove all.", 24)
     local b = dropButton(r, 110)
-    local function show() local n = #Q.GetNeverItems(); b:SetLabel(n == 1 and "1 item" or (n .. " items")) end
+    local function show() local n = #Q.GetNeverItems(); b:SetLabel(n == 1 and L["1 item"] or string.format(L["%d items"], n)) end
     b:SetScript("OnClick", function(self) showNeverList(self, show) end)
     refreshers[#refreshers + 1] = show
   end
-  g = group(c, "Loot feed")
-  check(g, "Show loot feed", "Looted items and money float up next to your character.", "Like scrolling combat text.", "lootFeed")
-  choice(g, "Minimum quality", "Items below this quality are not shown.", nil, "lootFeedQuality", Q.QUALITY_OPTIONS, nil, 24)
-  check(g, "Show money", "Also shows looted money.", nil, "lootFeedMoney", 24)
+  g = group(c, N"Loot feed")
+  check(g, N"Show loot feed", N"Looted items and money float up next to your character.", N"Like scrolling combat text.", "lootFeed")
+  choice(g, N"Minimum quality", N"Items below this quality are not shown.", nil, "lootFeedQuality", Q.QUALITY_OPTIONS, nil, 24)
+  check(g, N"Show money", N"Also shows looted money.", nil, "lootFeedMoney", 24)
   do
-    local r = row(g, "Position", "Move the feed, show sample entries or put it back.", nil, 24)
-    button(r, "Reset", 70, "Puts the loot feed back to its default place right of your character.", function() Q.ResetLootFeed() end)
-    button(r, "Test", 70, "Shows a few sample entries.", function() Q.TestLootFeed() end)
-    local move = button(r, "Move", 70, "Shows the loot feed area. Drag it where you want it, then click Lock.", nil)
-    local function show() move:SetLabel(Q.IsLootFeedUnlocked() and "Lock" or "Move"); move:SetActive(Q.IsLootFeedUnlocked()) end
+    local r = row(g, N"Position", N"Move the feed, show sample entries or put it back.", nil, 24)
+    button(r, N"Reset", 70, N"Puts the loot feed back to its default place right of your character.", function() Q.ResetLootFeed() end)
+    button(r, N"Test", 70, N"Shows a few sample entries.", function() Q.TestLootFeed() end)
+    local move = button(r, N"Move", 70, N"Shows the loot feed area. Drag it where you want it, then click Lock.", nil)
+    local function show() move:SetLabel(Q.IsLootFeedUnlocked() and L["Lock"] or L["Move"]); move:SetActive(Q.IsLootFeedUnlocked()) end
     move:SetScript("OnClick", function() Q.SetLootFeedUnlocked(not Q.IsLootFeedUnlocked()); show() end)
     refreshers[#refreshers + 1] = show
   end
-  g = group(c, "Gathering")
-  local r = check(g, "Sparkle on herbs & ore", "The herb or ore vein near you sparkles.", "Only for professions you have. Uses the game's soft targeting (interaction target): one object at a time, the nearest one around you. Vendors and other NPCs get nothing. Works only close up (about 15 yards) - a limit of the game. Changes a few game settings and gives them back when you switch this off - also the game's \"Enable Interact Key\", which it needs to find the nodes. Not with a controller. Idea and sparkle from the addon Lueur (MIT).", "nodeGlow")
+  g = group(c, N"Gathering")
+  local r = check(g, N"Sparkle on herbs & ore", N"The herb or ore vein near you sparkles.", N"Only for professions you have. Uses the game's soft targeting (interaction target): one object at a time, the nearest one around you. Vendors and other NPCs get nothing. Works only close up (about 15 yards) - a limit of the game. Changes a few game settings and gives them back when you switch this off - also the game's \"Enable Interact Key\", which it needs to find the nodes. Not with a controller. Idea and sparkle from the addon Lueur (MIT).", "nodeGlow")
   do -- red warning sign behind the name: it changes soft targeting (user 25.10.)
     local w = CreateFrame("Frame", nil, r); w:SetSize(22, 22); w:SetPoint("LEFT", r.label, "RIGHT", 32, 0) -- right of the preview spyglass
     local x = w:CreateTexture(nil, "ARTWORK"); x:SetAllPoints(); FLT.SetTex(x, UI.ASSET_ROOT .. "icon_warning") -- as in the gear planner
     w:EnableMouse(true) -- own tooltip, not the row's
     w:SetScript("OnEnter", function(self)
       GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-      GameTooltip:AddLine("Care!", 1, 0.25, 0.25)
-      GameTooltip:AddLine("This option changes soft-targeting, read hint text!", 1, 1, 1, true)
+      GameTooltip:AddLine(L["Care!"], 1, 0.25, 0.25)
+      GameTooltip:AddLine(L["This option changes soft-targeting, read hint text!"], 1, 1, 1, true)
       GameTooltip:Show()
     end)
     w:SetScript("OnLeave", function() GameTooltip:Hide() end)
   end
 
   -- QUESTS
-  c = category("quests", "Quests", "Interface\\Icons\\INV_Misc_Note_01", "Quest givers and quest items in the world.")
-  g = group(c, "Quest givers")
-  check(g, "Accept quests automatically", "Accepts quests when you talk to a quest giver. Hold Shift to do it by hand.", nil, "autoAccept")
-  check(g, "Turn in quests automatically", "Turns in finished quests. Hold Shift to do it by hand.", "If you can choose between rewards, you still pick yourself.", "autoTurnIn")
-  g = group(c, "Experience")
-  check(g, "Quest XP on the experience bar", "Shows the XP of your finished quests on the experience bar.", "Marks on the experience bar how much XP your finished quests give when you turn them in. The amount is also shown in the bar's tooltip.", "questXP")
-  g = group(c, "In the world")
-  check(g, "Best sell price on rewards", "A gold coin on the quest reward choice that sells for the most.", "In the quest log and when you turn in a quest with two or more rewards to choose from: the one with the highest vendor price (times the count) gets a gold coin at its top right. The green upgrade arrow stays at the top left, so an item can have both.", "questSellCoin")
-  check(g, "Quest loot sparkles", "Quest items in the world sparkle again.", "The game's loot glow. Changes graphics settings; after switching it off, restart the game.", "questSparkles")
-  check(g, "Quest marks on nameplates", "A sword or a bag with your progress on mobs you need for a quest.", "Sword: you must kill it for a quest. Bag: it drops a quest item. With the progress (3/10); nothing once that part is done. Uses the quest lines the game shows in the mob's tooltip. Not inside dungeons yet.", "questMarks")
-  choice(g, "Mark position", "Where the mark sits on the nameplate.", nil, "questMarkPos", FLT.QuestMarks and FLT.QuestMarks.POS_OPTIONS or { { key = "left", label = "Left" } }, nil, 24) -- no own switch (user 31.10.)
+  c = category("quests", N"Quests", "Interface\\Icons\\INV_Misc_Note_01", N"Quest givers and quest items in the world.")
+  g = group(c, N"Quest givers")
+  check(g, N"Accept quests automatically", N"Accepts quests when you talk to a quest giver. Hold Shift to do it by hand.", nil, "autoAccept")
+  check(g, N"Turn in quests automatically", N"Turns in finished quests. Hold Shift to do it by hand.", N"If you can choose between rewards, you still pick yourself.", "autoTurnIn")
+  g = group(c, N"Experience")
+  check(g, N"Quest XP on the experience bar", N"Shows the XP of your finished quests on the experience bar.", N"Marks on the experience bar how much XP your finished quests give when you turn them in. The amount is also shown in the bar's tooltip.", "questXP")
+  g = group(c, N"In the world")
+  check(g, N"Best sell price on rewards", N"A gold coin on the quest reward choice that sells for the most.", N"In the quest log and when you turn in a quest with two or more rewards to choose from: the one with the highest vendor price (times the count) gets a gold coin at its top right. The green upgrade arrow stays at the top left, so an item can have both.", "questSellCoin")
+  check(g, N"Quest loot sparkles", N"Quest items in the world sparkle again.", N"The game's loot glow. Changes graphics settings: the outline around players and targets goes off (the glow only works without it). After switching it off, restart the game.", "questSparkles")
+  check(g, N"Quest marks on nameplates", N"A sword or a bag with your progress on mobs you need for a quest.", N"Sword: you must kill it for a quest. Bag: it drops a quest item. With the progress (3/10); nothing once that part is done. Uses the quest lines the game shows in the mob's tooltip. Not inside dungeons yet.", "questMarks")
+  choice(g, N"Mark position", N"Where the mark sits on the nameplate.", nil, "questMarkPos", FLT.QuestMarks and FLT.QuestMarks.POS_OPTIONS or { { key = "left", label = N"Left" } }, nil, 24) -- no own switch (user 31.10.)
 
   -- TOOLTIPS
-  c = category("tips", "Tooltips", "Interface\\Icons\\INV_Misc_Spyglass_03", "Extra lines in item and unit tooltips.")
-  g = group(c, "Items")
-  check(g, "Boss drops", "Shows which dungeon boss drops an item.", nil, "bossDrops")
-  check(g, "Gear Value", "Upgrade or downgrade in % against what you wear.", "On gear you can use: how much better (green) or worse (red) it is than what you wear, weighted for your talent spec like Armory > Gear Planner. Also a green arrow on upgrades in your bags, the loot roll window and quest rewards, and a gold star for wishlist items (/ofa rolltest shows an example).", "gearValue")
-  check(g, "Arrow color by armor type", "Yellow arrow for upgrades in a lighter armor type.", "The green arrow stays for upgrades in the best armor type of your class. Upgrades in a lighter type get a yellow arrow: warriors and paladins wear plate from level 40 (mail before), hunters and shamans mail from 40 (leather before), rogues and druids leather. Cloaks, jewelry, shields and weapons are not affected. Needs \"Gear Value\".", "arrowTiers", 24)
-  check(g, "Short green stats", "Long \"Equip:\" lines as short stats, e.g. \"+1% Hit\".", "\"Equip: Improves your chance to hit by 1%.\" becomes \"+1% Hit\", spell damage and healing get a line each, and \"Enchanted:\" lines put the number first. Lines it does not know stay as they are. Hover the item again after switching.", "shortStats")
-  check(g, "Hide \"appearance not collected\"", "No more blue \"You haven't collected this appearance\" line on items.", "Also hides \"You've collected this appearance, but not from this item\". Hover the item again after switching.", "hideAppearance")
-  check(g, "Recipes: who knows it", "Whether you, an alt or a guild member knows a recipe.", nil, "recipeTip")
-  check(g, "Disable automatic compare tooltip", "Hold Shift to see your equipped item next to the tooltip.", "Item tooltips no longer show your equipped item next to them automatically.", nil, nil,
+  c = category("tips", N"Tooltips", "Interface\\Icons\\INV_Misc_Spyglass_03", N"Extra lines in item and unit tooltips.")
+  g = group(c, N"Items")
+  check(g, N"Boss drops", N"Shows which dungeon boss drops an item.", nil, "bossDrops")
+  check(g, N"Gear Value", N"Upgrade or downgrade in % against what you wear.", N"On gear you can use: how much better (green) or worse (red) it is than what you wear, weighted for your talent spec like Armory > Gear Planner. Also a green arrow on upgrades in your bags, the loot roll window and quest rewards, and a gold star for wishlist items (/ofa rolltest shows an example).", "gearValue")
+  check(g, N"Arrow color by armor type", N"Yellow arrow for upgrades in a lighter armor type.", N"The green arrow stays for upgrades in the best armor type of your class. Upgrades in a lighter type get a yellow arrow: warriors and paladins wear plate from level 40 (mail before), hunters and shamans mail from 40 (leather before), rogues and druids leather. Cloaks, jewelry, shields and weapons are not affected. Needs \"Gear Value\".", "arrowTiers", 24)
+  check(g, N"Short green stats", N"Long \"Equip:\" lines as short stats, e.g. \"+1% Hit\".", N"\"Equip: Improves your chance to hit by 1%.\" becomes \"+1% Hit\", spell damage and healing get a line each, and \"Enchanted:\" lines put the number first. Lines it does not know stay as they are. Hover the item again after switching.", "shortStats")
+  check(g, N"Hide \"appearance not collected\"", N"No more blue \"You haven't collected this appearance\" line on items.", N"Also hides \"You've collected this appearance, but not from this item\". Hover the item again after switching.", "hideAppearance")
+  check(g, N"Recipes: who knows it", N"Whether you, an alt or a guild member knows a recipe.", nil, "recipeTip")
+  check(g, N"Disable automatic compare tooltip", N"Hold Shift to see your equipped item next to the tooltip.", N"Item tooltips no longer show your equipped item next to them automatically.", nil, nil,
     function() return Q.GetCompareShift() end, function(v) Q.SetCompareShift(v) end)
-  g = group(c, "Units")
-  check(g, "Target of players", "Shows who a player or NPC under your mouse is targeting.", "\"You\" when it is you.", "unitTarget")
+  g = group(c, N"Units")
+  check(g, N"Target of players", N"Shows who a player or NPC under your mouse is targeting.", N"\"You\" when it is you.", "unitTarget")
 
   -- SOCIAL
-  c = category("social", "Social", "Interface\\Icons\\INV_Letter_15", "Group invites, duels, recipe sharing and thanks.")
-  g = group(c, "Groups")
-  choice(g, "Group invites from", "Accepts group invites from the players you choose.", "Off: OneForAll does nothing with invites.", "inviteMode", Q.WHO_OPTIONS, "inviteOn")
-  choice(g, "Keyword invites from", "Invites players who whisper you the keyword.", "Off: OneForAll does nothing with whispers.", "keywordMode", Q.WHO_OPTIONS, "keywordOn")
+  c = category("social", N"Social", "Interface\\Icons\\INV_Letter_15", N"Group invites, duels, recipe sharing and thanks.")
+  g = group(c, N"Groups")
+  choice(g, N"Group invites from", N"Accepts group invites from the players you choose.", N"Off: OneForAll does nothing with invites.", "inviteMode", Q.WHO_OPTIONS, "inviteOn")
+  choice(g, N"Keyword invites from", N"Invites players who whisper you the keyword.", N"Off: OneForAll does nothing with whispers.", "keywordMode", Q.WHO_OPTIONS, "keywordOn")
   do
-    local r = row(g, "Keyword", "The word players whisper you to get an invite.", nil, 24)
+    local r = row(g, N"Keyword", N"The word players whisper you to get an invite.", nil, 24)
     local eb = FLT.SkinBlizz(CreateFrame("EditBox", nil, r, "InputBoxTemplate"))
     eb:SetSize(122, 20); eb:SetAutoFocus(false); eb:SetMaxLetters(24); place(r, eb)
     eb:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
@@ -551,39 +561,39 @@ local function createQoLPanel(parent)
     r:SetScript("OnClick", function() eb:SetFocus() end)
     refreshers[#refreshers + 1] = function() if not eb:HasFocus() then eb:SetText(Q.Get("keyword") or "") end end
   end
-  g = group(c, "Duels")
-  choice(g, "Allow duels from", "Duel requests from everyone else are declined.", "Off: OneForAll does nothing with duels.", "duelMode", Q.DUEL_OPTIONS, "duelOn")
+  g = group(c, N"Duels")
+  choice(g, N"Allow duels from", N"Duel requests from everyone else are declined.", N"Off: OneForAll does nothing with duels.", "duelMode", Q.DUEL_OPTIONS, "duelOn")
   if not FLT.RecipeChannelOff then -- 6.1.4: the channel search is off
-  g = group(c, "Recipes")
-  check(g, "Share recipes with other OneForAll users", "Finds OneForAll users outside your guild who know a recipe.",
-    "The Search button of a recipe in Professions > All recipes asks the other OneForAll users who know it (blue marker); only a few of them answer, so it stays fast with many players. When off, you are not asked and do not search either. Guild members are always shared. Moved here from Settings in 6.1.0.",
+  g = group(c, N"Recipes")
+  check(g, N"Share recipes with other OneForAll users", N"Finds OneForAll users outside your guild who know a recipe.",
+    N"The Search button of a recipe in Professions > All recipes asks the other OneForAll users who know it (blue marker); only a few of them answer, so it stays fast with many players. When off, you are not asked and do not search either. Guild members are always shared. Moved here from Settings in 6.1.0.",
     nil, nil, function() return FLT.IsRecipeShareEnabled and FLT.IsRecipeShareEnabled() end,
     function(v) if FLT.SetRecipeShareEnabled then FLT.SetRecipeShareEnabled(v) end end)
   end
-  g = group(c, "Buffs")
-  check(g, "Thank players who buff you", "Sends a /thank to players outside your group who buff you.", "For buffs that last longer than 2 minutes. It comes 1 second later, not in combat, at most once every 5 minutes per player. Your target is not changed. /ofa thanks shows the last buffs.", "thanksBuff")
+  g = group(c, N"Buffs")
+  check(g, N"Thank players who buff you", N"Sends a /thank to players outside your group who buff you.", N"For buffs that last longer than 2 minutes. It comes 1 second later, not in combat, at most once every 5 minutes per player. Your target is not changed. /ofa thanks shows the last buffs.", "thanksBuff")
 
   -- WORLD MAP
-  c = category("map", "World Map", "Interface\\Icons\\INV_Misc_Map_01", "Icons on the world map.")
-  g = group(c, "Map Landmarks")
-  check(g, "Map Landmarks", "Dungeon entrances, flight masters, ships, the tram and Library Books on the map.", "Your faction and neutral ones. Click an entrance to open that dungeon in OneForAll. Zeppelins, ships, the tram and flight masters show where they go.", "mapLandmarks")
-  check2(g, { "Dungeon & raid entrances", "Click to open the dungeon in OneForAll.", nil, "lmDungeons" },
-    { "Flight masters", "Shows where they fly to.", nil, "lmFlight" }, 24)
-  check2(g, { "Zeppelins, ships & tram", "Shows where they go.", nil, "lmTransport" },
-    { "Zone transitions", "A signpost where a road leads into the next zone.", "The tooltip names the other zone; a click shows it on the map. Places from the addon Carbonite (GPL).", "lmTransitions" }, 24)
-  check2(g, { "Library Books", "A book icon where each Library Book you still need lies.", "Books in your bags or bank, turned in or marked by you are not shown. Click a book to see it in the Library Books tab.", "mapBooks" },
-    { "Skyborne: Ley Lines & Convergences", "For Skyborne: where to charge your racial for an hour.", "High Order (Alliance) see the Ley Lines for Read Leyline (Attuned: 100% regeneration for 1 hour), Windshapers (Horde) the Elemental Convergences for Skysight (Charged: 30% movement speed for 1 hour). On by default for Skyborne; other races see the spots of their faction when they switch it on. Locations from the addon \"Skyborne Leyline & Convergence Marker\" by tr0tsky.", "lmSkyborne" }, 24)
-  g = group(c, "Quests")
-  check(g, "Quest icons", "A yellow ! at quest givers with quests for your level, a ? where you turn in finished quests.", "Only quests you can take now: your level (no grey ones, none too high), your side and class, pre-quests done. Hover an icon for the quests and their levels. Hidden while Questie is loaded, it shows its own. Quest data from QuestieDB (GPL); the new Forever zones are not in it yet.", "mapQuests")
+  c = category("map", N"World Map", "Interface\\Icons\\INV_Misc_Map_01", N"Icons on the world map.")
+  g = group(c, N"Map Landmarks")
+  check(g, N"Map Landmarks", N"Dungeon entrances, flight masters, ships, the tram and Library Books on the map.", N"Your faction and neutral ones. Click an entrance to open that dungeon in OneForAll. Zeppelins, ships, the tram and flight masters show where they go.", "mapLandmarks")
+  check2(g, { N"Dungeon & raid entrances", N"Click to open the dungeon in OneForAll.", nil, "lmDungeons" },
+    { N"Flight masters", N"Shows where they fly to.", nil, "lmFlight" }, 24)
+  check2(g, { N"Zeppelins, ships & tram", N"Shows where they go.", nil, "lmTransport" },
+    { N"Zone transitions", N"A signpost where a road leads into the next zone.", N"The tooltip names the other zone; a click shows it on the map. Places from the addon Carbonite (GPL).", "lmTransitions" }, 24)
+  check2(g, { N"Library Books", N"A book icon where each Library Book you still need lies.", N"Books in your bags or bank, turned in or marked by you are not shown. Click a book to see it in the Library Books tab.", "mapBooks" },
+    { N"Skyborne: Ley Lines & Convergences", N"For Skyborne: where to charge your racial for an hour.", N"High Order (Alliance) see the Ley Lines for Read Leyline (Attuned: 100% regeneration for 1 hour), Windshapers (Horde) the Elemental Convergences for Skysight (Charged: 30% movement speed for 1 hour). On by default for Skyborne; other races see the spots of their faction when they switch it on. Locations from the addon \"Skyborne Leyline & Convergence Marker\" by tr0tsky.", "lmSkyborne" }, 24)
+  g = group(c, N"Quests")
+  check(g, N"Quest icons", N"A yellow ! at quest givers with quests for your level, a ? where you turn in finished quests.", N"Only quests you can take now: your level (no grey ones, none too high), your side and class, pre-quests done. Hover an icon for the quests and their levels. Hidden while Questie is loaded, it shows its own. Quest data from QuestieDB (GPL); the new Forever zones are not in it yet.", "mapQuests")
   -- 6.1.9 (user 07.11.: our ? lay over the game's own one): the ! and the ? each on their own
-  check2(g, { "Quest givers (!)", "A yellow ! where you can take a quest.", nil, "mapQuestGivers" },
-    { "Turn-ins (?)", "A yellow ? where you turn in a finished quest.", "Switch it off when the game's own ? already shows on the map.", "mapQuestTurnins" }, 24)
-  check(g, "Also on the continent map", "The quest icons also when you zoom out of a zone.", "All zones of the continent at once, a little smaller, without the routes of walking quest givers. Needs \"Quest icons\".", "mapQuestsContinent", 24)
-  g = group(c, "Map button")
-  check(g, "OneForAll button on the map", "A logo at the top left of the world map with all these switches.", "Click it for a quick list: Map Landmarks and its parts, Remove Fog and the dungeon map. It sits below other addons' buttons there (RareScanner ...).", "mapButton")
-  g = group(c, "Exploration")
+  check2(g, { N"Quest givers (!)", N"A yellow ! where you can take a quest.", nil, "mapQuestGivers" },
+    { N"Turn-ins (?)", N"A yellow ? where you turn in a finished quest.", N"Switch it off when the game's own ? already shows on the map.", "mapQuestTurnins" }, 24)
+  check(g, N"Also on the continent map", N"The quest icons also when you zoom out of a zone.", N"All zones of the continent at once, a little smaller, without the routes of walking quest givers. Needs \"Quest icons\".", "mapQuestsContinent", 24)
+  g = group(c, N"Map button")
+  check(g, N"OneForAll button on the map", N"A logo at the top left of the world map with all these switches.", N"Click it for a quick list: Map Landmarks and its parts, Remove Fog and the dungeon map. It sits below other addons' buttons there (RareScanner ...).", "mapButton")
+  g = group(c, N"Exploration")
   do -- with a slider for how visible the unexplored parts are (user 01.11.)
-    local r = check(g, "Remove Fog", "Shows the parts of a zone you have not explored yet.", "The world map normally hides the areas you have not visited. With this the whole zone map is shown. The slider sets how visible the unexplored parts are (0 % hidden, 100 % fully shown).", "mapFog")
+    local r = check(g, N"Remove Fog", N"Shows the parts of a zone you have not explored yet.", N"The world map normally hides the areas you have not visited. With this the whole zone map is shown. The slider sets how visible the unexplored parts are (0 % hidden, 100 % fully shown).", "mapFog")
     local val = FLT.NewFS(r, nil, "OVERLAY", "GameFontHighlight"); val:SetTextColor(FLT.SkinC(1, 0.82, 0.2))
     val:SetWidth(40); val:SetJustifyH("RIGHT"); place(r, val)
     local sl = UI.Slider(r, 130, 0, 100, 5, function(v)
@@ -591,7 +601,7 @@ local function createQoLPanel(parent)
       if Q.Get("mapFogAlpha") ~= v then Q.Set("mapFogAlpha", v) end
     end)
     place(r, sl, 10)
-    hint(sl, "Unexplored areas", "How visible the parts you have not explored yet are: 0 % hidden, 100 % fully shown. Mouse wheel or drag.")
+    hint(sl, N"Unexplored areas", N"How visible the parts you have not explored yet are: 0 % hidden, 100 % fully shown. Mouse wheel or drag.")
     local function show()
       local v = Q.Get("mapFogAlpha") or 100; sl:SetValue(v); val:SetText(v .. " %")
       local on = Q.Get("mapFog") and true or false; sl:SetAlpha(on and 1 or 0.4); sl:EnableMouse(on); sl:EnableMouseWheel(on)
@@ -599,43 +609,43 @@ local function createQoLPanel(parent)
     refreshers[#refreshers + 1] = show
     r.cb:HookScript("OnClick", show) -- greyed out while Remove Fog is off
   end
-  check(g, "Zone level range", "The zone's level range at the top right of the world map and when you hover a zone.", "At the top right of a zone map, and behind the zone name when you hover a zone on the continent map. Gold: your level, red: still too low, grey: you are above it.", "mapZoneLevel")
-  g = group(c, "Flights")
-  check2(g, { "Open flight map at once", "At a flight master, straight to the flight map.", "Not when the flight master also has quests for you. Hold Shift to talk normally.", "flightMapNow" },
-    { "Flight times", "A bar with the time left while you fly.", "The time also shows in the tooltip of the destinations on the flight map. OneForAll measures your flights; routes you never flew are estimated (\"about\").", "flightTimes" })
-  g = group(c, "Dungeons")
+  check(g, N"Zone level range", N"The zone's level range at the top right of the world map and when you hover a zone.", N"At the top right of a zone map, and behind the zone name when you hover a zone on the continent map. Gold: your level, red: still too low, grey: you are above it.", "mapZoneLevel")
+  g = group(c, N"Flights")
+  check2(g, { N"Open flight map at once", N"At a flight master, straight to the flight map.", N"Not when the flight master also has quests for you. Hold Shift to talk normally.", "flightMapNow" },
+    { N"Flight times", N"A bar with the time left while you fly.", N"The time also shows in the tooltip of the destinations on the flight map. OneForAll measures your flights; routes you never flew are estimated (\"about\").", "flightTimes" })
+  g = group(c, N"Dungeons")
   -- moved from Settings (5.6.8, user 22.10.); on by default: only an explicit "off" turns it off
-  check(g, "Dungeon map on M", "Inside a dungeon, M opens OneForAll's dungeon map.", "Inside a dungeon that has a map, the world map key (M) opens OneForAll's dungeon map instead of the world map. Press it again to close. Takes effect outside combat.", nil, nil,
+  check(g, N"Dungeon map on M", N"Inside a dungeon, M opens OneForAll's dungeon map.", N"Inside a dungeon that has a map, the world map key (M) opens OneForAll's dungeon map instead of the world map. Press it again to close. Takes effect outside combat.", nil, nil,
     function() return type(OneForAllDB) == "table" and OneForAllDB.dungeonMapKey ~= false end,
     function(v) if type(OneForAllDB) == "table" then OneForAllDB.dungeonMapKey = v and true or false end; if FLT.ApplyDungeonMapKey then FLT.ApplyDungeonMapKey() end end)
 
   -- UNIT FRAMES
-  c = category("frames", "Unit Frames", "Interface\\Icons\\INV_Misc_Head_Human_01", "Colors and bars of the unit and raid frames.")
-  g = group(c, "Player, target & party")
-  check(g, "Class colors: player, target & party", "Health bars of players in their class color.", "NPCs keep their normal color.", "classColors")
-  check(g, "Brighter colors", "Plain bright bars for the class colors.", "The game's health bar texture is dark; with this the class colors use a plain bright bar.", "classBright", 24)
-  g = group(c, "Raid frames")
-  check(g, "Class colors: raid frames", "The game's own setting.", "Same as Interface > Display Class Colors.", nil, nil,
+  c = category("frames", N"Unit Frames", "Interface\\Icons\\INV_Misc_Head_Human_01", N"Colors and bars of the unit and raid frames.")
+  g = group(c, N"Player, target & party")
+  check(g, N"Class colors: player, target & party", N"Health bars of players in their class color.", N"NPCs keep their normal color.", "classColors")
+  check(g, N"Brighter colors", N"Plain bright bars for the class colors.", N"The game's health bar texture is dark; with this the class colors use a plain bright bar.", "classBright", 24)
+  g = group(c, N"Raid frames")
+  check(g, N"Class colors: raid frames", N"The game's own setting.", N"Same as Interface > Display Class Colors.", nil, nil,
     function() return Q.GetCVarSwitch("raidClassColor") end, function(v) Q.SetCVarSwitch("raidClassColor", v) end)
-  check(g, "Power bars: raid frames", "Mana, rage and energy bars in the raid frames.", "A game setting.", nil, nil,
+  check(g, N"Power bars: raid frames", N"Mana, rage and energy bars in the raid frames.", N"A game setting.", nil, nil,
     function() return Q.GetCVarSwitch("raidPowerBars") end, function(v) Q.SetCVarSwitch("raidPowerBars", v) end)
 
   -- SPELLS
-  c = category("spells", "Spells", "Interface\\Icons\\INV_Misc_Book_11", "Your action bars and the spellbook.")
-  g = group(c, "Action bars")
+  c = category("spells", N"Spells", "Interface\\Icons\\INV_Misc_Book_11", N"Your action bars and the spellbook.")
+  g = group(c, N"Action bars")
   do
     local LR = FLT.LowRank
-    local r = check(g, "Check low spell ranks", "Offers the highest rank for spells on your bars.", "Looks for spells on your action bars that use a lower rank than one you already know, and offers to put the highest rank there. After a trainer visit it waits until you close the trainer window. Macros are not checked.", "lowRank")
-    button(r, "Check now", 90, "Checks your action bars right away.", function() if LR then LR.Check("button") end end)
-    r = row(g, "Kept ranks", "Ranks you keep on purpose (Keep in the popup).", "Click one to have it reported again.", 24)
+    local r = check(g, N"Check low spell ranks", N"Offers the highest rank for spells on your bars.", N"Looks for spells on your action bars that use a lower rank than one you already know, and offers to put the highest rank there. After a trainer visit it waits until you close the trainer window. Macros are not checked.", "lowRank")
+    button(r, N"Check now", 90, N"Checks your action bars right away.", function() if LR then LR.Check("button") end end)
+    r = row(g, N"Kept ranks", N"Ranks you keep on purpose (Keep in the popup).", N"Click one to have it reported again.", 24)
     local b = dropButton(r, 110)
-    local function show() local n = LR and #LR.GetKept() or 0; b:SetLabel(n == 1 and "1 spell" or (n .. " spells")) end
+    local function show() local n = LR and #LR.GetKept() or 0; b:SetLabel(n == 1 and L["1 spell"] or string.format(L["%d spells"], n)) end
     b:SetScript("OnClick", function(self)
       if not LR then return end
       local opts = LR.GetKept()
       for _, e in ipairs(opts) do e.remove = true end -- a click removes it: red cross
-      if #opts == 0 then opts = { { key = "__none", label = "|cff9d9d9dNothing kept|r" } }
-      else opts[#opts + 1] = { key = "__all", label = FLT.SkinHex("ffd35a") .. "Remove all|r" } end
+      if #opts == 0 then opts = { { key = "__none", label = "|cff9d9d9d" .. L["Nothing kept"] .. "|r" } }
+      else opts[#opts + 1] = { key = "__all", label = FLT.SkinHex("ffd35a") .. L["Remove all"] .. "|r" } end
       openDropDown(self, opts, nil, function(k)
         if k == "__all" then LR.ClearKept() elseif k ~= "__none" then LR.RemoveKept(k) end
         show()
@@ -643,20 +653,20 @@ local function createQoLPanel(parent)
     end)
     refreshers[#refreshers + 1] = show
   end
-  g = group(c, "Spellbook")
-  check(g, "Trainer button in the spellbook", "A book button in the spellbook (P) opens the trainer window.", "Shows the spells and ranks your class trainer teaches that you do not know yet, next to the spellbook.", "spellbookTrainer",
+  g = group(c, N"Spellbook")
+  check(g, N"Trainer button in the spellbook", N"A book button in the spellbook (P) opens the trainer window.", N"Shows the spells and ranks your class trainer teaches that you do not know yet, next to the spellbook.", "spellbookTrainer",
     nil, nil, function(v) Q.Set("spellbookTrainer", v); local psf = rawget(_G, "PlayerSpellsFrame"); local b = type(psf) == "table" and psf.ofaTrainerButton; if b then b:SetShown(v) end end)
   -- POPUPS & ALERTS (moved from Settings, 5.6.8, user 22.10.)
-  c = category("alerts", "Popups & Alerts", "Interface\\Icons\\INV_Misc_Bell_01", "Popups that come up on their own while you play.")
-  g = group(c, "Buff reminder")
-  check(g, "Buff reminder", "A small popup when one of your buffs runs out.", "Add your own buffs below (e.g. Demon Skin) with the time in seconds. When the buff has less time left, or has run out, a small popup says so; click its icon to cast the buff again (not in combat - there it only shows). It goes away by itself once you renew the buff. Drag the popup to move it.", "buffReminder")
-  check2(g, { "Sleep in cities", "No buff reminder in the capitals.", "Stormwind, Ironforge, Darnassus, Orgrimmar, Thunder Bluff and Undercity. Buffs that ran out there are shown once you leave.", "buffSleepCities" },
-    { "Show icon only", "Only the icon with the time left on it.", "The time bar under it is as wide as the icon. Several icons sit next to each other.", "buffIconOnly" }, 24)
-  check2(g, { "Flash cards", "The cards glow so you notice them.", "Only while a card is shown.", "buffFlash" },
-    { "Snooze button (Zz)", "On each card: quiet until you cast it again.", "Right-click on a card snoozes it too.", "buffSnoozeBtn" }, 24)
+  c = category("alerts", N"Popups & Alerts", "Interface\\Icons\\INV_Misc_Bell_01", N"Popups that come up on their own while you play.")
+  g = group(c, N"Buff reminder")
+  check(g, N"Buff reminder", N"A small popup when one of your buffs runs out.", N"Add your own buffs below (e.g. Demon Skin) with the time in seconds. When the buff has less time left, or has run out, a small popup says so; click its icon to cast the buff again (not in combat - there it only shows). It goes away by itself once you renew the buff. Drag the popup to move it.", "buffReminder")
+  check2(g, { N"Sleep in cities", N"No buff reminder in the capitals.", N"Stormwind, Ironforge, Darnassus, Orgrimmar, Thunder Bluff and Undercity. Buffs that ran out there are shown once you leave.", "buffSleepCities" },
+    { N"Show icon only", N"Only the icon with the time left on it.", N"The time bar under it is as wide as the icon. Several icons sit next to each other.", "buffIconOnly" }, 24)
+  check2(g, { N"Flash cards", N"The cards glow so you notice them.", N"Only while a card is shown.", "buffFlash" },
+    { N"Snooze button (Zz)", N"On each card: quiet until you cast it again.", N"Right-click on a card snoozes it too.", "buffSnoozeBtn" }, 24)
   do -- size slider and Test (user 01.11.): Test shows the reminder for 10 seconds to set its size and drag it
-    local r = row(g, "Size", "How large the reminder is. Test shows it for 10 seconds.", nil, 24)
-    button(r, "Test", 50, "Shows the reminder for 10 seconds, so you can see its size and drag it where you want it.", function() Q.BuffTest() end)
+    local r = row(g, N"Size", N"How large the reminder is. Test shows it for 10 seconds.", nil, 24)
+    button(r, N"Test", 50, N"Shows the reminder for 10 seconds, so you can see its size and drag it where you want it.", function() Q.BuffTest() end)
     local val = FLT.NewFS(r, nil, "OVERLAY", "GameFontHighlight"); val:SetTextColor(FLT.SkinC(1, 0.82, 0.2))
     val:SetWidth(40); val:SetJustifyH("RIGHT"); place(r, val, 10)
     local sl = UI.Slider(r, 130, 50, 150, 5, function(v)
@@ -664,21 +674,21 @@ local function createQoLPanel(parent)
       if Q.Get("buffScale") ~= v then Q.Set("buffScale", v) end
     end)
     place(r, sl, 10)
-    hint(sl, "Size", "50 - 150 %. Mouse wheel or drag.")
+    hint(sl, N"Size", N"50 - 150 %. Mouse wheel or drag.")
     refreshers[#refreshers + 1] = function() local v = Q.Get("buffScale") or 100; sl:SetValue(v); val:SetText(v .. " %") end
   end
   do
-    local r = row(g, "Add a buff", "Spell name and seconds left when you want the reminder.", "Any buff name works, also without a suggestion - the list only helps. The name as in your spellbook, e.g. \"Demon Skin\". Flasks and elixirs: the name of their buff (e.g. \"Supreme Power\"). Weapon oils, sharpening stones and poisons: type their name (\"sh\" shows the sharpening stones) and pick \"(main hand)\", or add \"(off hand)\" for the other weapon; a click on the reminder uses it on that weapon when it is in your bags. Seconds: 5 - 3600.", 24)
+    local r = row(g, N"Add a buff", N"Spell name and seconds left when you want the reminder.", N"Any buff name works, also without a suggestion - the list only helps. The name as in your spellbook, e.g. \"Demon Skin\". Flasks and elixirs: the name of their buff (e.g. \"Supreme Power\"). Weapon oils, sharpening stones and poisons: type their name (\"sh\" shows the sharpening stones) and pick \"(main hand)\", or add \"(off hand)\" for the other weapon; a click on the reminder uses it on that weapon when it is in your bags. Seconds: 5 - 3600.", 24)
     local list -- the list button, below
     local nameBox, secBox
     local function add()
       local n = Q.AddBuffReminder(nameBox:GetText(), secBox:GetText())
       if n then nameBox:SetText(""); nameBox:ClearFocus(); secBox:ClearFocus(); if list then list.show() end end
     end
-    button(r, "Add", 50, nil, add)
+    button(r, N"Add", 50, nil, add)
     secBox = FLT.SkinBlizz(CreateFrame("EditBox", nil, r, "InputBoxTemplate"))
     -- "sec" behind the box (user 03.11.: not clear that 30 are seconds)
-    local secLabel = FLT.NewFS(r, nil, "OVERLAY", "GameFontDisableSmall"); secLabel:SetText("sec")
+    local secLabel = FLT.NewFS(r, nil, "OVERLAY", "GameFontDisableSmall"); secLabel:SetText(L["sec"])
     secLabel:SetPoint("RIGHT", r, "RIGHT", -10 - r.rightW, 0); r.rightW = r.rightW + (secLabel:GetStringWidth() or 18) + 6
     secBox:SetSize(40, 20); secBox:SetAutoFocus(false); secBox:SetMaxLetters(4); secBox:SetNumeric(true); secBox:SetText("30"); place(r, secBox, 10)
     nameBox = FLT.SkinBlizz(CreateFrame("EditBox", nil, r, "InputBoxTemplate"))
@@ -693,11 +703,11 @@ local function createQoLPanel(parent)
       if not self:HasFocus() then return end
       local opts = {}
       for _, e in ipairs(Q.BuffSuggestions(self:GetText())) do
-        opts[#opts + 1] = { key = e.label or e.name, label = "|T" .. Q.BuffIcon(e.name) .. ":14:14|t " .. (e.label or e.name) .. (e.active and "  |cff9d9d9d(active now)|r" or (e.preset and "  |cff9d9d9d(class buff)|r" or (e.notInBags and "  |cff9d9d9d(none in bags)|r" or ""))) }
+        opts[#opts + 1] = { key = e.label or e.name, label = "|T" .. Q.BuffIcon(e.name) .. ":14:14|t " .. (e.label or e.name) .. (e.active and "  |cff9d9d9d(" .. L["active now"] .. ")|r" or (e.preset and "  |cff9d9d9d(" .. L["class buff"] .. ")|r" or (e.notInBags and "  |cff9d9d9d(" .. L["none in bags"] .. ")|r" or ""))) }
       end
       -- no suggestion: say that any name works (user 03.11.: players thought they could only pick from the list)
       if #opts == 0 and self:GetText() ~= "" then
-        opts[1] = { key = "__any", label = "|cff9d9d9dNo suggestion - any buff name works: press Enter or Add|r" }
+        opts[1] = { key = "__any", label = "|cff9d9d9d" .. L["No suggestion - any buff name works: press Enter or Add"] .. "|r" }
       end
       if #opts > 0 then openDropDown(self, opts, nil, function(k)
         if k == "__any" then self:SetFocus(); return end
@@ -707,7 +717,7 @@ local function createQoLPanel(parent)
     -- grey example while empty: any name can be typed, the list only helps (hooked after SetScript - beta13 set it
     -- before, the SetScript calls replaced the hooks and the example stayed under the typed text)
     local hint = FLT.NewFS(nameBox, nil, "ARTWORK", "GameFontDisableSmall"); hint:SetPoint("LEFT", 6, 0); hint:SetPoint("RIGHT", -4, 0)
-    hint:SetJustifyH("LEFT"); hint:SetText("any buff, e.g. Demon Skin"); if hint.SetWordWrap then hint:SetWordWrap(false) end
+    hint:SetJustifyH("LEFT"); hint:SetText(L["any buff, e.g. Demon Skin"]); if hint.SetWordWrap then hint:SetWordWrap(false) end
     local function paintHint() hint:SetShown(nameBox:GetText() == "" and not nameBox:HasFocus()) end
     nameBox:SetScript("OnTextChanged", function(self, user) paintHint(); if user then suggest(self) end end)
     nameBox:SetScript("OnEditFocusGained", function(self) paintHint(); if self:GetText() == "" then suggest(self) end end)
@@ -715,19 +725,19 @@ local function createQoLPanel(parent)
     paintHint()
     r:SetScript("OnClick", function() nameBox:SetFocus() end)
     -- the watched buffs: a click on one removes it
-    local lr = row(g, "Watched buffs", "Click a buff in the list to remove it.", nil, 24)
+    local lr = row(g, N"Watched buffs", N"Click a buff in the list to remove it.", nil, 24)
     local b, arrow = dropButton(lr, 200)
     local function show()
       local n = #Q.GetBuffReminders()
-      b:SetLabel(n == 0 and "None yet" or (n == 1 and "1 buff" or (n .. " buffs")))
+      b:SetLabel(n == 0 and L["None yet"] or (n == 1 and L["1 buff"] or string.format(L["%d buffs"], n)))
     end
     b:SetScript("OnClick", function(self)
       local opts = {}
       for _, e in ipairs(Q.GetBuffReminders()) do
         opts[#opts + 1] = { key = e.name, label = "|T" .. Q.BuffIcon(e.name) .. ":14:14|t " .. (e.label or e.name) .. "  |cff9d9d9d" .. e.sec .. " s|r", remove = true }
       end
-      if #opts == 0 then opts = { { key = "__none", label = "|cff9d9d9dNo buffs yet|r" } }
-      else opts[#opts + 1] = { key = "__all", label = FLT.SkinHex("ffd35a") .. "Remove all|r" } end
+      if #opts == 0 then opts = { { key = "__none", label = "|cff9d9d9d" .. L["No buffs yet"] .. "|r" } }
+      else opts[#opts + 1] = { key = "__all", label = FLT.SkinHex("ffd35a") .. L["Remove all"] .. "|r" } end
       openDropDown(self, opts, nil, function(k)
         if k == "__all" then Q.ClearBuffReminders() elseif k ~= "__none" then Q.RemoveBuffReminder(k) end
         show()
@@ -736,15 +746,15 @@ local function createQoLPanel(parent)
     b.show = show; list = b
     refreshers[#refreshers + 1] = show
   end
-  g = group(c, "Popups")
-  check(g, "Durability warning", "Warns when your gear drops to 20% durability.", nil, "durability")
-  check(g, "Nearby Library Book alerts", "Popup when you are close to a missing library book.", nil, nil, nil,
+  g = group(c, N"Popups")
+  check(g, N"Durability warning", N"Warns when your gear drops to 20% durability.", nil, "durability")
+  check(g, N"Nearby Library Book alerts", N"Popup when you are close to a missing library book.", nil, nil, nil,
     function() return FLT.IsNearbyAlertsEnabled and FLT:IsNearbyAlertsEnabled() and true or false end,
     function(v) if FLT.SetNearbyAlertsEnabled then FLT:SetNearbyAlertsEnabled(v) end end)
-  check(g, "Pet ability alerts  |cff9d9d9d(Hunter)|r", "Popup when a beast nearby teaches a higher ability rank your pets can learn.", nil, nil, nil,
+  check(g, N"Pet ability alerts (Hunter)", N"Popup when a beast nearby teaches a higher ability rank your pets can learn.", nil, nil, nil,
     function() return FLT.IsPetTeachAlertsEnabled and FLT:IsPetTeachAlertsEnabled() and true or false end,
     function(v) if FLT.SetPetTeachAlertsEnabled then FLT:SetPetTeachAlertsEnabled(v) end end)
-  check(g, "Quest share popup in dungeons", "Opens when a group member can still accept one of your dungeon quests.", nil, nil, nil,
+  check(g, N"Quest share popup in dungeons", N"Opens when a group member can still accept one of your dungeon quests.", nil, nil, nil,
     function() return not (type(OneForAllDB) == "table" and type(OneForAllDB.questShare) == "table" and OneForAllDB.questShare.popup == false) end,
     function(v) if type(OneForAllDB) == "table" then OneForAllDB.questShare = OneForAllDB.questShare or {}; OneForAllDB.questShare.popup = v and true or false end end)
   ---------------------------------------------------------------------------------------------------
@@ -758,11 +768,12 @@ local function createQoLPanel(parent)
   end
   local searchBox
   for i, cat in ipairs(cats) do
-    local b = UI.NavEntry(nav, navTop - (i - 1) * UI.NAV.step, cat.nav or cat.label, cat.icon)
+    local b = UI.NavEntry(nav, navTop - (i - 1) * UI.NAV.step, L[cat.nav or cat.label], cat.icon)
     b.key = cat.key
     b.count = FLT.NewFS(b, nil, "OVERLAY", "GameFontDisableSmall"); b.count:SetPoint("RIGHT", -5, 0)
     do local font, _, flags = b.count:GetFont(); if font then b.count:SetFont(font, 10, flags) end end
-    if cat.new then local m = UI.NewMark(b, "New options in this group."); m:SetPoint("RIGHT", b.count, "LEFT", -2, 0) end
+
+    if cat.new then local m = UI.NewMark(b, L["New options in this group."]); m:SetPoint("RIGHT", b.count, "LEFT", -2, 0) end
     b:SetScript("OnClick", function() if search ~= "" then searchBox:SetText("") end; selectCat(cat.key) end)
     cat.nav = b
     navButtons[i] = b
@@ -772,6 +783,14 @@ local function createQoLPanel(parent)
       local on = 0
       for _, get in ipairs(cat.checks) do if get() then on = on + 1 end end
       cat.nav.count:SetText(on .. "/" .. #cat.checks)
+      -- a long name (German "Popups & Hinweise") ran into the count: a smaller font, then cut with "..." (beta7)
+      local lb = cat.nav._label
+      local room = lb and ((cat.nav:GetWidth() or 0) - 29 - (cat.nav.count:GetStringWidth() or 20) - 8)
+      if lb and not cat.fitted and room > 0 and (lb:GetStringWidth() or 0) > room then
+        cat.fitted = true
+        local font, _, flags = lb:GetFont(); if font then lb:SetFont(font, 11, flags) end
+        if (lb:GetStringWidth() or 0) > room then lb:SetWidth(room); if lb.SetWordWrap then lb:SetWordWrap(false) end end
+      end
     end
   end
 
@@ -803,7 +822,7 @@ local function createQoLPanel(parent)
     if search == "" then
       local cat
       for _, x in ipairs(cats) do if x.key == current then cat = x end end
-      FLT.SetTex(hIcon, cat.icon); hTitle:SetText(cat.label); hSub:SetText(cat.desc)
+      FLT.SetTex(hIcon, cat.icon); hTitle:SetText(L[cat.label]); hSub:SetText(L[cat.desc])
       for _, gr in ipairs(cat.groups) do
         y = heading(gr.title, y)
         for _, r in ipairs(gr.rows) do y = put(r, y) end
@@ -824,8 +843,8 @@ local function createQoLPanel(parent)
         end
         if not first then y = y - 10 end
       end
-      FLT.SetTex(hIcon, "Interface\\Icons\\INV_Misc_Spyglass_02"); hTitle:SetText("Search")
-      hSub:SetText(n == 1 and "1 setting found in all groups." or (n .. " settings found in all groups."))
+      FLT.SetTex(hIcon, "Interface\\Icons\\INV_Misc_Spyglass_02"); hTitle:SetText(L["Search"])
+      hSub:SetText(n == 1 and L["1 setting found in all groups."] or string.format(L["%d settings found in all groups."], n))
       empty:SetShown(n == 0)
     end
     child:SetHeight(-y + 8)
@@ -839,4 +858,4 @@ local function createQoLPanel(parent)
   return panel
 end
 
-UI.RegisterPanel({ key="qol", label="Quality of Life", order=4, tabWidth=140, create=createQoLPanel })
+UI.RegisterPanel({ key="qol", label=N"Quality of Life", order=4, tabWidth=140, create=createQoLPanel })

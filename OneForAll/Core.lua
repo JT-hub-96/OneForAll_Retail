@@ -1,11 +1,35 @@
 -- Item API: newer clients only have these under C_Item.
 local GetItemInfo = GetItemInfo or (C_Item and C_Item.GetItemInfo)
 local ADDON, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 local function msg(text)
   DEFAULT_CHAT_FRAME:AddMessage("|cff66ccff" .. tostring(FLT.DISPLAY_NAME or "OneForAll") .. ":|r " .. tostring(text))
 end
 FLT.Msg = msg
+
+-- The English profession key (our data and saved data use it) for a profession name in the client's language (6.2.0:
+-- "Schneiderei" -> "Tailoring"; the trainer and the old skill list give the name only). From the profession spells,
+-- whose names the client knows in its language.
+local PROF_SPELLS = { Alchemy = 2259, Blacksmithing = 2018, Enchanting = 7411, Engineering = 4036, Leatherworking = 2108,
+  Tailoring = 3908, Cooking = 2550, ["First Aid"] = 3273, Mining = 2575, Herbalism = 2366, Skinning = 8613, Fishing = 7620 }
+FLT.PROF_SPELLS = PROF_SPELLS
+local profByName
+function FLT.ProfKey(name)
+  if type(name) ~= "string" then return nil end
+  if PROF_SPELLS[name] then return name end
+  if not profByName then
+    local t, all = {}, true
+    for key, id in pairs(PROF_SPELLS) do
+      local n
+      pcall(function() n = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)) or (GetSpellInfo and GetSpellInfo(id)) end)
+      if type(n) == "string" then t[n] = key else all = false end
+    end
+    if not all then return t[name] end -- spell data not ready yet: try again next time
+    profByName = t
+  end
+  return profByName[name]
+end
 
 -- Safe calls for event handlers: an error is caught instead of popping up again and
 -- again (e.g. in combat, when the Forever client hands out "secret" values). The
@@ -23,7 +47,7 @@ local function logError(tag, err)
   end
   if not errorSaid then
     errorSaid = true
-    msg("An error was caught and the feature skipped. Type /ofa errors to see it (for a bug report).")
+    msg(L["An error was caught and the feature skipped. Type /ofa errors to see it (for a bug report)."])
   end
 end
 function FLT.SafeCall(tag, fn, ...)
@@ -70,7 +94,7 @@ function FLT:RecordObservedTurnIn(qid)
   local book = self:FindBookByQuestID(qid)
   if not book then return end
   OneForAllCharDB.confirmedDone[book.itemId] = true
-  msg(string.format("Confirmed turn-in: %s (quest %d).", book.name, book.questId))
+  msg(string.format(L["Confirmed turn-in: %s (quest %d)."], FLT.ItemName and FLT.ItemName(book.itemId, book.name) or book.name, book.questId))
 end
 
 function FLT:ScanBags()
@@ -272,7 +296,7 @@ SlashCmdList.ONEFORALL = function(cmd)
   cmd = (cmd or ""):lower():match("^%s*(.-)%s*$")
   if cmd == "reset" then
     OneForAllCharDB.manualDone = {}
-    msg("Manual marks reset. Observed turn-ins are kept.")
+    msg(L["Manual marks reset. Observed turn-ins are kept."])
     FLT:Refresh()
   elseif cmd == "craft" then
     if FLT.CraftList then FLT.CraftList.Toggle() end
@@ -285,17 +309,17 @@ SlashCmdList.ONEFORALL = function(cmd)
       local x, y = pos:GetXY()
       msg(string.format("%s (mapID %d): %.1f, %.1f", info and info.name or "?", mapID, x * 100, y * 100))
     else
-      msg("No map position available here (e.g. inside an instance).")
+      msg(L["No map position available here (e.g. inside an instance)."])
     end
   elseif cmd == "scale" or cmd:match("^scale%s") then
     local value = cmd:match("^scale%s+([%d%.]+)")
     if FLT.SetWindowScale then
       local applied = FLT:SetWindowScale(value)
-      msg(string.format("Window size set to %d%%.%s", math.floor(applied * 100 + 0.5), value and "" or " Position reset to the screen center."))
+      msg(string.format(L["Window size set to %d%%."], math.floor(applied * 100 + 0.5)) .. (value and "" or (" " .. L["Position reset to the screen center."])))
     end
   elseif cmd == "tabs reset" then
     if FLT.UI and FLT.UI.ResetTabs then FLT.UI.ResetTabs() end
-    msg("Tab selection reset to the defaults for this character.")
+    msg(L["Tab selection reset to the defaults for this character."])
   elseif cmd == "share test" then
     if FLT.QuestShareTest then FLT:QuestShareTest() end
   elseif cmd == "questmarks test" then
@@ -306,29 +330,29 @@ SlashCmdList.ONEFORALL = function(cmd)
     if FLT.OpenQuestShare then FLT:OpenQuestShare() end
   elseif cmd == "share on" or cmd == "share off" then
     if FLT.SetQuestShareOption then FLT:SetQuestShareOption("popup", cmd == "share on") end
-    msg("Quest share popup " .. (cmd == "share on" and "enabled." or "disabled. /ofa share still opens it manually."))
+    msg(cmd == "share on" and L["Quest share popup enabled."] or L["Quest share popup disabled. /ofa share still opens it manually."])
   elseif cmd == "share emote on" or cmd == "share emote off" then
     if FLT.SetQuestShareOption then FLT:SetQuestShareOption("emote", cmd == "share emote on") end
-    msg("Share emote " .. (cmd == "share emote on" and "enabled." or "disabled."))
+    msg(cmd == "share emote on" and L["Share emote enabled."] or L["Share emote disabled."])
   elseif cmd == "mem" then
     -- memory check: the number includes garbage that Lua has not freed yet
     local get = (C_AddOns and C_AddOns.GetAddOnMemoryUsage) or GetAddOnMemoryUsage
     if UpdateAddOnMemoryUsage then UpdateAddOnMemoryUsage() end
     local kb = get and get("OneForAll")
-    if kb then msg(string.format("Memory: %.1f MB (includes garbage the game has not cleaned up yet).", kb / 1024)) end
+    if kb then msg(string.format(L["Memory: %.1f MB (includes garbage the game has not cleaned up yet)."], kb / 1024)) end
   elseif cmd == "trainer" then
     if FLT.PrintTrainerDebug then FLT.PrintTrainerDebug() end
   elseif cmd == "buttons" then
     if FLT.PrintMinimapCollector then FLT.PrintMinimapCollector() end
   elseif cmd == "errors" then
     local list = type(OneForAllDB) == "table" and OneForAllDB.errors
-    if not list or #list == 0 then msg("No errors caught.") else
-      msg(#list .. " caught error(s), newest first (date | version | client language | where | error):")
+    if not list or #list == 0 then msg(L["No errors caught."]) else
+      msg(string.format(L["%d caught error(s), newest first (date | version | client language | where | error):"], #list))
       for i = 1, math.min(10, #list) do msg("  " .. list[i]) end
     end
   elseif cmd == "errors clear" then
     if type(OneForAllDB) == "table" then OneForAllDB.errors = nil end
-    msg("Caught errors cleared.")
+    msg(L["Caught errors cleared."])
   elseif cmd == "bug" then
     if FLT.UI and FLT.UI.ShowBugReport then FLT.UI.ShowBugReport() end
   elseif cmd == "rolltest" then
@@ -345,7 +369,7 @@ SlashCmdList.ONEFORALL = function(cmd)
     local parts = {}
     for name, rank in pairs(t) do parts[#parts + 1] = name .. " " .. rank end
     table.sort(parts)
-    msg(#parts > 0 and ("Known pet abilities: " .. table.concat(parts, ", ")) or "No pet abilities found yet - summon your pet and try again.")
+    msg(#parts > 0 and string.format(L["Known pet abilities: %s"], table.concat(parts, ", ")) or L["No pet abilities found yet - summon your pet and try again."])
   elseif cmd == "news" then
     if FLT.ShowNews then FLT.ShowNews() end
   elseif cmd == "setup" then
@@ -353,8 +377,8 @@ SlashCmdList.ONEFORALL = function(cmd)
   elseif cmd == "channel" then
     local st = FLT.RecipeShareStatus and FLT.RecipeShareStatus()
     if not st then return end
-    if FLT.RecipeChannelOff then msg("OneForAll no longer uses a chat channel: the game blocks channels with many players. Recipes are shared in your guild.") return end
-    if not st.enabled then msg("Recipe sharing with other OneForAll users is off (Settings).") return end
+    if FLT.RecipeChannelOff then msg(L["OneForAll no longer uses a chat channel: the game blocks channels with many players. Recipes are shared in your guild."]) return end
+    if not st.enabled then msg(L["Recipe sharing with other OneForAll users is off (Settings)."]) return end
     msg(string.format("Recipe channel: %s. Other users online: %d, known recipe holders: %d. Own status sent: %s (every %d min).%s",
       st.channel and ("joined as channel " .. st.channel) or ("not joined (" .. st.tries .. " tries)"),
       st.online, st.known, st.lastStatus and (st.lastStatus .. " s ago") or "not yet", math.floor((st.every or 600) / 60),
@@ -380,16 +404,16 @@ SlashCmdList.ONEFORALL = function(cmd)
     if not FLT.DumpTalents then return end
     local classes, talents = FLT:DumpTalents()
     if not classes then
-      msg("Talent dump failed: " .. tostring(talents))
+      msg(string.format(L["Talent dump failed: %s"], tostring(talents)))
     else
-      msg(string.format("Talent dump saved: %d classes, %d talents. Type /reload (or log out), then send WTF\\Account\\<account>\\SavedVariables\\OneForAll.lua.", classes, talents))
+      msg(string.format(L["Talent dump saved: %d classes, %d talents. Type /reload (or log out), then send WTF\\Account\\<account>\\SavedVariables\\OneForAll.lua."], classes, talents))
     end
   elseif cmd == "debug" then
     FLT:PrintDebug()
   elseif cmd == "portraits" then
     if FLT.PrintPortraitDebug then FLT:PrintPortraitDebug() else msg("Portrait diagnostics are not available until the UI module has loaded.") end
   elseif cmd == "bank" then
-    msg("Bank status is refreshed whenever you open your bank. The last successful scan is kept after closing it.")
+    msg(L["Bank status is refreshed whenever you open your bank. The last successful scan is kept after closing it."])
   elseif cmd == "profdb" or cmd == "profdata" then
     local resolved, total = FLT:GetProfessionResolutionCount()
     msg(string.format("Profession data: standalone and embedded. %d/%d Merchant's Favor recipes have built-in result mappings.", resolved, total))

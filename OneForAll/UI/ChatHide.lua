@@ -1,4 +1,5 @@
 local _, FLT = ...
+local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 -- Quality of Life "chatHide" (5.7.3, user 27.10., off by default): a small button next to the chat and a key binding
 -- (Key Bindings > OneForAll) hide / show all chat windows with their tabs. "chatAutoHide" (seconds, 0 = off) hides
@@ -70,8 +71,8 @@ local function makeButton()
   b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
   b:SetScript("OnClick", CH.Toggle)
   b:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(hidden and "Show chat" or "Hide chat", 1, 0.82, 0)
-    GameTooltip:AddLine("A key for it: Key Bindings > OneForAll.", 1, 1, 1, true); GameTooltip:Show()
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(hidden and L["Show chat"] or L["Hide chat"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["A key for it: Key Bindings > OneForAll."], 1, 1, 1, true); GameTooltip:Show()
   end)
   b:SetScript("OnLeave", function() GameTooltip:Hide() end)
   return b
@@ -112,6 +113,7 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", function(self)
   self:UnregisterAllEvents()
+  BINDING_NAME_ONEFORALL_TOGGLECHAT = L["Hide / show chat"] -- the chosen language is known from ADDON_LOADED on
   hookAll()
   Q.On("chatHide", CH.Apply); Q.On("chatAutoHide", CH.Apply)
   CH.Apply()
