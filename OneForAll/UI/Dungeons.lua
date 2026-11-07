@@ -819,8 +819,19 @@ local function createDungeonPanel(parent)
     local mark=UI.GlowLine(owner,"LEFT",0.85,5); mark:Hide()
     local hov=owner:CreateTexture(nil,"BACKGROUND",nil,2); hov:SetAllPoints(); hov:SetColorTexture(0.90,0.66,0.22,0.06); hov:Hide()
     local o={ active=false, hover=false }
+    local fill, ring -- a status tint under the row (quest list: completed = light green, 6.1.9)
     local function apply()
-      sel:SetShown(o.active); mark:SetShown(o.active); hov:SetShown(o.hover and not o.active)
+      -- plateOff: the selection is a gold frame around the row without the fill, so the status colour stays visible
+      -- (quest list, user 07.11.: "wie bei den Bossen mit dem Rahmen aussenrum ... die gelbe Fuellung bitte nicht")
+      -- (and without the glow line on the left, beta5: "nur der Rahmen")
+      sel:SetShown(o.active and not o.plateOff); mark:SetShown(o.active and not o.plateOff); hov:SetShown(o.hover and not o.active)
+      if o.plateOff and o.active and not ring then ring=UI.RoundRect(owner,owner,"BORDER",1,6,0,0.86,0.66,0.30,0.95,ASSET_ROOT.."window_ring") end
+      if ring then ring:SetShown(o.active and o.plateOff and true or false) end
+    end
+    function o:SetFill(r2,g2,b2,a2)
+      if not r2 then if fill then fill:SetShown(false) end return end
+      if not fill then fill=UI.RoundRect(owner,owner,"BACKGROUND",0,6,0,r2,g2,b2,a2) end
+      fill:SetColor(r2,g2,b2,a2); fill:SetShown(true)
     end
     -- the optional 5th value marks the active (selected) state
     function o:SetColorTexture(r2,g2,b2,a2,active) o.active=active and true or false; apply() end
@@ -1304,7 +1315,7 @@ local function createDungeonPanel(parent)
     allianceBtn:SetActive(filter=="Alliance"); hordeBtn:SetActive(filter=="Horde")
     allianceBtn:SetScript("OnClick",function() questFactionFilter[d.key]="Alliance"; questSelection[d.key]=1; renderQuests(d) end)
     hordeBtn:SetScript("OnClick",function() questFactionFilter[d.key]="Horde"; questSelection[d.key]=1; renderQuests(d) end)
-    local legend=dynText(left,"GameFontDisableSmall"); legend:SetPoint("TOPLEFT",14,-48); legend:SetText("Green = in quest log   Dim = unavailable   Showing "..filter.." + shared quests")
+    local legend=dynText(left,"GameFontDisableSmall"); legend:SetPoint("TOPLEFT",14,-48); legend:SetText("Green row = done   Green text = in log   Dim = unavailable   "..filter.." + shared")
 
     local qsf=dynFrame("ScrollFrame",left,"UIPanelScrollFrameTemplate"); qsf:SetPoint("TOPLEFT",10,-66); qsf:SetPoint("BOTTOMRIGHT",-3,8); tidyScroll(qsf,left)
     local qchild=dynFrame("Frame",qsf); qchild:SetSize(LAYOUT.QUEST_LIST_WIDTH,1); qsf:SetScrollChild(qchild)
@@ -1312,17 +1323,14 @@ local function createDungeonPanel(parent)
     local rows={}
     for i,quest in ipairs(quests) do
       local row=dynFrame("Button",qchild); row:SetSize(LAYOUT.QUEST_ROW_WIDTH,40); row:SetPoint("TOPLEFT",0,qy); qy=qy-42
-      local bg=cardBg(row,0.068,0.070,0.080,0.95)
+      local bg=cardBg(row,0.068,0.070,0.080,0.95); bg.plateOff=true
       local hi=makeTexture(row,"HIGHLIGHT",0.62,0.44,0.16,0.045); hi:SetPoint("TOPLEFT",1,-1); hi:SetPoint("BOTTOMRIGHT",-1,1)
-      local check=row:CreateTexture(nil,"OVERLAY")
-      FLT.SetTex(check, "Interface\\Buttons\\UI-CheckBox-Check")
-      check:SetSize(18,18); check:SetPoint("TOPLEFT",8,-1)
-      check:SetVertexColor(FLT.SkinC(0.20,1.00,0.35,1))
       local qn=FLT.NewFS(row, nil,"OVERLAY","GameFontNormal")
       qn:SetWidth(295); qn:SetJustifyH("LEFT")
       qn:SetText(quest.name)
+      qn:SetPoint("TOPLEFT",12,-3)
       local meta=FLT.NewFS(row, nil,"OVERLAY","GameFontHighlightSmall"); meta:SetPoint("TOPLEFT",30,-21); meta:SetWidth(295); meta:SetJustifyH("LEFT")
-      rows[i]={button=row,bg=bg,name=qn,meta=meta,check=check,quest=quest}
+      rows[i]={button=row,bg=bg,name=qn,meta=meta,quest=quest}
     end
     qchild:SetHeight(math.max(1,-qy+2))
 
@@ -1331,12 +1339,6 @@ local function createDungeonPanel(parent)
         local quest=row.quest
         local questStatus=getDungeonQuestStatus(d, quest)
         row.status=questStatus
-        row.name:ClearAllPoints()
-        if questStatus=="completed" then
-          row.check:Show(); row.name:SetPoint("TOPLEFT",30,-3)
-        else
-          row.check:Hide(); row.name:SetPoint("TOPLEFT",12,-3)
-        end
         local req=quest.required or quest.level or "?"; local m="Req. "..tostring(req).."  |  "..(quest.side or "Both")
         if quest.class then m=m.." / "..quest.class end
         m=m.."  |  "..(QUEST_STATUS_LABELS[questStatus] or questStatus)
@@ -1381,12 +1383,15 @@ local function createDungeonPanel(parent)
         for _,o in ipairs(row.orn or {}) do o:SetShown(i==newIdx) end
         -- the name keeps its status colour when selected (6.1.6, Discord Stole Ton 06.11.: the yellow of the selected
         -- quest looked like a higher-level quest); the plate and the gold corners show the selection
+        -- 6.1.9 (user 07.11.): completed = bright green on a light green row (no check mark any more), in the log =
+        -- the darker green
+        row.bg:SetFill(row.status == "completed" and 0.10 or nil, 0.34, 0.12, 0.42)
         if row.status == "inlog" then
-          row.bg:SetColorTexture(FLT.SkinC(0.035,0.16,0.055,0.90))
-          row.name:SetTextColor(FLT.SkinC(0.25,1,0.35))
-        elseif row.status == "completed" then
-          row.bg:SetColorTexture(FLT.SkinC(0.045,0.10,0.08,0.84))
+          row.bg:SetColorTexture(FLT.SkinC(0.068,0.070,0.080,0.95))
           row.name:SetTextColor(FLT.SkinC(0.45,0.85,0.70))
+        elseif row.status == "completed" then
+          row.bg:SetColorTexture(FLT.SkinC(0.068,0.070,0.080,0.95))
+          row.name:SetTextColor(FLT.SkinC(0.25,1,0.35))
         elseif row.status == "unavailable" then
           row.bg:SetColorTexture(FLT.SkinC(0.07,0.06,0.05,0.72))
           row.name:SetTextColor(FLT.SkinC(0.58,0.56,0.52))

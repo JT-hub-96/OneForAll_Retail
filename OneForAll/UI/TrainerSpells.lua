@@ -200,6 +200,17 @@ local function spellList(cid)
   local maxLevel = 60
   local db = costsDB(c and c.token)
   local out = {}
+  -- 6.1.9: the client names no ranks in the spellbook any more and calls only the highest rank "known", so rank 1
+  -- came back as "not learned" once rank 2 was learned (Discord 07.11.). A known higher rank covers the lower ones.
+  if own then
+    for _, s in ipairs(list) do
+      local id, name, rank = s[2], s[3], s[4]
+      if rank > (known[name] or -1) and IsSpellKnown then
+        local ok, yes = pcall(IsSpellKnown, id)
+        if ok and yes then known[name] = rank end
+      end
+    end
+  end
   for _, s in ipairs(list) do
     local lvl, id, name, rank, race, talent, icon, quest = s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8]
     local learned = db["#" .. id] or db[name .. "|" .. rank]
@@ -209,7 +220,6 @@ local function spellList(cid)
       local okRace = race == 0 or raceID == nil or (math.floor(race / raceBit) % 2 == 1)
       local have = known[name]
       local isKnown = have and have >= rank
-      if not isKnown and IsSpellKnown and pcall(IsSpellKnown, id) and IsSpellKnown(id) then isKnown = true end
       show = okRace and not isKnown and (not talent or have)
     end
     if show then out[#out + 1] = { lvl, id, name, rank, learned and learned.c, icon, quest, talent } end

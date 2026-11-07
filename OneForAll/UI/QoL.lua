@@ -13,6 +13,7 @@ local openDropDown -- below
 -- (5.8.0) starts (TODO.md "Neu-Markierungen").
 local NEW_TAGS = { -- all marks removed for 6.0.0, a clean start (user 27.10.); new ones from 6.1.0 on (user 06.11.)
   buffFlash = "6.1.4", buffSnoozeBtn = "6.1.4", flightMapNow = "6.1.5", flightTimes = "6.1.5",
+  mapQuestGivers = "6.1.9", mapQuestTurnins = "6.1.9",
 }
 -- placed left of the checkbox (or of the label when there is none), user 16.10.
 local function newTag(parent, anchor, key, dx)
@@ -574,6 +575,9 @@ local function createQoLPanel(parent)
     { "Skyborne: Ley Lines & Convergences", "For Skyborne: where to charge your racial for an hour.", "High Order (Alliance) see the Ley Lines for Read Leyline (Attuned: 100% regeneration for 1 hour), Windshapers (Horde) the Elemental Convergences for Skysight (Charged: 30% movement speed for 1 hour). On by default for Skyborne; other races see the spots of their faction when they switch it on. Locations from the addon \"Skyborne Leyline & Convergence Marker\" by tr0tsky.", "lmSkyborne" }, 24)
   g = group(c, "Quests")
   check(g, "Quest icons", "A yellow ! at quest givers with quests for your level, a ? where you turn in finished quests.", "Only quests you can take now: your level (no grey ones, none too high), your side and class, pre-quests done. Hover an icon for the quests and their levels. Hidden while Questie is loaded, it shows its own. Quest data from QuestieDB (GPL); the new Forever zones are not in it yet.", "mapQuests")
+  -- 6.1.9 (user 07.11.: our ? lay over the game's own one): the ! and the ? each on their own
+  check2(g, { "Quest givers (!)", "A yellow ! where you can take a quest.", nil, "mapQuestGivers" },
+    { "Turn-ins (?)", "A yellow ? where you turn in a finished quest.", "Switch it off when the game's own ? already shows on the map.", "mapQuestTurnins" }, 24)
   check(g, "Also on the continent map", "The quest icons also when you zoom out of a zone.", "All zones of the continent at once, a little smaller, without the routes of walking quest givers. Needs \"Quest icons\".", "mapQuestsContinent", 24)
   g = group(c, "Map button")
   check(g, "OneForAll button on the map", "A logo at the top left of the world map with all these switches.", "Click it for a quick list: Map Landmarks and its parts, Remove Fog and the dungeon map. It sits below other addons' buttons there (RareScanner ...).", "mapButton")

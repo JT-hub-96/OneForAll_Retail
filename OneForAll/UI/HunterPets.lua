@@ -25,6 +25,12 @@ local ABILITY_ICON = {
   ["Great Stamina"]="Spell_Nature_UnyeildingStamina", ["Natural Armor"]="Spell_Nature_SpiritArmor",
 }
 -- Icons come from the data (Petopia icon names); the tables above are fallbacks.
+-- a beast on the world map: the pin and, when known, the outline of its spawns (6.1.9, user 07.11.: "mehrere
+-- Koordinaten ... zu einer Linie verbinden, um ein Gebiet abzudecken"; Data/HunterPetTames.lua PET_TAME_AREAS)
+local function showBeast(b)
+  local a = b.npcID and FLT.PET_TAME_AREAS and FLT.PET_TAME_AREAS[b.npcID]
+  FLT:ShowOnMap({ mapID = b.mapID, x = b.x, y = b.y, zone = b.zone, name = b.name, area = (a and a[1] == b.mapID) and a[2] or nil })
+end
 local dataIcon = {}
 local function icon(map, name)
   return "Interface\\Icons\\" .. (dataIcon[name] or map[name] or "INV_Misc_QuestionMark")
@@ -437,7 +443,7 @@ local function createPetsPanel(parent)
     t:SetText(string.format("%s  |cff9d9d9d(%s)|r  -  %s", b.name or "?", b.level or "?", b.zone or "?"))
     if b.mapID and b.x and b.y then
       local mb = UI.GoldButton(row, "Map", 64, 20, UI.ASSET_ROOT .. "icon_map", 11); mb:SetPoint("RIGHT", -4, 0)
-      mb:SetScript("OnClick", function() FLT:ShowOnMap({mapID=b.mapID, x=b.x, y=b.y, zone=b.zone, name=b.name}) end)
+      mb:SetScript("OnClick", function() showBeast(b) end)
     end
     return row
   end
@@ -539,6 +545,8 @@ local function createPetsPanel(parent)
     for _, f in ipairs(FLT.PET_FAMILIES or {}) do
       if f.name == name then for _, b in ipairs(f.tames or {}) do add(b) end end
     end
+    -- 6.1.9: every other tameable beast Petopia lists (Data/HunterPetTames.lua, e.g. the Zephras Isle beasts)
+    for _, b in ipairs(FLT.PET_TAMES_EXTRA and FLT.PET_TAMES_EXTRA[name] or {}) do add(b) end
     for _, a in ipairs(FLT.PET_ABILITIES or {}) do
       for _, rk in ipairs(a.ranks or {}) do
         for _, b in ipairs(rk.learnFrom or {}) do if b.family == name then add(b) end end
@@ -705,7 +713,7 @@ local function createPetsPanel(parent)
             r.n = text(r, "GameFontHighlight", 230); r.n:SetPoint("LEFT", 12, 0); r.n:SetWordWrap(false)
             r.z = text(r, "GameFontHighlightSmall", 150); r.z:SetPoint("LEFT", 254, 0); r.z:SetTextColor(FLT.SkinC(0.84, 0.81, 0.74)); r.z:SetWordWrap(false)
             r.m = UI.GoldButton(r, "Map", 64, 20, UI.ASSET_ROOT .. "icon_map", 11); r.m:SetPoint("RIGHT", -6, 0)
-            r.m:SetScript("OnClick", function() local d = r.data; if d then FLT:ShowOnMap({mapID=d.mapID, x=d.x, y=d.y, zone=d.zone, name=d.name}) end end)
+            r.m:SetScript("OnClick", function() local d = r.data; if d then showBeast(d) end end)
             tameRows[i] = r
           end
           r.data = b
@@ -966,7 +974,7 @@ local function createPetsPanel(parent)
       row:SetScript("OnLeave", function() GameTooltip:Hide() end)
       if r.mapID and r.x and r.y then
         local mb = UI.GoldButton(row, "Map", 74, 22, UI.ASSET_ROOT .. "icon_map", 12); mb:SetPoint("RIGHT", -10, 0)
-        mb:SetScript("OnClick", function() FLT:ShowOnMap({mapID=r.mapID, x=r.x, y=r.y, zone=r.zone, name=r.name}) end)
+        mb:SetScript("OnClick", function() showBeast(r) end)
       end
     end
     child:SetHeight(math.max(1, -y + 4))
@@ -1001,6 +1009,7 @@ local function createPetsPanel(parent)
     for i, f in ipairs(FLT.PET_FAMILIES or {}) do
       local parts = { f.name or "", table.concat(f.diet or {}, " "), table.concat(f.abilities or {}, " ") }
       for _, b in ipairs(f.tames or {}) do parts[#parts + 1] = (b.name or "") .. " " .. (b.zone or "") end
+      for _, b in ipairs(FLT.PET_TAMES_EXTRA and FLT.PET_TAMES_EXTRA[f.name] or {}) do parts[#parts + 1] = (b.name or "") .. " " .. (b.zone or "") end
       add("families", i, f.name, icon(FAMILY_ICON, f.name), parts)
     end
     for _, a in ipairs(FLT.PET_ABILITIES or {}) do

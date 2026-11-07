@@ -70,6 +70,29 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.1.9 - Class trainer fix, all tameable beasts, minimap position, quest icons
+============================================================================
+- Class trainer (book button in the spellbook): lower ranks of spells you know
+  (e.g. Battle Shout rank 1 after learning rank 2) no longer show as not learned -
+  the current client no longer names ranks in the spellbook. Mage: Clearcasting
+  (the Arcane Concentration effect) is no longer listed as a trainer spell.
+- Hunter Pets, Where to tame: every tameable beast of each family, about 300 more,
+  including Zephras Isle (Ursera, Vuldren, Galestrider, Shriekling, Prideclaw,
+  Windsong Crawler and the rare ones). The map button shows the area where a beast
+  spawns. "8 Elite" / "10 Rare". Source: wow-petopia.com/forever and QuestieDB.
+- Move the minimap: the minimap no longer jumps back to its default place now and
+  then (the game re-placed it).
+- World map quest icons: "Quest givers (!)" and "Turn-ins (?)" can be switched on
+  and off on their own (both on), also in the map button's list - for when the
+  game's own ? already shows.
+- Dungeon quests: a completed quest has a light green row and a bright green name
+  (no check mark), a quest in your log the darker green; the selected quest gets a
+  gold frame.
+- Quest data from the QuestieDB update of 07.11. (quest icons, rewards, class
+  quests, quest items on nameplates, trainer and vendor spots); trainer data of
+  client build 1.60.1.70862 (Divine Grace, Confounding Flash, Contingency Plan and
+  Dark Sacrifice learned from a quest; enchant learn levels).
+
 6.1.8 - Herb & ore sparkle fix, recipe fixes, more movable windows
 =================================================================
 - Professions, recipe sources: vendors and mobs with an apostrophe in their name
