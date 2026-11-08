@@ -100,30 +100,51 @@ FLT.DUNGEON_REGISTRY["City of Dalaran"] = {
             name = "Arcane Anomaly",
             npcID = 245999,
             displayID = 129891,
-            loot = {},
+            loot = {
+                {273031, "Runemender's Seal", "Finger", 3},
+                {273034, "Ephemeral Grips", "Hands, Cloth", 3},
+                {273035, "Mana-Warped Chain Shirt", "Chest, Mail", 3},
+            },
         },
         {
             name = "Fel Ancient",
             npcID = 246003,
             displayID = 129894,
-            loot = {},
+            loot = {
+                {273037, "Felbough Arm", "Two-Hand, Polearm", 3},
+                {273038, "Garb of Fallen Felbark", "Chest, Leather", 3},
+                {273039, "Blightleaf Rope", "Waist, Cloth", 3},
+            },
         },
         {
             name = "Mana Devourer",
             npcID = 246008,
             displayID = 129895,
-            loot = {},
+            loot = {
+                {273040, "Spine of the Devourer", "Two-Hand, Staff", 3},
+                {273041, "Slitherwrap Girdle", "Waist, Leather", 3},
+                {273042, "Manascale Treads", "Feet, Mail", 3},
+            },
         },
         {
             description = "Mana elemental needed for the quest Power Overwhelming.",
             name = "Arcanic Enigma",
-            loot = {},
+            loot = {
+                {273043, "Wand of Mana Concentration", "Ranged, Wand", 3},
+                {273044, "Violet Sorcerer's Robes", "Chest, Cloth", 3},
+                {273045, "Drape of Shifting Energy", "Back", 3},
+            },
         },
         {
             name = "Unstable Sentinel",
             npcID = 246017,
             displayID = 129954,
-            loot = {},
+            loot = {
+                {273046, "Guardian's Dualblade", "Two-Hand, Axe", 3},
+                {273047, "Unstable Crystalline Shoulderpads", "Shoulder, Leather", 3},
+                {273048, "Refractory Scaleguards", "Legs, Mail", 3},
+                {273099, "Blueprint: Spinning Wheel", "Blueprint", 2},
+            },
         },
         {
             name = "Mana Wraith",
@@ -135,20 +156,33 @@ FLT.DUNGEON_REGISTRY["City of Dalaran"] = {
             name = "Atrexis the Grave Knight",
             npcID = 247126,
             displayID = 145787,
-            loot = {},
+            loot = {
+                {273032, "Bonebinder's Signet", "Finger", 3},
+                {273033, "Gravespike Repeater", "Ranged, Crossbow", 3},
+                {273036, "Graveweave Bindings", "Wrist, Cloth", 3},
+            },
         },
         {
             name = "Lyn the Ignored",
             npcID = 247032,
             displayID = 130235,
             rare = true,
-            loot = {},
+            loot = {
+                {273053, "Tendonscraper Dagger", "Main Hand, Dagger", 3},
+                {273054, "Cartilage Shapers", "Hands, Leather", 3},
+                {273055, "Bonepile Gaze", "Off Hand, Shield", 3},
+            },
         },
         {
             name = "Shade of the Archmage",
             npcID = 246020,
             displayID = 130061,
-            loot = {},
+            loot = {
+                {273049, "Archmagister's Faceted Pendant", "Neck", 3},
+                {273051, "Violet Sorcerer's Mantle", "Shoulder, Cloth", 3},
+                {273052, "Ponderous Orb", "Held In Off-Hand", 3},
+                {273103, "Blueprint: Arcane Salvager", "Blueprint", 2},
+            },
         },
     },
 }

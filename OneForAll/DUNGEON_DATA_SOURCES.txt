@@ -221,3 +221,18 @@ Generated with tools/armory-gen/armory.py:
   positions): Forever Simple World Map 0.30.2 by Tarolg (MIT, used with the author's
   agreement; see THIRD_PARTY_LICENSES.txt), extracted with
   tools/dungeon-maps/fwm_maps.lua. The pictures are the client's minimap images.
+
+2026-11-08 New Forever dungeons after launch (OneForAll 6.2.1)
+===============================================================================
+- Bosses of Alcaz Prison, Blackmaw Hold, Krol'dok Stronghold and Shaper's
+  Terrace, and the Primeval Elemental of The Drowned City: the Forever client's
+  DungeonEncounter table (wago.tools, build 1.60.1.70862), in the game's order.
+- Boss NPC IDs and item IDs: Wowhead Forever (search, built-in browser, slow).
+- Loot of City of Dalaran, The Drowned City, Krol'dok Stronghold and Alcaz
+  Prison: wowtbc.gg WoW Forever loot tables ("loot is still being discovered").
+- City of Dalaran: every boss's loot confirmed on the Wowhead Forever NPC
+  pages (300 - 750 kills each) with Forever drop chances (Data/DungeonDropChance.lua).
+  Krol'dok, Alcaz and The Drowned City: Wowhead had no drops yet (08.11.2026) -
+  wowtbc.gg only.
+- Watched daily by tools/dungeon-check (client bosses / item stats, QuestieDB
+  dungeon quests).

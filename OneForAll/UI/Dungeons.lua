@@ -1571,7 +1571,7 @@ local function createDungeonPanel(parent)
 
       if q.note then
         local box,cy,close=openBox(rchild,ry,N"Notes")
-        local nt=FLT.NewFS(box,nil,"OVERLAY","GameFontHighlightSmall"); nt:SetPoint("TOPLEFT",10,-28); nt:SetWidth(420); nt:SetJustifyH("LEFT"); nt:SetText(q.note); nt:SetWordWrap(true)
+        local nt=FLT.NewFS(box,nil,"OVERLAY","GameFontHighlightSmall"); nt:SetPoint("TOPLEFT",10,-28); nt:SetWidth(420); nt:SetJustifyH("LEFT"); nt:SetText(L[q.note]); nt:SetWordWrap(true)
         ry=close(cy-math.max(14,nt:GetStringHeight() or 14))
       end
 

@@ -959,6 +959,15 @@ do
   QoL._migrateBuffs = migrateBuffs -- tests
   checkBuffs = function()
     buffToken = buffToken + 1 -- an older timer is no longer needed
+    -- the buffs seen on this character are kept over logging out (6.2.1, user 08.11. "A": a buff that ran out while
+    -- logged out gives its card right after the login); the session's list joins the saved one once
+    local cdb = OneForAllCharDB
+    if type(cdb) == "table" and buffSeen ~= cdb.buffSeen then
+      cdb.buffSeen = type(cdb.buffSeen) == "table" and cdb.buffSeen or {}
+      for n in pairs(buffSeen) do cdb.buffSeen[n] = true end
+      buffSeen = cdb.buffSeen
+      for n in pairs(buffSeen) do if buffList()[n] == nil then buffSeen[n] = nil end end -- no longer watched
+    end
     if not migrated and not inCombat() then migrateBuffs() end
     local list = buffList()
     for i = #due, 1, -1 do due[i] = nil end
@@ -1080,7 +1089,7 @@ do
     return name
   end
   function QoL.RemoveBuffReminder(name) buffList()[name] = nil; buffIDs()[name] = nil; buffSeen[name] = nil; checkBuffs() end
-  function QoL.ClearBuffReminders() local d = db(); if d then d.buffReminders = {}; d.buffIDs = {} end; checkBuffs() end
+  function QoL.ClearBuffReminders() local d = db(); if d then d.buffReminders = {}; d.buffIDs = {} end; wipe(buffSeen); checkBuffs() end
   QoL.CheckBuffs = checkBuffs
   QoL._buffCard = function(i) return cards[i] end -- tests
   -- snooze: remember the end time it has now (a buff still running low stays quiet until it is cast again);
@@ -2703,39 +2712,55 @@ end
 -- ---------------------------------------------------------------------------
 -- Quest loot sparkles: the game's loot glow on quest items (game settings)
 -- ---------------------------------------------------------------------------
-local SPARKLE = {
-  outlineModeShowLootEffectWhenDisabled = "1", graphicsOutlineMode = "0", OutlineEngineMode = "0",
-  raidGraphicsOutlineMode = "0", RAIDOutlineEngineMode = "0",
-}
-local sparklePending, sparkleSetting = false, false
+-- Only the loot glow setting (6.2.1, user 08.11. tested: quest items sparkle also with the outline on, Self Highlight
+-- stays). Up to 6.2.0 the four outline settings went off too - that took the player outline away (Discord
+-- [d:1568607243702640721]); those players get their saved outline values back once (outlineBack).
+local SPK = { cvars = { outlineModeShowLootEffectWhenDisabled = "1" },
+  outline = { "graphicsOutlineMode", "OutlineEngineMode", "raidGraphicsOutlineMode", "RAIDOutlineEngineMode" },
+  -- graphics presets set the glow back: only these and our own setting are watched
+  watch = { graphicsquality = true, raidgraphicsquality = true, outlinemodeshowlooteffectwhendisabled = true },
+  pending = false, setting = false, timer = false }
+function SPK.outlineBack(d)
+  local o = d.sparkleOrig
+  if not o then return end
+  for _, k in ipairs(SPK.outline) do
+    -- only while it is still our "0": a value the player chose since then stays
+    if o[k] ~= nil and o[k] ~= "0" and GetCVar(k) == "0" then pcall(SetCVar, k, o[k]) end
+    o[k] = nil
+  end
+end
 local function applySparkles()
   if not QoL.Get("questSparkles") or not SetCVar or not GetCVar then return end
-  if inCombat() then sparklePending = true; return end
-  sparklePending = false
+  if inCombat() then SPK.pending = true; return end
+  SPK.pending = false
   local d = db(); if not d then return end
   d.sparkleOrig = d.sparkleOrig or {}
-  sparkleSetting = true
-  for k, v in pairs(SPARKLE) do
+  SPK.setting = true
+  SPK.outlineBack(d)
+  for k, v in pairs(SPK.cvars) do
     local cur = GetCVar(k)
     if cur ~= nil then
       if d.sparkleOrig[k] == nil then d.sparkleOrig[k] = cur end
       if cur ~= v then pcall(SetCVar, k, v) end
     end
   end
-  sparkleSetting = false
+  SPK.setting = false
 end
 local function sparkleSwitch(on)
   if on then applySparkles(); return end
   local d = db(); if not d or not d.sparkleOrig then return end
   if inCombat() then msg(L["This can be changed after combat."]); return end
+  SPK.outlineBack(d)
   for k, v in pairs(d.sparkleOrig) do pcall(SetCVar, k, v) end
   d.sparkleOrig = nil
   msg(L["Quest loot sparkles switched off. Restart the game for it to take full effect."])
 end
 local function cvarChanged(name)
-  if sparkleSetting or not QoL.Get("questSparkles") then return end
-  if name and SPARKLE[name] == nil and not tostring(name):lower():find("graphics") then return end
-  if C_Timer and C_Timer.After then C_Timer.After(1, applySparkles) else applySparkles() end
+  if SPK.setting or SPK.timer or type(name) ~= "string" or not SPK.watch[name:lower()] then return end
+  if not QoL.Get("questSparkles") then return end
+  if not (C_Timer and C_Timer.After) then applySparkles(); return end
+  SPK.timer = true -- one check for a whole preset change
+  C_Timer.After(1, function() SPK.timer = false; applySparkles() end)
 end
 
 -- ---------------------------------------------------------------------------
@@ -2824,7 +2849,7 @@ local function onEventSafe(_, event, ...)
       else helper:Hide() end
     end
   elseif event == "CVAR_UPDATE" then cvarChanged(...)
-  elseif event == "PLAYER_REGEN_ENABLED" then if sparklePending then applySparkles() end; if QoL.Get("buffReminder") then checkBuffs() end
+  elseif event == "PLAYER_REGEN_ENABLED" then if SPK.pending then applySparkles() end; if QoL.Get("buffReminder") then checkBuffs() end
     if movablePending then local l = movablePending; movablePending = nil; for name in pairs(l) do makeMovable(name) end end
   elseif event == "PLAYER_REGEN_DISABLED" then QoL.BuffCombatStart()
   elseif event == "ZONE_CHANGED_NEW_AREA" then if QoL.Get("buffReminder") and QoL.Get("buffSleepCities") then checkBuffs() end

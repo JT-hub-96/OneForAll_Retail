@@ -70,6 +70,30 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.2.1 - New dungeons, leaner sparkles
+=====================================
+- New dungeons: Alcaz Prison, Blackmaw Hold, Krol'dok Stronghold and Shaper's Terrace show their bosses; The Drowned
+  City gets its Primeval Elemental. First loot of the new dungeons (City of Dalaran checked against Wowhead Forever,
+  with Forever drop chances and two blueprints). They no longer say "Not open on the beta yet".
+- Blackfathom Deeps: the dungeon map shows the right picture in every room (Forever Simple World Map by Tarolg, with
+  his agreement).
+- Quest loot sparkles: only switch on the game's loot glow - your outline settings (Self Highlight around your character)
+  stay as they are. Players who had it on get their old outline settings back once.
+- Sparkle on herbs & ore: "Enable Interact Key" and the interact icons on objects are switched on only when you switch the
+  option on - no longer forced again after loading screens or setting changes. Icons on NPCs and above nodes stay your
+  choice. Fewer game settings written (none at logout), and the node's nameplate closes when combat starts.
+- Buff reminder: a watched buff that ran out while you were logged out shows its card right after the login (only buffs
+  this character had before).
+- Gear Planner / item Value: stat weights updated to Sharpie's Gear Judge 3.2.13 (Forever) - new level 60 weights and
+  leveling curves for every class. The top of the background picture fades into the dark, so name, level and spec are
+  readable on every picture.
+- Professions: recipes checked against the WoW Forever recipe data of wowtbc.gg - 7 new Enchanting recipes, Goblin
+  Mining Helmet, corrected skill colours, reagents, recipe items and many missing learn levels. "All recipes" and
+  "Crate rewards" no longer say "(beta)". New recipe filter "Not learned": the recipes this character does not know yet.
+- Dungeon quests: the "Notes" are translated (German, French, Spanish).
+- Dungeon loot: items the server does not send yet say so after a second.
+- Quest data updated (QuestieDB: Silverpine and Priest quest fixes).
+
 6.2.0 - OneForAll speaks German, French and Spanish
 ====================================================
 - Languages: Settings > General > Language - English (default), Deutsch, Français, Español, in every game client

@@ -6,8 +6,8 @@ local _, FLT = ...
 -- How: Blizzard's soft targeting always picks ONE thing near you to interact with (the unit "softinteract").
 -- With a few game settings it is on all the time and the game gives that object a nameplate; when it is a herb or
 -- an ore vein (read from its cursor icon) the sparkle sits on that nameplate. NPCs get nothing: their soft-target
--- icon stays off and the nameplate is only switched on for herbs and ore. The settings are saved first and given
--- back when the switch goes off and at logout. No key is bound; with an Interact key you can gather the sparkling one.
+-- nameplate is only switched on for herbs and ore. The settings are saved first and given back when the switch
+-- goes off. No key is bound; with an Interact key you can gather the sparkling one.
 -- Lean: nothing is registered while the switch is off; the animation only runs while a glow is shown.
 
 local NG = {}
@@ -23,9 +23,15 @@ local function call(fn, ...) if type(fn) ~= "function" then return nil end local
 local function inCombat() return InCombatLockdown and InCombatLockdown() end
 
 -- Game settings -------------------------------------------------------------------------
+-- 6.2.1 (user 08.11.: "nur das aktivieren/deaktivieren das wirklich benoetigt wird", tested in the game, compared with
+-- Forever Loot Sparkles 1.3.1): only these. SoftTargetInteract ("Enable Interact Key") and SoftTargetIconGameObject (the
+-- interact icons on objects; without them an object gets no nameplate) are the player's settings: switched on only when
+-- the option is switched on, never forced again. Not touched any more: SoftTargetIconInteract (icons on NPCs and above
+-- nodes = the player's choice, user 08.11. "B"), SoftTargetInteractRangeIsHard and nameplateGameObjectMaxDistance (the
+-- game's defaults 0 / 30 work); up to 6.2.0 they were set and are given back once (OLD).
 local MANAGED = { "SoftTargetInteract", "SoftTargetNameplateInteract", "SoftTargetInteractRange", "SoftTargetInteractArc",
-  "SoftTargetInteractOnlyInRange", "SoftTargetInteractRangeIsHard", "SoftTargetIconInteract", "SoftTargetIconGameObject",
-  "nameplateGameObjectMaxDistance" }
+  "SoftTargetInteractOnlyInRange", "SoftTargetIconGameObject" }
+local OLD = { "SoftTargetInteractRangeIsHard", "SoftTargetIconInteract", "nameplateGameObjectMaxDistance" }
 local function getCVar(n) return call(C_CVar and C_CVar.GetCVar or GetCVar, n) end
 -- only when it differs: every change fires CVAR_UPDATE for Blizzard's frames too
 local function setCVar(n, v) local c = getCVar(n); if c ~= nil and c ~= tostring(v) then pcall(C_CVar and C_CVar.SetCVar or SetCVar, n, tostring(v)) end end
@@ -45,27 +51,29 @@ local function pad()
   return type(ids) == "table" and #ids > 0
 end
 local restore
-local function apply()
-  if inCombat() then pending = "apply"; return end
+-- force: the player switched the option on (or nothing is saved yet) - only then the two player settings are switched on
+local function apply(force)
+  if inCombat() then pending = force and "force" or (pending or "apply"); return end
   if pad() then restore(); return end
   local d = saved(); if not d then return end
   if not d.nodeGlowCVars then
+    force = true
     d.nodeGlowCVars = {}
     for _, n in ipairs(MANAGED) do d.nodeGlowCVars[n] = getCVar(n) or false end
   end
+  local s = d.nodeGlowCVars
   -- saved by 6.1.6 / 6.1.7 without it (they left the player's value alone): the value now is still the player's
-  if d.nodeGlowCVars.SoftTargetInteract == false then d.nodeGlowCVars.SoftTargetInteract = getCVar("SoftTargetInteract") or false end
-  -- soft targeting for mouse & keyboard too: 0 off, 1 controller only, 2 mouse & keyboard, 3 both (= the game's "Enable
-  -- Interact Key" box). 6.1.6 left 1 alone (GitHub #40) - then the game finds no nodes without a controller and the
-  -- sparkle was gone for most players (Discord 06.11., several users). 3 again as in 6.1.5, given back when switched off
-  setCVar("SoftTargetInteract", 3)
+  if s.SoftTargetInteract == false then s.SoftTargetInteract = getCVar("SoftTargetInteract") or false end
+  for _, n in ipairs(OLD) do if s[n] ~= nil then if s[n] ~= false then setCVar(n, s[n]) end; s[n] = nil end end
+  if force then
+    -- soft targeting for mouse & keyboard too: 0 off, 1 controller only, 2 mouse & keyboard, 3 both (= the game's
+    -- "Enable Interact Key" box); with 1 the game finds no nodes without a controller (Discord 06.11.)
+    setCVar("SoftTargetInteract", 3)
+    setCVar("SoftTargetIconGameObject", 1)      -- without it the game makes no nameplate for objects
+  end
   setCVar("SoftTargetInteractRange", 15)
   setCVar("SoftTargetInteractArc", 2)           -- all around you
   setCVar("SoftTargetInteractOnlyInRange", 0)   -- also before you are in reach
-  setCVar("SoftTargetInteractRangeIsHard", 0)
-  setCVar("SoftTargetIconInteract", 0)          -- no icons on NPCs (vendors ...)
-  setCVar("SoftTargetIconGameObject", 1)        -- without it the game makes no nameplate for objects
-  setCVar("nameplateGameObjectMaxDistance", max(tonumber(d.nodeGlowCVars.nameplateGameObjectMaxDistance) or 0, 20))
   gate = nil
 end
 restore = function()
@@ -77,14 +85,9 @@ restore = function()
 end
 -- the object's nameplate only for herbs and ore
 local function setGate(open)
-  if open == gate or inCombat() then
-    -- the Forever client sets SoftTargetIconGameObject back to 0 after loading screens (seen by Lueur)
-    if gate and getCVar("SoftTargetIconGameObject") ~= "1" and not inCombat() then setCVar("SoftTargetIconGameObject", 1) end
-    return
-  end
+  if open == gate or inCombat() then return end
   gate = open
   setCVar("SoftTargetNameplateInteract", open and 1 or 0)
-  if open then setCVar("SoftTargetIconGameObject", 1) end
 end
 
 -- What is it --------------------------------------------------------------------------
@@ -194,30 +197,28 @@ local function evaluate()
 end
 
 local ev = CreateFrame("Frame")
+-- 6.2.1: no more CVAR_UPDATE watching, no forcing after loading screens and no restore at logout (the next login set
+-- everything again: many writes, and every write runs Blizzard's handlers as addon code)
+-- VARIABLES_LOADED: the account-synced settings from the server can arrive after the login and overwrite ours
 local EVENTS = { "PLAYER_SOFT_INTERACT_CHANGED", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED", "PLAYER_ENTERING_WORLD",
-  "PLAYER_REGEN_ENABLED", "PLAYER_LOGOUT", "CVAR_UPDATE" }
--- the client may set its own values again some time after logging in (user 26.10.: SoftTargetInteract back at 1,
--- SoftTargetIconGameObject at 0): put ours back, at most once every 5 seconds so we never fight another addon
-local lastFix = 0
-local function ours() return getCVar("SoftTargetInteract") == "3" and getCVar("SoftTargetIconGameObject") == "1" end
-local function fixLater()
-  if not (C_Timer and C_Timer.After) then return end
-  C_Timer.After(3, function()
-    if not Q() or ours() then return end
-    local now = GetTime and GetTime() or 0
-    if now - lastFix < 5 then return end
-    lastFix = now; apply(); evaluate()
-  end)
-end
+  "VARIABLES_LOADED", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED" }
+-- first session after updating to 6.2.1 (user 08.11.: no ore sparkle until switched off and on): 6.2.0 gave the values back
+-- at every logout, the server keeps those and sends them after the login - switch both on again then (once more after
+-- 5 s); later sessions keep what is set
+local fresh
 ev:SetScript("OnEvent", function(_, event, unit)
-  if event == "PLAYER_LOGOUT" then release(); restore(); return end -- the game keeps its own values
-  if event == "CVAR_UPDATE" then
-    if not ours() and not pad() then fixLater() end
-    return
+  if event == "PLAYER_REGEN_DISABLED" then
+    -- settings can't change in combat: close the nameplate just before, or killed mobs keep a 0 % nameplate
+    setGate(false); release(); return
   end
-  if event == "PLAYER_ENTERING_WORLD" then apply(); fixLater()
+  if event == "PLAYER_ENTERING_WORLD" or event == "VARIABLES_LOADED" then
+    apply(fresh)
+    if fresh == true and C_Timer and C_Timer.After then
+      fresh = "timer"
+      C_Timer.After(5, function() if Q() then apply(true); evaluate() end; fresh = nil end)
+    end
   elseif event == "PLAYER_REGEN_ENABLED" then
-    if pending == "apply" then apply() elseif pending == "restore" then restore() end
+    if pending == "restore" then restore() elseif pending then apply(pending == "force") end
     pending = nil
   elseif event == "NAME_PLATE_UNIT_REMOVED" then
     local plate = C_NamePlate and call(C_NamePlate.GetNamePlateForUnit, unit)
@@ -226,11 +227,14 @@ ev:SetScript("OnEvent", function(_, event, unit)
   end
   evaluate()
 end)
--- the switch: events only while it is on; settings back when it goes off
-function NG.Apply()
+-- the switch: events only while it is on; settings back when it goes off. switched = true when the player flipped it
+-- (QoL.On passes the new value), nil at login
+function NG.Apply(switched)
   if Q() then
     for _, e in ipairs(EVENTS) do pcall(ev.RegisterEvent, ev, e) end
-    apply(); evaluate()
+    local d = switched == nil and saved()
+    if d and not d.nodeGlow621 then d.nodeGlow621 = true; fresh = true end
+    apply(switched ~= nil or fresh ~= nil); evaluate()
   else
     ev:UnregisterAllEvents(); release(); restore()
   end

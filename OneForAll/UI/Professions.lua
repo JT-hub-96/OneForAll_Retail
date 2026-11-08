@@ -154,7 +154,7 @@ local function createProfessionPanel(parent)
   local rewards=CreateFrame("Frame",nil,overview); rewards:SetPoint("TOPLEFT",407,-72); rewards:SetPoint("TOPRIGHT",-22,-72); rewards:SetHeight(330)
   UI.FramedPanel(rewards)
   local rewardsTitle=FLT.NewFS(rewards, nil,"OVERLAY","GameFontNormal")
-  rewardsTitle:SetPoint("TOPLEFT",12,-10); rewardsTitle:SetText(L["Crate rewards (beta)"]); rewardsTitle:SetTextColor(FLT.SkinC(1,0.82,0.20))
+  rewardsTitle:SetPoint("TOPLEFT",12,-10); rewardsTitle:SetText(L["Crate rewards"]); rewardsTitle:SetTextColor(FLT.SkinC(1,0.82,0.20))
   local rewardHead=CreateFrame("Frame",nil,rewards); rewardHead:SetPoint("TOPLEFT",0,-32); rewardHead:SetPoint("TOPRIGHT",0,-32); rewardHead:SetHeight(22)
   local rhbg=makeTexture(rewardHead,"BACKGROUND",0.075,0.062,0.040,0.96); rhbg:SetPoint("TOPLEFT",4,0); rhbg:SetPoint("BOTTOMRIGHT",-4,0)
   local headers={{12,N"Crate"},{214,N"Level"},{262,N"Reward"}}
