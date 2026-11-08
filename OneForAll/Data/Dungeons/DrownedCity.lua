@@ -4,7 +4,7 @@ local _, FLT = ...
 FLT.DUNGEON_REGISTRY["The Drowned City"] = {
     level = "35-40",
     location = "Gillijim's Isle, off the coast of Stranglethorn Vale",
-    description = "New Forever dungeon: I'lalai, a lost troll city that has risen from the sea. Naga, risen trolls and stranded pirates fight over its ruins. Not open on the beta yet; bosses and loot can still change.",
+    description = "New Forever dungeon: I'lalai, a lost troll city that has risen from the sea. Naga, risen trolls and stranded pirates fight over its ruins. Its loot is still being discovered.",
     icon = "Interface\\Icons\\INV_Misc_Idol_03",
     quests = {
         {
@@ -50,7 +50,10 @@ FLT.DUNGEON_REGISTRY["The Drowned City"] = {
         {
             name = "Zul'Alai",
             npcID = 270882,
-            loot = {},
+            loot = {
+                {274598, "Bloodslash Axe", "One-Hand, Axe", 3},
+                {274599, "Oathbound Bracers", "Wrist, Leather", 3},
+            },
         },
         {
             name = "Var'Taka",
@@ -74,13 +77,19 @@ FLT.DUNGEON_REGISTRY["The Drowned City"] = {
             loot = {},
         },
         {
+            description = "Its own encounter in the game's boss list (fought near the Deathless Marrow).",
+            name = "Primeval Elemental",
+            npcID = 270887,
+            loot = {},
+        },
+        {
             name = "Min'loth the Serpent",
             npcID = 270886,
             loot = {},
         },
         {
             name = "Zin'aka",
-            description = "Seen at the BlizzCon demo; not in the game files yet.",
+            description = "Not in the game's boss list; players list it as a boss (wowtbc.gg).",
             loot = {},
         },
     },

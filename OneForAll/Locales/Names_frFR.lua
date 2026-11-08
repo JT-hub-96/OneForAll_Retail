@@ -1,5 +1,5 @@
 local _, FLT = ...
--- QuestieDB 5fba5d8 (2026-11-07) (tools/locale/names.lua) - generated, do not edit by hand.
+-- QuestieDB aa1d7e7 (2026-11-08) (tools/locale/names.lua) - generated, do not edit by hand.
 -- Names of quests, NPCs, objects and items (and quest objective sentences) in frFR, English -> frFR,
 -- only those our data files use. Source: QuestieDB Forever l10n (GPL-3, see THIRD_PARTY_LICENSES.txt).
 -- Made into a table only when this language is chosen and the game client speaks it (Locales/Locale.lua FLT.Name).
@@ -4155,6 +4155,7 @@ FLT.NAME_LOCALES.frFR = function() return {
 ["Return to Onu"]="La page qui rend fou",
 ["Return to Primal Torntusk"]="Retourner voir l’Aînée Torntusk",
 ["Return to Quinn"]="Retour vers Quinn",
+["Return to Quinn (Again)"]="Retour vers Quinn (encore une fois)",
 ["Return to Sven"]="Retourner voir Sven",
 ["Return to Tinkee"]="Retourner voir Tinkee",
 ["Return to Troyas"]="Troyas",
@@ -6062,6 +6063,7 @@ FLT.NAME_LOCALES.frFR = function() return {
 ["White Rocket Cluster"]="Chapelet de comètes blanche",
 ["Whitemane's Chapeau"]="Chapeau de Whitemane",
 ["Wild Buck"]="Cerf sauvage",
+["Wild Eyes"]="Yeux sauvages",
 ["Wild Fires in the Eastern Kingdoms"]="Feux sauvages dans les Royaumes de l'est",
 ["Wild Gryphon"]="Gryphon sauvage",
 ["Wild Guardians"]="Gardiens sauvages",

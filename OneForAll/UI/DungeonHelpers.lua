@@ -280,7 +280,8 @@ tryShowItemTooltip = function(owner, item)
     end
     anchorItemTooltip(owner)
     local ok = pcall(GameTooltip.SetHyperlink, GameTooltip, "item:"..tostring(rec.id))
-    -- The beta server does not send data for every item (e.g. above the
+    -- The server does not send data for every item (6.2.1, user 08.11.: e.g. many Scholomance items - Wowhead Forever
+    -- does not know 90 of our 121 Scholomance IDs either; in the beta: above the
     -- level cap). If nothing arrives within a second, show our own data
     -- instead of "Retrieving item information"; the real tooltip still
     -- replaces it as soon as GET_ITEM_INFO_RECEIVED fires.
@@ -297,7 +298,7 @@ tryShowItemTooltip = function(owner, item)
         if rec.slot then GameTooltip:AddLine(FLT.SlotText and FLT.SlotText(rec.slot) or rec.slot, 1, 1, 1) end
         if rec.summary then GameTooltip:AddLine(rec.summary, 0.85, 0.85, 0.85, true) end
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine(L["The beta server does not send the details of this item yet."], 0.60, 0.60, 0.60, true)
+        GameTooltip:AddLine(L["The server does not send the details of this item yet."], 0.60, 0.60, 0.60, true)
         GameTooltip:Show(); finishItemTooltip()
       end)
     end

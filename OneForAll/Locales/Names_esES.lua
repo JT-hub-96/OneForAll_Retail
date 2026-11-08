@@ -1,5 +1,5 @@
 local _, FLT = ...
--- QuestieDB 5fba5d8 (2026-11-07) (tools/locale/names.lua) - generated, do not edit by hand.
+-- QuestieDB aa1d7e7 (2026-11-08) (tools/locale/names.lua) - generated, do not edit by hand.
 -- Names of quests, NPCs, objects and items (and quest objective sentences) in esES, English -> esES,
 -- only those our data files use. Source: QuestieDB Forever l10n (GPL-3, see THIRD_PARTY_LICENSES.txt).
 -- Made into a table only when this language is chosen and the game client speaks it (Locales/Locale.lua FLT.Name).
@@ -4533,6 +4533,7 @@ FLT.NAME_LOCALES.esES = function() return {
 ["Return to Onu"]="Vuelve con Onus",
 ["Return to Primal Torntusk"]="Vuelve con Primigenia Cuernorroto",
 ["Return to Quinn"]="Vuelve con Quinn",
+["Return to Quinn (Again)"]="Vuelve con Quinn (de nuevo)",
 ["Return to Sven"]="Entrega para Sven",
 ["Return to Tinkee"]="Vuelve con Tinkee",
 ["Return to Troyas"]="Vuelva con Troyas",
@@ -6544,6 +6545,7 @@ FLT.NAME_LOCALES.esES = function() return {
 ["White Rocket Cluster"]="Ristra de cohetes blancos",
 ["Whitemane's Chapeau"]="Sombrero de Melenablanca",
 ["Wild Buck"]="Ciervo salvaje",
+["Wild Eyes"]="Ojos salvajes",
 ["Wild Fires in the Eastern Kingdoms"]="Los fuegos salvajes de los Reinos del Este",
 ["Wild Gryphon"]="Grifo salvaje",
 ["Wild Guardians"]="Guardianes salvajes",

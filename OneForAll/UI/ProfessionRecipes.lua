@@ -9,7 +9,7 @@ local UI = FLT.UI
 local unpack = unpack or table.unpack
 local makeTexture, makeButton = UI.makeTexture, UI.makeButton
 
--- "All recipes" browser for the Professions tab (beta). Data: Data/Professions/*.lua
+-- "All recipes" browser for the Professions tab (no "(beta)" in the title since 6.2.1, user 08.11.). Data: Data/Professions/*.lua
 -- (extracted from the Forever client database). Known recipes and the current
 -- skill are read from the profession window and stored per character in
 -- OneForAllCharDB.professions[profession] = { skill, maxSkill, known = {spellID=true} }.
@@ -561,8 +561,9 @@ function UI.CreateRecipeBrowser(parent)
   box:SetScript("OnTextChanged", function(self) search = (self:GetText() or ""):lower(); hint:SetShown(search == ""); clear:SetShown(search ~= ""); f:Refresh() end)
   -- who knows it (6.2.0, user 07.11.: "Meine Rezepte / Gilde / Beides" and back to "Alle"): the funnel like the source
   -- filter of the Gear Planner; OneForAllDB.recipeKnowFilter = "mine" / "guild" / "both" (you or the guild), nil = all
+  -- "notmine" (6.2.1, user 08.11.): the recipes this character has not learned yet
   local KNOW = { { key = "all", label = N"All recipes" }, { key = "mine", label = N"My recipes" },
-    { key = "guild", label = N"Guild" }, { key = "both", label = N"Mine or guild" } }
+    { key = "notmine", label = N"Not learned" }, { key = "guild", label = N"Guild" }, { key = "both", label = N"Mine or guild" } }
   local function knowFilter() local v = type(OneForAllDB) == "table" and OneForAllDB.recipeKnowFilter; return v ~= "all" and v or nil end
   local function knowLabel(k) for _, o in ipairs(KNOW) do if o.key == k then return L[o.label] end end end
   local funnel = CreateFrame("Button", nil, f); funnel:SetSize(22, 22); funnel:SetPoint("LEFT", box, "RIGHT", 34, 0)
@@ -572,7 +573,7 @@ function UI.CreateRecipeBrowser(parent)
   funnel:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Recipe filter"], 1, 0.82, 0)
     GameTooltip:AddLine(knowLabel(knowFilter() or "all"), 1, 1, 1)
-    GameTooltip:AddLine(L["Who knows the recipe: you, a guild member, or either of you."], 0.8, 0.8, 0.8, true)
+    GameTooltip:AddLine(L["Who knows the recipe: you, a guild member, or either of you - or what you have not learned yet."], 0.8, 0.8, 0.8, true)
     GameTooltip:Show()
   end)
   funnel:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1172,7 +1173,7 @@ function UI.CreateRecipeBrowser(parent)
     local knownCount = 0
     for _, r in ipairs(list) do if p.known[r.s] then knownCount = knownCount + 1 end end
     local kf = knowFilter()
-    title:SetText(L[prof] .. " - " .. (filter == "fav" and L["Favorites"] or knowLabel(kf or "all")) .. "  |cff9d9d9d(beta)|r")
+    title:SetText(L[prof] .. " - " .. (filter == "fav" and L["Favorites"] or knowLabel(kf or "all")))
     FLT.SetTex(profIcon, (FLT.PROFESSION_ICONS and FLT.PROFESSION_ICONS[prof]) or "Interface\\Icons\\INV_Misc_QuestionMark")
     -- The skill comes from the profession book; no skill = not learned on this character.
     meta:SetText((skill and string.format(L["Your skill: %s"], skill .. (p.maxSkill and ("/" .. p.maxSkill) or "")) or "|cff9d9d9d" .. L["Not learned on this character"] .. "|r") ..
@@ -1194,6 +1195,7 @@ function UI.CreateRecipeBrowser(parent)
       if ok and kf then
         local mine = p.known[r.s] and true or false
         if kf == "mine" then ok = mine
+        elseif kf == "notmine" then ok = not mine
         else
           local g = FLT.GuildKnowsRecipe and FLT.GuildKnowsRecipe(prof, r.s) or false
           ok = (kf == "guild" and g) or (kf == "both" and (mine or g))

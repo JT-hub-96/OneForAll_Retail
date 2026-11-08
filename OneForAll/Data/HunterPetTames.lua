@@ -1,5 +1,5 @@
 local _, FLT = ...
--- QuestieDB 5fba5d8 (2026-11-07) (tools/questie/load.lua), wow-petopia.com/forever read 07.11.2026
+-- QuestieDB aa1d7e7 (2026-11-08) (tools/questie/load.lua), wow-petopia.com/forever read 07.11.2026
 
 -- More tameable beasts per family for Hunter Pets > Where to tame: every beast wow-petopia.com/forever lists that
 -- Data/HunterPets.lua does not have yet, with a spawn from QuestieDB Forever for the map button.

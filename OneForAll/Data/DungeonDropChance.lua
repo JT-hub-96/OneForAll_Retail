@@ -4,6 +4,16 @@ local _, FLT = ...
 -- foreverchanges.pro loot tables (Classic data, originally Wowhead). Forever
 -- can differ; new Forever bosses and items have none. October 2026.
 FLT.DUNGEON_DROP_CHANCE = {
+  -- City of Dalaran: Forever drop chances from the Wowhead Forever NPC pages (300 - 750 kills each), 08.11.2026
+  ["City of Dalaran"] = {
+    ["Arcane Anomaly"] = {[273031]=35, [273034]=33, [273035]=32},
+    ["Fel Ancient"] = {[273037]=28, [273038]=36, [273039]=36},
+    ["Mana Devourer"] = {[273040]=32, [273041]=33, [273042]=35},
+    ["Unstable Sentinel"] = {[273046]=36, [273047]=33, [273048]=30, [273099]=10},
+    ["Shade of the Archmage"] = {[273049]=32, [273051]=33, [273052]=32, [273103]=7},
+    ["Lyn the Ignored"] = {[273053]=30, [273054]=35, [273055]=35},
+    ["Atrexis the Grave Knight"] = {[273032]=35, [273033]=29, [273036]=36},
+  },
   ["Blackfathom Deeps"] = {
     ["Aku'mai"] = {[6909]=20, [6910]=36, [6911]=39},
     ["Baron Aquanis"] = {[16782]=93},

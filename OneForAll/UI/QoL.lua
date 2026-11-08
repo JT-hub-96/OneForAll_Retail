@@ -505,7 +505,7 @@ local function createQoLPanel(parent)
     refreshers[#refreshers + 1] = show
   end
   g = group(c, N"Gathering")
-  local r = check(g, N"Sparkle on herbs & ore", N"The herb or ore vein near you sparkles.", N"Only for professions you have. Uses the game's soft targeting (interaction target): one object at a time, the nearest one around you. Vendors and other NPCs get nothing. Works only close up (about 15 yards) - a limit of the game. Changes a few game settings and gives them back when you switch this off - also the game's \"Enable Interact Key\", which it needs to find the nodes. Not with a controller. Idea and sparkle from the addon Lueur (MIT).", "nodeGlow")
+  local r = check(g, N"Sparkle on herbs & ore", N"The herb or ore vein near you sparkles.", N"Only for professions you have. Uses the game's soft targeting (interaction target): one object at a time, the nearest one around you. Vendors and other NPCs get no sparkle. Works only close up (about 15 yards) - a limit of the game. Switching it on turns on the game's \"Enable Interact Key\" and its interact icons on objects - both are needed to find the nodes; if you switch them off later, nothing sparkles. Whether icons show above nodes and NPCs is up to you (game setting \"Interact Key Icons\"). Everything goes back when you switch this off. Not with a controller. Idea and sparkle from the addon Lueur (MIT).", "nodeGlow")
   do -- red warning sign behind the name: it changes soft targeting (user 25.10.)
     local w = CreateFrame("Frame", nil, r); w:SetSize(22, 22); w:SetPoint("LEFT", r.label, "RIGHT", 32, 0) -- right of the preview spyglass
     local x = w:CreateTexture(nil, "ARTWORK"); x:SetAllPoints(); FLT.SetTex(x, UI.ASSET_ROOT .. "icon_warning") -- as in the gear planner
@@ -528,7 +528,7 @@ local function createQoLPanel(parent)
   check(g, N"Quest XP on the experience bar", N"Shows the XP of your finished quests on the experience bar.", N"Marks on the experience bar how much XP your finished quests give when you turn them in. The amount is also shown in the bar's tooltip.", "questXP")
   g = group(c, N"In the world")
   check(g, N"Best sell price on rewards", N"A gold coin on the quest reward choice that sells for the most.", N"In the quest log and when you turn in a quest with two or more rewards to choose from: the one with the highest vendor price (times the count) gets a gold coin at its top right. The green upgrade arrow stays at the top left, so an item can have both.", "questSellCoin")
-  check(g, N"Quest loot sparkles", N"Quest items in the world sparkle again.", N"The game's loot glow. Changes graphics settings: the outline around players and targets goes off (the glow only works without it). After switching it off, restart the game.", "questSparkles")
+  check(g, N"Quest loot sparkles", N"Quest items in the world sparkle again.", N"The game's loot glow. Changes only this one game setting - your outline settings stay as they are. After switching it off, restart the game.", "questSparkles")
   check(g, N"Quest marks on nameplates", N"A sword or a bag with your progress on mobs you need for a quest.", N"Sword: you must kill it for a quest. Bag: it drops a quest item. With the progress (3/10); nothing once that part is done. Uses the quest lines the game shows in the mob's tooltip. Not inside dungeons yet.", "questMarks")
   choice(g, N"Mark position", N"Where the mark sits on the nameplate.", nil, "questMarkPos", FLT.QuestMarks and FLT.QuestMarks.POS_OPTIONS or { { key = "left", label = N"Left" } }, nil, 24) -- no own switch (user 31.10.)
 

@@ -505,6 +505,23 @@ function UI.CreateGearPlanner(parent)
   -- the client's picture of your race behind the character, over the whole panel (6.0.1, user 30.10.); 3 px in, so its
   -- square corners stay inside the panel's rounded line
   local bgClip = UI.RaceBackdrop(left, 3, -3, -3, 3)
+  -- the picture's top fades into the dark above, so name and spec stay readable on every picture (user 08.11.: a shade
+  -- only behind the text left a light gap above it; beta8's solid band + straight fade looked odd): no solid part, an
+  -- eased fade in four steps (dark behind the name, gone about 90 px down). On its own frame just above the picture and
+  -- its shade (+3), below the character model and the rest (+4, see below)
+  do
+    local r, g, b = 0.045, 0.045, 0.055 -- the panel background, as RaceBackdrop's lower fade
+    local tf = CreateFrame("Frame", nil, bgClip); tf:SetAllPoints(); tf:SetFrameLevel(bgClip:GetFrameLevel() + 3)
+    local STOPS = { { 0, 0.92 }, { 18, 0.85 }, { 38, 0.6 }, { 62, 0.25 }, { 90, 0 } } -- { px from the top, alpha }
+    for i = 1, #STOPS - 1 do
+      local y1, a1, y2, a2 = STOPS[i][1], STOPS[i][2], STOPS[i + 1][1], STOPS[i + 1][2]
+      local t = tf:CreateTexture(nil, "BACKGROUND"); t:SetColorTexture(1, 1, 1, 1)
+      t:SetPoint("TOPLEFT", 0, -y1); t:SetPoint("TOPRIGHT", 0, -y1); t:SetHeight(y2 - y1)
+      if not (t.SetGradient and CreateColor and pcall(t.SetGradient, t, "VERTICAL", CreateColor(r, g, b, a2), CreateColor(r, g, b, a1))) then
+        if t.SetGradientAlpha then t:SetGradientAlpha("VERTICAL", r, g, b, a2, r, g, b, a1) else t:SetColorTexture(r, g, b, (a1 + a2) / 2) end
+      end
+    end
+  end
   local model = CreateFrame("DressUpModel", nil, left)
   model:SetPoint("TOPLEFT", 58, -40); model:SetPoint("BOTTOMRIGHT", -58, 60)
   -- mouse wheel zooms, dragging turns the character; the OnUpdate only runs while the button is held
@@ -659,7 +676,7 @@ function UI.CreateGearPlanner(parent)
 
   -- everything else of the character panel stays above the picture
   do
-    local lv = bgClip:GetFrameLevel() + 2
+    local lv = bgClip:GetFrameLevel() + 4 -- above the picture (+1), its shade (+2) and the top fade (+3)
     for _, c in ipairs({ left:GetChildren() }) do
       if c ~= bgClip and (c:GetFrameLevel() or 0) < lv then c:SetFrameLevel(lv) end
     end
