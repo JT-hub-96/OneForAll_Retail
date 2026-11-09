@@ -3,7 +3,7 @@ local ADDON, FLT = ...
 -- Wailing Caverns: quests from QuestieDB Forever, rewards and loot checked against
 -- Wowhead (Forever), wowforevertalents.com and foreverchanges.pro. See DUNGEON_DATA_SOURCES.txt.
 FLT.DUNGEON_REGISTRY["Wailing Caverns"] = {
-    level = "17-24",
+    level = "15-24",
     location = "The Barrens, north of the Crossroads",
     description = "A cave network in the Barrens where the druid Naralex lies in a nightmare and his former disciples have turned against nature.",
     icon = "Interface\\Icons\\Spell_Nature_Sleep",

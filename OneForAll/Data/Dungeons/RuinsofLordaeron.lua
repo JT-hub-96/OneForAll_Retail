@@ -3,7 +3,7 @@ local ADDON, FLT = ...
 -- Ruins of Lordaeron: quests from QuestieDB Forever, rewards and loot checked against
 -- Wowhead (Forever), wowforevertalents.com and foreverchanges.pro. See DUNGEON_DATA_SOURCES.txt.
 FLT.DUNGEON_REGISTRY["Ruins of Lordaeron"] = {
-    level = "15-20",
+    level = "15-22",
     location = "Tirisfal Glades, Ruins of Lordaeron",
     description = "The fallen human capital above the Undercity. Scourge remnants roam the streets and a necromancer is gathering strength in the ruins.",
     icon = "Interface\\Icons\\Spell_Shadow_RaiseDead",

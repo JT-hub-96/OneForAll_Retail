@@ -4,11 +4,12 @@ local _, FLT = ...
 -- Families, abilities, ranks and teaching beasts follow wow-petopia.com/forever
 -- (recommended for more detail); spawn positions from QuestieDB (Forever data).
 -- Forever changed the pet system compared with Classic: new family abilities
--- (e.g. Dismember, Savage Rend, Web), new trainer passives (Faster/Slower
--- Attack), Owls became Birds of Prey, and Core Hounds/Foxes were added.
+-- (e.g. Dismember, Savage Rend, Web), Owls became Birds of Prey, and Core Hounds/Foxes were added.
+-- Petopia's "Faster / Slower Attack" are left out (6.2.2, user 09.11.): no training points, no level, and the
+-- percentages match the classic fixed attack speeds (1.0-1.7 / 2.4-2.5 s) - the beast's own speed, not a trainer skill.
 
 FLT.PET_FAMILIES = {
-  {name="Bat", icon="ability_hunter_pet_bat", role="Offense", diet={"Fruit", "Fungus"}, abilities={"Bite", "Cower", "Dive"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Bat", icon="ability_hunter_pet_bat", role="Offense", diet={"Fruit", "Fungus"}, abilities={"Bite", "Cower", "Dive"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="1.00", armor="1.00", damage="1.07"},
     note="Role: Offense.",
     tames={
@@ -17,7 +18,7 @@ FLT.PET_FAMILIES = {
       {name="Shrike Bat", level="38-39", zone="Uldaman", npcID=4861},
       {name="Plaguebat", level="53-55", zone="Eastern Plaguelands", npcID=8600, mapID=1423, x=30.0, y=64.2},
     }},
-  {name="Bear", icon="ability_hunter_pet_bear", role="Defense", diet={"Bread", "Cheese", "Fish", "Fruit", "Fungus", "Meat"}, abilities={"Bite", "Claw", "Cower", "Dash", "Swipe"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Bear", icon="ability_hunter_pet_bear", role="Defense", diet={"Bread", "Cheese", "Fish", "Fruit", "Fungus", "Meat"}, abilities={"Bite", "Claw", "Cower", "Dash", "Swipe"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="1.08", armor="1.05", damage="0.91"},
     note="Role: Defense. Only family with Swipe.",
     tames={
@@ -26,7 +27,7 @@ FLT.PET_FAMILIES = {
       {name="Thistle Bear", level="11-12", zone="Darkshore", npcID=2163, mapID=1439, x=43.4, y=34.7},
       {name="Ironfur Bear", level="41-42", zone="Feralas", npcID=5268, mapID=1444, x=78.0, y=45.4},
     }},
-  {name="Bird of Prey", icon="ability_hunter_pet_owl", role="Offense", diet={"Meat"}, abilities={"Claw", "Cower", "Dive", "Mine!"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Bird of Prey", icon="ability_hunter_pet_owl", role="Offense", diet={"Meat"}, abilities={"Claw", "Cower", "Dive", "Mine!"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="1.00", armor="1.00", damage="1.07"},
     note="Role: Offense. Only family with Mine!.",
     tames={
@@ -35,7 +36,7 @@ FLT.PET_FAMILIES = {
       {name="Ironbeak Owl", level="48-49", zone="Felwood", npcID=7097, mapID=1448, x=49.0, y=81.5},
       {name="Winterspring Owl", level="54-56", zone="Winterspring", npcID=7455, mapID=1452, x=59.2, y=35.5},
     }},
-  {name="Boar", icon="ability_hunter_pet_boar", role="Defense", diet={"Bread", "Cheese", "Fish", "Fruit", "Fungus", "Meat"}, abilities={"Bite", "Charge", "Cower", "Dash"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Boar", icon="ability_hunter_pet_boar", role="Defense", diet={"Bread", "Cheese", "Fish", "Fruit", "Fungus", "Meat"}, abilities={"Bite", "Charge", "Cower", "Dash"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="1.04", armor="1.09", damage="0.90"},
     note="Role: Defense. Only family with Charge.",
     tames={
@@ -44,7 +45,7 @@ FLT.PET_FAMILIES = {
       {name="Goretusk", level="14-15", zone="Westfall", npcID=157, mapID=1436, x=45.6, y=55.4},
       {name="Ashmane Boar", level="48-49", zone="Blasted Lands", npcID=5992, mapID=1419, x=58.2, y=30.4},
     }},
-  {name="Carrion Bird", icon="ability_hunter_pet_vulture", role="General", diet={"Fish", "Meat"}, abilities={"Bite", "Claw", "Cower", "Demoralizing Screech", "Dive"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Carrion Bird", icon="ability_hunter_pet_vulture", role="General", diet={"Fish", "Meat"}, abilities={"Bite", "Claw", "Cower", "Demoralizing Screech", "Dive"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="1.00", armor="1.05", damage="1.00"},
     note="Role: General. Only family with Demoralizing Screech.",
     tames={
@@ -53,7 +54,7 @@ FLT.PET_FAMILIES = {
       {name="Roc", level="42-43", zone="Tanaris", npcID=5428, mapID=1446, x=49.9, y=31.2},
       {name="Carrion Vulture", level="50-52", zone="Western Plaguelands", npcID=1809, mapID=1422, x=29.9, y=54.7},
     }},
-  {name="Cat", icon="ability_hunter_pet_cat", role="Offense", diet={"Fish", "Meat"}, abilities={"Bite", "Claw", "Cower", "Dash", "Prowl"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Cat", icon="ability_hunter_pet_cat", role="Offense", diet={"Fish", "Meat"}, abilities={"Bite", "Claw", "Cower", "Dash", "Prowl"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="0.98", armor="1.00", damage="1.10"},
     note="Role: Offense. Only family with Prowl.",
     tames={
@@ -62,11 +63,11 @@ FLT.PET_FAMILIES = {
       {name="Stranglethorn Tiger", level="32-33", zone="Stranglethorn Vale", npcID=682, mapID=1434, x=42.9, y=15.2},
       {name="Frostsaber Stalker", level="59-60", zone="Winterspring", npcID=7432, mapID=1452, x=52.1, y=15.2},
     }},
-  {name="Core Hound", icon="ability_hunter_pet_corehound", role="Offense", diet={"Meat"}, abilities={"Bite", "Cower", "Lava Breath"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Core Hound", icon="ability_hunter_pet_corehound", role="Offense", diet={"Meat"}, abilities={"Bite", "Cower", "Lava Breath"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     note="Role: Offense. Only family with Lava Breath. Tameable beasts not confirmed yet in Forever.",
     tames={
     }},
-  {name="Crab", icon="ability_hunter_pet_crab", role="Defense", diet={"Bread", "Fish", "Fruit", "Fungus"}, abilities={"Claw", "Cower", "Dash", "Pinch"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Crab", icon="ability_hunter_pet_crab", role="Defense", diet={"Bread", "Fish", "Fruit", "Fungus"}, abilities={"Claw", "Cower", "Dash", "Pinch"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="0.96", armor="1.13", damage="0.95"},
     note="Role: Defense. Only family with Pinch.",
     tames={
@@ -74,7 +75,7 @@ FLT.PET_FAMILIES = {
       {name="Shore Crawler", level="17-18", zone="Westfall", npcID=1216, mapID=1436, x=28.8, y=77.8},
       {name="Silt Crawler", level="40-41", zone="Swamp of Sorrows", npcID=922, mapID=1435, x=90.2, y=23.8},
     }},
-  {name="Crocolisk", icon="ability_hunter_pet_crocolisk", role="Defense", diet={"Fish", "Meat"}, abilities={"Bite", "Cower", "Dash", "Dismember"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Crocolisk", icon="ability_hunter_pet_crocolisk", role="Defense", diet={"Fish", "Meat"}, abilities={"Bite", "Cower", "Dash", "Dismember"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="0.95", armor="1.10", damage="1.00"},
     note="Role: Defense. Only family with Dismember.",
     tames={
@@ -83,11 +84,11 @@ FLT.PET_FAMILIES = {
       {name="Giant Wetlands Crocolisk", level="25-26", zone="Wetlands", npcID=2089, mapID=1437, x=20.6, y=24.2},
       {name="Drywallow Crocolisk", level="35-36", zone="Dustwallow Marsh", npcID=4341, mapID=1445, x=41.2, y=26.9},
     }},
-  {name="Fox", icon="ability_hunter_aspectofthefox", role="General", diet={"Meat"}, abilities={"Bite", "Cower", "Dash", "Trickster's Dance"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Fox", icon="ability_hunter_aspectofthefox", role="General", diet={"Meat"}, abilities={"Bite", "Cower", "Dash", "Trickster's Dance"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     note="Role: General. Only family with Trickster's Dance. Tameable beasts not confirmed yet in Forever.",
     tames={
     }},
-  {name="Gorilla", icon="ability_hunter_pet_gorilla", role="Defense", diet={"Fruit", "Fungus"}, abilities={"Bite", "Cower", "Dash", "Thunderstomp"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Gorilla", icon="ability_hunter_pet_gorilla", role="Defense", diet={"Fruit", "Fungus"}, abilities={"Bite", "Cower", "Dash", "Thunderstomp"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="1.04", armor="1.00", damage="1.02"},
     note="Role: Defense. Only family with Thunderstomp.",
     tames={
@@ -96,7 +97,7 @@ FLT.PET_FAMILIES = {
       {name="Groddoc Ape", level="42-43", zone="Feralas", npcID=5260, mapID=1444, x=58.5, y=58.7},
       {name="Un'Goro Thunderer", level="52-53", zone="Un'Goro Crater", npcID=6516, mapID=1449, x=65.8, y=15.6},
     }},
-  {name="Hyena", icon="ability_hunter_pet_hyena", role="General", diet={"Fruit", "Meat"}, abilities={"Bite", "Cower", "Dash", "Tendon Rip"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Hyena", icon="ability_hunter_pet_hyena", role="General", diet={"Fruit", "Meat"}, abilities={"Bite", "Cower", "Dash", "Tendon Rip"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="1.00", armor="1.05", damage="1.00"},
     note="Role: General. Only family with Tendon Rip.",
     tames={
@@ -104,7 +105,7 @@ FLT.PET_FAMILIES = {
       {name="Starving Blisterpaw", level="41-42", zone="Tanaris", npcID=5425, mapID=1446, x=49.2, y=28.3},
       {name="Blisterpaw Hyena", level="44-45", zone="Tanaris", npcID=5426, mapID=1446, x=52.3, y=48.7},
     }},
-  {name="Raptor", icon="ability_hunter_pet_raptor", role="Offense", diet={"Meat"}, abilities={"Bite", "Claw", "Cower", "Dash", "Savage Rend"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Raptor", icon="ability_hunter_pet_raptor", role="Offense", diet={"Meat"}, abilities={"Bite", "Claw", "Cower", "Dash", "Savage Rend"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="0.95", armor="1.03", damage="1.10"},
     note="Role: Offense. Only family with Savage Rend.",
     tames={
@@ -114,7 +115,7 @@ FLT.PET_FAMILIES = {
       {name="Bloodfen Raptor", level="35-36", zone="Dustwallow Marsh", npcID=4351, mapID=1445, x=49.5, y=18.4},
       {name="Jungle Stalker", level="40-41", zone="Stranglethorn Vale", npcID=687, mapID=1434, x=28.8, y=45.6},
     }},
-  {name="Scorpid", icon="ability_hunter_pet_scorpid", role="Defense", diet={"Meat"}, abilities={"Claw", "Cower", "Dash", "Scorpid Poison"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Scorpid", icon="ability_hunter_pet_scorpid", role="Defense", diet={"Meat"}, abilities={"Claw", "Cower", "Dash", "Scorpid Poison"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="1.00", armor="1.10", damage="0.94"},
     note="Role: Defense. Only family with Scorpid Poison.",
     tames={
@@ -123,7 +124,7 @@ FLT.PET_FAMILIES = {
       {name="Scorpashi Snapper", level="30-31", zone="Desolace", npcID=4696, mapID=1443, x=65.5, y=27.9},
       {name="Scorpid Hunter", level="40-41", zone="Tanaris", npcID=5422, mapID=1446, x=54.6, y=29.9},
     }},
-  {name="Spider", icon="ability_hunter_pet_spider", role="Offense", diet={"Meat"}, abilities={"Bite", "Cower", "Dash", "Web"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Spider", icon="ability_hunter_pet_spider", role="Offense", diet={"Meat"}, abilities={"Bite", "Cower", "Dash", "Web"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="1.00", armor="1.00", damage="1.07"},
     note="Role: Offense. Only family with Web.",
     tames={
@@ -132,7 +133,7 @@ FLT.PET_FAMILIES = {
       {name="Webwood Venomfang", level="7-8", zone="Teldrassil", npcID=1999, mapID=1438, x=45.4, y=70.2},
       {name="Tarantula", level="15-16", zone="Redridge Mountains", npcID=442, mapID=1433, x=9.0, y=75.7},
     }},
-  {name="Tallstrider", icon="ability_hunter_pet_tallstrider", role="Defense", diet={"Cheese", "Fruit", "Fungus"}, abilities={"Bite", "Cower", "Dash", "Dust Cloud"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Tallstrider", icon="ability_hunter_pet_tallstrider", role="Defense", diet={"Cheese", "Fruit", "Fungus"}, abilities={"Bite", "Cower", "Dash", "Dust Cloud"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="1.05", armor="1.00", damage="1.00"},
     note="Role: Defense. Only family with Dust Cloud.",
     tames={
@@ -141,7 +142,7 @@ FLT.PET_FAMILIES = {
       {name="Elder Plainstrider", level="8-9", zone="Mulgore", npcID=2957, mapID=1412, x=50.0, y=36.4},
       {name="Fleeting Plainstrider", level="12-13", zone="The Barrens", npcID=3246, mapID=1413, x=55.7, y=29.6},
     }},
-  {name="Turtle", icon="ability_hunter_pet_turtle", role="Defense", diet={"Fish", "Fruit", "Fungus", "Raw Fish"}, abilities={"Bite", "Cower", "Dash", "Shell Shield"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Turtle", icon="ability_hunter_pet_turtle", role="Defense", diet={"Fish", "Fruit", "Fungus", "Raw Fish"}, abilities={"Bite", "Cower", "Dash", "Shell Shield"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="1.00", armor="1.13", damage="0.90"},
     note="Role: Defense. Only family with Shell Shield.",
     tames={
@@ -150,7 +151,7 @@ FLT.PET_FAMILIES = {
       {name="Sparkleshell Snapper", level="34-35", zone="Thousand Needles", npcID=4143, mapID=1441, x=79.9, y=66.3},
       {name="Saltwater Snapjaw", level="49-50", zone="The Hinterlands", npcID=2505, mapID=1425, x=80.0, y=58.0},
     }},
-  {name="Wind Serpent", icon="ability_hunter_pet_windserpent", role="Offense", diet={"Bread", "Cheese", "Fish"}, abilities={"Bite", "Cower", "Dive", "Lightning Breath"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Wind Serpent", icon="ability_hunter_pet_windserpent", role="Offense", diet={"Bread", "Cheese", "Fish"}, abilities={"Bite", "Cower", "Dive", "Lightning Breath"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="1.00", armor="1.00", damage="1.07"},
     note="Role: Offense. Only family with Lightning Breath.",
     tames={
@@ -158,7 +159,7 @@ FLT.PET_FAMILIES = {
       {name="Cloud Serpent", level="25-26", zone="Thousand Needles", npcID=4117, mapID=1441, x=40.5, y=50.2},
       {name="Vale Screecher", level="41-43", zone="Feralas", npcID=5307, mapID=1444, x=58.2, y=57.8},
     }},
-  {name="Wolf", icon="ability_hunter_pet_wolf", role="General", diet={"Meat"}, abilities={"Bite", "Cower", "Dash", "Furious Howl"}, trainer={"Growl", "Arcane Resistance", "Faster Attack", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance", "Slower Attack"},
+  {name="Wolf", icon="ability_hunter_pet_wolf", role="General", diet={"Meat"}, abilities={"Bite", "Cower", "Dash", "Furious Howl"}, trainer={"Growl", "Arcane Resistance", "Fire Resistance", "Frost Resistance", "Great Stamina", "Natural Armor", "Nature Resistance", "Shadow Resistance"},
     modifiers={health="1.00", armor="1.05", damage="1.00"},
     note="Role: General. Only family with Furious Howl.",
     tames={
@@ -578,24 +579,6 @@ FLT.PET_ABILITIES = {
       {rank=5, level=60, tp=0, desc="Your tallstrider kicks up an abrasive cloud of dust, reducing the target's Armor by 505 for 30 sec.", noSource=true, learnFrom={
       }},
     }},
-  {name="Faster Attack", icon="ability_eyeoftheowl", source="trainer", families={"All families"},
-    effect="Increases attack speed.",
-    ranks={
-      {rank=1, level=1, tp=0, desc="Increases attack speed by 17%.", learnFrom={
-      }},
-      {rank=2, level=1, tp=0, desc="Increases attack speed by 25%.", learnFrom={
-      }},
-      {rank=3, level=1, tp=0, desc="Increases attack speed by 33%.", learnFrom={
-      }},
-      {rank=4, level=1, tp=0, desc="Increases attack speed by 43%.", learnFrom={
-      }},
-      {rank=5, level=1, tp=0, desc="Increases attack speed by 54%.", learnFrom={
-      }},
-      {rank=6, level=1, tp=0, desc="Increases attack speed by 67%.", learnFrom={
-      }},
-      {rank=7, level=1, tp=0, desc="Increases attack speed by 100%.", learnFrom={
-      }},
-    }},
   {name="Fire Resistance", icon="spell_fire_firearmor", source="trainer", families={"All families"},
     effect="Increases Fire Resistance.",
     ranks={
@@ -886,14 +869,6 @@ FLT.PET_ABILITIES = {
         {name="Aku'mai Snapjaw", level="26-27", zone="Blackfathom Deeps (Dungeon)", npcID=4825, family="Turtle"},
         {name="Snapjaw", level="30-31", zone="Hillsbrad Foothills", npcID=2408, mapID=1424, x=66.1, y=38.2, family="Turtle"},
         {name="Cranky Benj", level="32", zone="Alterac Mountains", npcID=14223, mapID=1416, x=37.3, y=19.8, family="Turtle"},
-      }},
-    }},
-  {name="Slower Attack", icon="ability_eyeoftheowl", source="trainer", families={"All families"},
-    effect="Decreases attack speed.",
-    ranks={
-      {rank=2, level=1, tp=0, desc="Decreases attack speed by 20%.", learnFrom={
-      }},
-      {rank=3, level=1, tp=0, desc="Decreases attack speed by 26%.", learnFrom={
       }},
     }},
   {name="Swipe", icon="inv_misc_monsterclaw_03", source="wild", families={"Bear"},

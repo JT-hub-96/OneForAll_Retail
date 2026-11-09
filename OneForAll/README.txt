@@ -70,6 +70,49 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.2.2 - Info bar, guild members on the map
+==========================================
+- New Quality of Life option "Info bar" (Interface, off): a band at the top middle of the screen, empty at first -
+  right-click it to add what you want: gold (with your other characters), free bag slots, durability, experience,
+  location with coordinates, clock, FPS and latency, new trainer spells, Library Books, hearthstone (use it with a
+  click), class reagent (hunters: all arrows / bullets, with the icon of your ammo), guild and friends online, mail,
+  the Value spec, OneForAll tabs and the game's windows (Character, Spellbook, Talents, Map / Quests, Looking for
+  Group, Calendar, Legacy, Shop, Guild, Friends). Drag elements to change the order; pin it or let it fold up to a
+  small tab; size, "Stay open" time, background colour, opacity and a "Default" button.
+- New: guild members who also use OneForAll show on the world map (zone and continent, class colour; tooltip with
+  name, level, class, zone). Inside a dungeon they show as a green dot on its entrance with "Guild members inside:".
+  Members in your group get no dot. One switch for both ways in the new Quality of Life category "Guild": switched
+  off, your position is not sent and you see nobody.
+- Noteworthy changes popup for 6.2.2 (shown once), with a picture of the info bar.
+- Class trainer window (hunters): new mode "Pet training" - the ranks the pet trainers teach by level with training
+  points and costs, and the pet trainers of your faction with a Map button.
+- Trainer list: mage Comprehend Scroll; rogue poisons with their levels; learned trap ranks no longer show as missing;
+  Teleports / Portals of the other faction are no longer listed; spells of the other side are marked when you look at
+  another class; the shaman's Totemic Projection has its new name.
+- Tooltips: the quests you can take or turn in at an NPC (Quality of Life > Tooltips > "Quests on NPCs", on; off
+  while Questie is loaded).
+- Gear Value / Gear Planner: item set bonuses count (a second tooltip line shows the change with the set bonus);
+  items with a random suffix get their arrow in Baganator and the loot roll window; dungeon quest rewards show the
+  dungeon swirl (a click opens the quest) and are suggested for both factions; stat weights from Sharpie's Gear
+  Judge 3.3.0.
+- Professions: the search also finds recipes by their materials ("coarse thread").
+- Buff reminder: a click always buffs you, also with a friendly target; a buff that missed you brings its card back;
+  Find Herbs / Minerals / Treasure are suggested; warlock Spellstones and Firestones can be added.
+- Dungeons: level ranges as the game's Looking For Group list shows them; quests of dungeons in the other faction's
+  territory are shown right and a quest in your log always counts; new quest colours (teal = chain started, green =
+  in your log); The Drowned City loot; Blackmaw Hold lists the Moontouched Wanderer; odd boss notes removed; Trouble
+  in the Deeps no longer listed for Blackfathom Deeps.
+- Check low spell ranks: action bars 6, 7 and 8 are checked too.
+- Quest XP on the experience bar: new switch "Only tracked quests" (off).
+- Nearby Library Book alerts: "Snooze 30 min" button.
+- Bag bar: a quiver / ammo pouch shows all your arrows / bullets instead of the game's "*" (Quality of Life >
+  Interface > "All ammo on the quiver", on for hunters).
+- Quality of Life and Settings are locked in combat and free again after the fight (avoids errors from Blizzard
+  windows locked in combat).
+- Move windows: a window opens right at its saved place; windows are kept on the screen only while you drag them, and
+  a window another addon hides (TSM's crafting and vendor view) is left alone; the Legacy window can be moved.
+- Quest data updated (QuestieDB).
+
 6.2.1 - New dungeons, leaner sparkles
 =====================================
 - New dungeons: Alcaz Prison, Blackmaw Hold, Krol'dok Stronghold and Shaper's Terrace show their bosses; The Drowned

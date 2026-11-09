@@ -16,6 +16,11 @@ local openDropDown -- below
 -- Kept for all versions of a minor line (5.7.0 ... 5.7.x); emptied when the next minor line
 -- (5.8.0) starts (TODO.md "Neu-Markierungen").
 local NEW_TAGS = { -- the 6.1.x marks removed when 6.2.0 started (rule: marks stay one minor line)
+  infoBar = "6.2.2",
+  npcQuestTip = "6.2.2",
+  questXPTracked = "6.2.2",
+  guildMap = "6.2.2",
+  quiverAmmo = "6.2.2",
 }
 -- placed left of the checkbox (or of the label when there is none), user 16.10.
 local function newTag(parent, anchor, key, dx)
@@ -385,6 +390,76 @@ local function createQoLPanel(parent)
   local g = group(c, N"General")
   check(g, N"Farther camera zoom", N"Lets you zoom the camera out further.", nil, "cameraZoom")
   check(g, N"Free bag slots on the backpack", N"Shows the number of free slots on your backpack.", N"Counts all normal bags (quivers, ammo and profession bags are not counted).", "bagSlots")
+  check(g, N"All ammo on the quiver", N"Your quiver or ammo pouch shows all arrows / bullets in your bags.", N"Instead of only what it holds; the game shows \"*\" for more than 999. On by default for hunters.", "quiverAmmo")
+  check(g, N"Info bar", N"A band at the top of the screen with the information you choose.", N"Starts empty: right-click the band to add elements (gold, bags, durability, experience, location, clock, FPS, new trainer spells, Library Books, hearthstone, class reagent, guild, friends, mail, Value spec, the tabs of the OneForAll window) or to pin it. Pinned it stays open; else it folds up to a small tab 3 seconds after the mouse left it and opens while the mouse is on it. Click an element to open what belongs to it.", "infoBar")
+  do -- size of the info bar (user 08.11.)
+    local r = row(g, N"Size", N"How large the info bar is.", nil, 24)
+    local val = FLT.NewFS(r, nil, "OVERLAY", "GameFontHighlight"); val:SetTextColor(FLT.SkinC(1, 0.82, 0.2))
+    val:SetWidth(40); val:SetJustifyH("RIGHT"); place(r, val, 10)
+    local sl = UI.Slider(r, 130, 50, 150, 5, function(v)
+      val:SetText(v .. " %")
+      if Q.Get("infoBarScale") ~= v then Q.Set("infoBarScale", v) end
+    end)
+    place(r, sl, 10)
+    hint(sl, N"Size", N"50 - 150 %. Mouse wheel or drag.")
+    refreshers[#refreshers + 1] = function() local v = Q.Get("infoBarScale") or 100; sl:SetValue(v); val:SetText(v .. " %") end
+  end
+  do -- how long the bar stays open after the mouse left it (user 09.11.)
+    local r = row(g, N"Stay open", N"Only when not pinned.", nil, 24)
+    local val = FLT.NewFS(r, nil, "OVERLAY", "GameFontHighlight"); val:SetTextColor(FLT.SkinC(1, 0.82, 0.2))
+    val:SetWidth(40); val:SetJustifyH("RIGHT"); place(r, val, 10)
+    local sl = UI.Slider(r, 130, 1, 10, 1, function(v)
+      val:SetText(v .. " s")
+      if Q.Get("infoBarDelay") ~= v then Q.Set("infoBarDelay", v) end
+    end)
+    place(r, sl, 10)
+    hint(sl, N"Stay open", N"1 - 10 seconds after the mouse left the bar. Mouse wheel or drag.")
+    refreshers[#refreshers + 1] = function() local v = Q.Get("infoBarDelay") or 3; sl:SetValue(v); val:SetText(v .. " s") end
+  end
+  do -- background colour, opacity and back to the defaults (6.2.2-beta43, user 09.11.)
+    local r = row(g, N"Background colour", N"The colour of the bar's background; the gold line stays.", nil, 24)
+    local sw = UI.GoldButton(r, "", 50, 22, nil, 11); place(r, sw)
+    local chip = sw:CreateTexture(nil, "OVERLAY"); chip:SetSize(30, 12); chip:SetPoint("CENTER")
+    local function show() local c = Q.Get("infoBarColor"); local d = FLT.InfoBar and FLT.InfoBar.DEFAULT_COLOR or { 0, 0, 0 }
+      if type(c) ~= "table" then c = d end; chip:SetColorTexture(c[1], c[2], c[3], 1) end
+    local function setColor(cr, cg, cb) Q.Set("infoBarColor", { cr, cg, cb }); show() end
+    sw:SetScript("OnClick", function()
+      local CPF = ColorPickerFrame
+      if type(CPF) ~= "table" then return end
+      local c = Q.Get("infoBarColor"); local d = FLT.InfoBar and FLT.InfoBar.DEFAULT_COLOR or { 0, 0, 0 }
+      if type(c) ~= "table" then c = d end
+      local old = { c[1], c[2], c[3] }
+      local function picked() local cr, cg, cb = CPF:GetColorRGB(); setColor(cr, cg, cb) end
+      local function cancel() setColor(old[1], old[2], old[3]) end
+      if CPF.SetupColorPickerAndShow then
+        CPF:SetupColorPickerAndShow({ r = old[1], g = old[2], b = old[3], hasOpacity = false, swatchFunc = picked, cancelFunc = cancel })
+      else -- older clients
+        CPF.hasOpacity = false; CPF.func = picked; CPF.cancelFunc = cancel; CPF.previousValues = old
+        CPF:SetColorRGB(old[1], old[2], old[3]); CPF:Hide(); CPF:Show()
+      end
+    end)
+    hint(sw, N"Background colour", N"Click to choose a colour.")
+    refreshers[#refreshers + 1] = show
+  end
+  do
+    local r = row(g, N"Opacity", N"How visible the whole bar is.", nil, 24)
+    local val = FLT.NewFS(r, nil, "OVERLAY", "GameFontHighlight"); val:SetTextColor(FLT.SkinC(1, 0.82, 0.2))
+    val:SetWidth(40); val:SetJustifyH("RIGHT"); place(r, val, 10)
+    local sl = UI.Slider(r, 130, 10, 100, 5, function(v)
+      val:SetText(v .. " %")
+      if Q.Get("infoBarAlpha") ~= v then Q.Set("infoBarAlpha", v) end
+    end)
+    place(r, sl, 10)
+    hint(sl, N"Opacity", N"10 - 100 %. Mouse wheel or drag.")
+    refreshers[#refreshers + 1] = function() local v = Q.Get("infoBarAlpha") or 100; sl:SetValue(v); val:SetText(v .. " %") end
+  end
+  do
+    local r = row(g, N"Default look", N"Size, stay open, colour and opacity back to the default values.", nil, 24)
+    button(r, N"Default", 70, N"Your elements stay as they are.", function()
+      Q.Set("infoBarScale", nil); Q.Set("infoBarDelay", nil); Q.Set("infoBarColor", nil); Q.Set("infoBarAlpha", nil)
+      for _, fn in ipairs(refreshers) do pcall(fn) end
+    end)
+  end
   check(g, N"Hide error messages", N"Hides the red messages in the middle of the screen.", N"Messages like \"Out of range\" or \"Not enough rage\" are no longer shown. Still shown: inventory or bags full, quest log full, not enough money, carrying too many of an item.", "hideErrors")
   g = group(c, N"Windows")
   do
@@ -526,6 +601,7 @@ local function createQoLPanel(parent)
   check(g, N"Turn in quests automatically", N"Turns in finished quests. Hold Shift to do it by hand.", N"If you can choose between rewards, you still pick yourself.", "autoTurnIn")
   g = group(c, N"Experience")
   check(g, N"Quest XP on the experience bar", N"Shows the XP of your finished quests on the experience bar.", N"Marks on the experience bar how much XP your finished quests give when you turn them in. The amount is also shown in the bar's tooltip.", "questXP")
+  check(g, N"Only tracked quests", N"Counts only the finished quests you track.", N"Quests you do not track (e.g. ones for later or in a dungeon) are left out.", "questXPTracked", 24)
   g = group(c, N"In the world")
   check(g, N"Best sell price on rewards", N"A gold coin on the quest reward choice that sells for the most.", N"In the quest log and when you turn in a quest with two or more rewards to choose from: the one with the highest vendor price (times the count) gets a gold coin at its top right. The green upgrade arrow stays at the top left, so an item can have both.", "questSellCoin")
   check(g, N"Quest loot sparkles", N"Quest items in the world sparkle again.", N"The game's loot glow. Changes only this one game setting - your outline settings stay as they are. After switching it off, restart the game.", "questSparkles")
@@ -545,6 +621,7 @@ local function createQoLPanel(parent)
     function() return Q.GetCompareShift() end, function(v) Q.SetCompareShift(v) end)
   g = group(c, N"Units")
   check(g, N"Target of players", N"Shows who a player or NPC under your mouse is targeting.", N"\"You\" when it is you.", "unitTarget")
+  check(g, N"Quests on NPCs", N"Quests you can take (!) or turn in (?) at the NPC under your mouse.", N"The same quests as the quest icons on the world map: for your level, side, race and class, pre-quests done. Off while Questie is loaded (it shows its own).", "npcQuestTip")
 
   -- SOCIAL
   c = category("social", N"Social", "Interface\\Icons\\INV_Letter_15", N"Group invites, duels, recipe sharing and thanks.")
@@ -572,6 +649,11 @@ local function createQoLPanel(parent)
   end
   g = group(c, N"Buffs")
   check(g, N"Thank players who buff you", N"Sends a /thank to players outside your group who buff you.", N"For buffs that last longer than 2 minutes. It comes 1 second later, not in combat, at most once every 5 minutes per player. Your target is not changed. /ofa thanks shows the last buffs.", "thanksBuff")
+
+  -- GUILD (own category, user 09.11.: "eventuell kommt ja noch mehr dazu")
+  c = category("guild", N"Guild", "Interface\\Icons\\INV_Shirt_GuildTabard_01", N"What you share with your guild members who also use OneForAll.")
+  g = group(c, N"World Map")
+  check(g, N"Guild members on the map", N"Guild members with OneForAll as dots in their class colour - and you on their map.", N"Only guild members who also use OneForAll and have this switched on. Switched off, your position is not sent any more and you see nobody else either. Inside a dungeon or raid only which one is sent: a green dot on its entrance, the names in its tooltip. Members in your group are left out, the game shows them already. Also on the continent map, a little smaller.", "guildMap")
 
   -- WORLD MAP
   c = category("map", N"World Map", "Interface\\Icons\\INV_Misc_Map_01", N"Icons on the world map.")
@@ -851,6 +933,8 @@ local function createQoLPanel(parent)
     if sf.SetVerticalScroll then sf:SetVerticalScroll(0) end
   end
   selectCat("iface")
+  -- open one group from elsewhere (the Noteworthy changes buttons, 6.2.2)
+  UI.QoLSelect = function(key) if search ~= "" then searchBox:SetText("") end; selectCat(key) end
 
   panel:SetScript("OnShow", function() for _, f in ipairs(refreshers) do f() end; updateCounts() end)
   panel:SetScript("OnHide", function() UI.CloseDropDown(); if neverMenu then neverMenu:Hide() end end)
@@ -858,4 +942,4 @@ local function createQoLPanel(parent)
   return panel
 end
 
-UI.RegisterPanel({ key="qol", label=N"Quality of Life", order=4, tabWidth=140, create=createQoLPanel })
+UI.RegisterPanel({ key="qol", label=N"Quality of Life", order=4, tabWidth=140, create=createQoLPanel, combatLock=true })

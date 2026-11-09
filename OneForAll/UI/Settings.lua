@@ -332,4 +332,4 @@ local function createSettingsPanel(parent)
   return panel
 end
 
-UI.RegisterPanel({ key="settings", label=N"Settings", order=0, tabWidth=27, icon="Interface\\Icons\\INV_Misc_Gear_01", create=createSettingsPanel })
+UI.RegisterPanel({ key="settings", label=N"Settings", order=0, tabWidth=27, icon="Interface\\Icons\\INV_Misc_Gear_01", create=createSettingsPanel, combatLock=true })

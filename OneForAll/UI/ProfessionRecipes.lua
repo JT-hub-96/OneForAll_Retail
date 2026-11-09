@@ -39,6 +39,26 @@ local function recipeName(r)
   return n
 end
 FLT.RecipeName = recipeName
+-- the reagents of a recipe as one lower-case text for the search (6.2.2, user 09.11.: "coarse thread" finds every
+-- recipe that needs it): our English names + the client's names; kept once all client names are loaded
+local rhay = setmetatable({}, { __mode = "k" })
+local function reagentText(r)
+  local h = rhay[r]
+  if h then return h end
+  local parts, done, client = {}, true, FLT.ClientTexts and FLT.ClientTexts()
+  for _, rg in ipairs(r.r or {}) do
+    if rg[3] and rg[3] ~= "" then parts[#parts + 1] = rg[3] end
+    if client and rg[1] then
+      local n = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(rg[1])
+      if not n and GetItemInfo then n = GetItemInfo(rg[1]) end
+      if type(n) == "string" then parts[#parts + 1] = n else done = false end
+    end
+  end
+  h = table.concat(parts, " "):lower()
+  if done then rhay[r] = h end
+  return h
+end
+FLT._reagentText = reagentText -- tests
 local function NM(s) return FLT.Name and FLT.Name(s) or s end -- NPC / object / item names (6.2.0 step 2b)
 local function DN(s) return FLT.DungeonName and FLT.DungeonName(s) or s end
 local function profDB(prof)
@@ -552,7 +572,7 @@ function UI.CreateRecipeBrowser(parent)
   local filters = {}
   local box = FLT.SkinBlizz(CreateFrame("EditBox", nil, f, "InputBoxTemplate"))
   box:SetSize(220, 20); box:SetPoint("TOPLEFT", 18, -53); box:SetAutoFocus(false)
-  local hint = FLT.NewFS(box, nil, "OVERLAY", "GameFontDisableSmall"); hint:SetPoint("LEFT", 4, 0); hint:SetText(L["Search..."])
+  local hint = FLT.NewFS(box, nil, "OVERLAY", "GameFontDisableSmall"); hint:SetPoint("LEFT", 4, 0); hint:SetText(L["Search name or material..."])
   -- clear button next to the search field (only while there is text)
   local clear = UI.GoldButton(f, "X", 22, 20, nil, 11); clear:SetPoint("LEFT", box, "RIGHT", 6, 0); clear:Hide()
   clear:SetScript("OnClick", function() box:SetText(""); box:ClearFocus() end)
@@ -1204,7 +1224,7 @@ function UI.CreateRecipeBrowser(parent)
       if ok and search ~= "" then
         local cn = recipeName(r)
         local hay = (r.n .. " " .. (cn ~= r.n and (cn .. " ") or "") .. (r.cat or "") .. " " .. (r.rn or "")):lower()
-        if not hay:find(search, 1, true) then ok = false end
+        if not hay:find(search, 1, true) and not reagentText(r):find(search, 1, true) then ok = false end
       end
       if ok then vis[#vis + 1] = r end
     end

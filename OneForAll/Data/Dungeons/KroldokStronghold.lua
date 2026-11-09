@@ -4,7 +4,7 @@ local _, FLT = ...
 -- Bosses from the Forever client (DungeonEncounter, wago.tools 1.60.1.70862), NPC IDs and item IDs from Wowhead Forever,
 -- loot from wowtbc.gg (08.11.2026, still being discovered); tools/dungeon-check.
 FLT.DUNGEON_REGISTRY["Krol'dok Stronghold"] = {
-    level = "40-45",
+    level = "40-47",
     location = "Riverglades",
     description = "New Forever dungeon: a Twilight's Hammer ogre fortress on a hill in the Riverglades. The ogres raid nearby settlements and take prisoners. Its loot is still being discovered.",
     icon = "Interface\\Icons\\INV_Misc_Bone_OrcSkull_01",
@@ -46,7 +46,6 @@ FLT.DUNGEON_REGISTRY["Krol'dok Stronghold"] = {
             },
         },
         {
-            description = "Not in the game's boss list; his loot was seen by players (wowtbc.gg).",
             name = "Bossman Toof",
             npcID = 264773,
             loot = {

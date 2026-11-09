@@ -462,7 +462,21 @@ local function ensureMarker()
   return marker
 end
 
+-- a controller in use (GamePadEnable alone is 1 also without one, user 06.11.)
+local function padActive()
+  if not GetCVar or GetCVar("GamePadEnable") ~= "1" then return false end
+  local ok, ids = pcall(function() return C_GamePad and C_GamePad.GetAllDeviceIDs and C_GamePad.GetAllDeviceIDs() end)
+  return ok and type(ids) == "table" and #ids > 0
+end
 local function forceMap(mapID)
+  -- the map is open already: only switch it (no panel shown from our code)
+  if WorldMapFrame and WorldMapFrame:IsShown() and WorldMapFrame.SetMapID then
+    if pcall(WorldMapFrame.SetMapID, WorldMapFrame, mapID) then return true end
+  end
+  -- with a controller the map must be opened by the player (6.2.2, Discord kaanu 08.11.): opened from addon code it
+  -- tainted the game's panel handling, and closing it with the controller hit ADDON_ACTION_FORBIDDEN
+  -- SetPreferredGamepadInteractTarget() until /reload. "pending": shown when the player opens the map.
+  if padActive() then return "pending" end
   -- C_Map.OpenWorldMap is the most reliable route on modern Classic clients.
   if C_Map and C_Map.OpenWorldMap then
     local ok = pcall(C_Map.OpenWorldMap, mapID)
@@ -580,7 +594,24 @@ function FLT:ShowOnMap(book)
   local m = ensureMarker()
   if m then m:Hide() end
 
-  if not forceMap(mapID) then
+  local opened = forceMap(mapID)
+  if opened == "pending" then
+    FLT._mapPending = { book = book, mapID = mapID }
+    if not FLT._mapPendingHook and WorldMapFrame and WorldMapFrame.HookScript then
+      FLT._mapPendingHook = true
+      WorldMapFrame:HookScript("OnShow", function(f)
+        local p = FLT._mapPending
+        if not p then return end
+        FLT._mapPending = nil
+        if f.SetMapID then pcall(f.SetMapID, f, p.mapID) end
+        C_Timer.After(0.05, function() positionMarker(p.book, p.mapID) end)
+        C_Timer.After(0.25, function() positionMarker(p.book, p.mapID) end)
+      end)
+    end
+    self.Msg(L["Open the world map (M) - the place is marked there."])
+    return
+  end
+  if not opened then
     self.Msg("The world map could not be opened.")
     return
   end

@@ -518,6 +518,39 @@ function UI.CombatDetach(btn, onBack)
   end)
 end
 
+-- Settings pages locked in combat (6.2.2, user 08.11.: "koennen wir schalter und sowas sperren waehrend des kampfes?"):
+-- a shade with a short note lies over the page and catches the clicks; it goes away after combat. Not secure itself,
+-- so it can show / hide in combat. QoL.Set also waits for the end of combat (QoL.lua) for changes made elsewhere.
+local locks, lockFrame = {}, nil
+local function inCombatNow() return InCombatLockdown and InCombatLockdown() end
+function UI.CombatLock(panel)
+  local o = CreateFrame("Frame", nil, panel)
+  -- from just under the tab line down (the page reaches up behind the tabs; user 08.11.: the shade over the tabs looked bad)
+  local H = UI.HDR or { tabTop = 84, tabH = 30 }
+  local top = (H.tabTop + H.tabH) - (UI.CONTENT_TOP - UI.TITLE_BAND_H) + 3
+  o:SetPoint("TOPLEFT", 0, -top); o:SetPoint("BOTTOMRIGHT", 0, 0)
+  o:SetFrameLevel((panel:GetFrameLevel() or 1) + 50); o:EnableMouse(true)
+  if o.EnableMouseWheel then o:EnableMouseWheel(true); o:SetScript("OnMouseWheel", function() end) end
+  local shade = o:CreateTexture(nil, "ARTWORK"); shade:SetAllPoints(); shade:SetColorTexture(0, 0, 0, 0.55)
+  local box = CreateFrame("Frame", nil, o); box:SetSize(320, 44); box:SetPoint("CENTER", 0, 20)
+  UI.FramedPanel(box)
+  local icon = box:CreateTexture(nil, "OVERLAY"); icon:SetSize(18, 18); icon:SetPoint("LEFT", 14, 0)
+  icon:SetTexture("Interface\\Buttons\\LockButton-Locked-Up")
+  local t = FLT.NewFS(box, nil, "OVERLAY", "GameFontNormal"); t:SetPoint("LEFT", icon, "RIGHT", 8, 0); t:SetPoint("RIGHT", -12, 0)
+  t:SetJustifyH("LEFT"); t:SetText(L["Locked in combat - free again after the fight."])
+  o:SetShown(inCombatNow() and true or false)
+  locks[#locks + 1] = o
+  if lockFrame then return o end
+  lockFrame = CreateFrame("Frame")
+  lockFrame:RegisterEvent("PLAYER_REGEN_DISABLED"); lockFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+  lockFrame:SetScript("OnEvent", function(_, event)
+    for _, l in ipairs(locks) do l:SetShown(event == "PLAYER_REGEN_DISABLED") end
+    -- an open dropdown / edit box of a locked page closes too
+    if event == "PLAYER_REGEN_DISABLED" and UI.CloseDropDown then pcall(UI.CloseDropDown) end
+  end)
+  return o
+end
+
 UI.Nine = Nine
 UI.Plate = Plate
 
@@ -1238,6 +1271,7 @@ function UI.OpenDropDown(owner, options, current, onPick, width)
   ddCatcher:Show(); ddMenu:Show()
 end
 function UI.CloseDropDown() if ddMenu then ddMenu:Hide() end end
+function UI.DropDownShown() return ddMenu ~= nil and ddMenu:IsShown() end
 
 UI.GoldButton = GoldButton
 UI.RoundRect = RoundRect
@@ -1248,7 +1282,7 @@ UI.makeButton = makeButton
 UI.addDivider = addDivider
 
 -- Panel registry ------------------------------------------------------------
--- spec = { key=, label=, order=, tabWidth=, create=function(parent) return frame end }
+-- spec = { key=, label=, order=, tabWidth=, create=function(parent) return frame end, combatLock=true (settings pages) }
 -- A panel may define panel:Refresh(), which runs whenever the window refreshes.
 UI.panels = {}
 function UI.RegisterPanel(spec)

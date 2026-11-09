@@ -3,7 +3,7 @@ local ADDON, FLT = ...
 -- Shadowfang Keep: quests from QuestieDB Forever, rewards and loot checked against
 -- Wowhead (Forever), wowforevertalents.com and foreverchanges.pro. See DUNGEON_DATA_SOURCES.txt.
 FLT.DUNGEON_REGISTRY["Shadowfang Keep"] = {
-    level = "20-26",
+    level = "20-30",
     location = "Silverpine Forest, above Pyrewood Village",
     description = "A haunted castle in Silverpine Forest, taken over by the mad archmage Arugal and the worgen he summoned.",
     icon = "Interface\\Icons\\Spell_Shadow_SummonFelHunter",

@@ -45,5 +45,12 @@ FLT.DUNGEON_REGISTRY["Blackmaw Hold"] = {
             npcID = 247231,
             loot = {},
         },
+        {
+            -- rare elite beast; wowtbc.gg lists it as a boss (data check 09.11.2026), NPC ID from Wowhead Forever
+            name = "Moontouched Wanderer",
+            npcID = 269104,
+            rare = true,
+            loot = {},
+        },
     },
 }

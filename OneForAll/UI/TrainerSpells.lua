@@ -35,7 +35,8 @@ local function _words() return N"Defensive Stance", N"Berserker Stance", N"Whirl
 local _, myToken, myClass = UnitClass("player")
 myClass = tonumber(myClass)
 local viewClass = myClass
-local viewMode = "spells" -- "spells" (the class trainer) or "weapons" (weapon masters, 5.7.3, user 25.10.)
+local viewMode = "spells" -- "spells" (the class trainer), "weapons" (weapon masters, 5.7.3, user 25.10.), "quests",
+-- "pet" (hunters only: Pet Trainer skills and the pet trainers, 6.2.2, user 09.11.)
 
 local function classIconCoords(token)
   local tc = type(CLASS_ICON_TCOORDS) == "table" and CLASS_ICON_TCOORDS[token]
@@ -201,13 +202,27 @@ ev:SetScript("OnEvent", function(...) FLT.SafeCall("Trainer", onEventSafe, ...) 
 -- the list: { level, spellID, name, rank, cost or nil, icon, quest, talent }, sorted by level.
 -- Own class: only what is not known yet (up to level 60), own race only.
 -- Other classes: everything.
+-- a spell for one side only (race mask of the data, PlayableRaceBit): "Alliance" / "Horde", else nil.
+-- Alliance: Human 0, Dwarf 2, Night Elf 3, Gnome 6, Skyborne High Order 32; Horde: Orc 1, Undead 4, Tauren 5, Troll 7,
+-- Skyborne Windshaper 33 (the other bits are races of later games)
+local A_BITS, H_BITS = { 0, 2, 3, 6, 32 }, { 1, 4, 5, 7, 33 }
+local function hasBit(mask, list) for _, b in ipairs(list) do if math.floor(mask / 2 ^ b) % 2 == 1 then return true end end return false end
+local function sideOnly(mask)
+  if not mask or mask == 0 then return nil end
+  local a, h = hasBit(mask, A_BITS), hasBit(mask, H_BITS)
+  if a and not h then return "Alliance" elseif h and not a then return "Horde" end
+end
+FLT._trainerSideOnly = sideOnly -- tests
+
 local function spellList(cid)
   local c = classByID(cid)
   local list = FLT.TRAINER_SPELLS and FLT.TRAINER_SPELLS[cid] or {}
   local own = cid == myClass
   local known = own and knownSpells() or {}
   local raceID = tonumber((select(3, UnitRace("player"))))
-  local raceBit = raceID and 2 ^ (raceID - 1) or 0
+  -- the race masks of the data use the client's PlayableRaceBit: race ID - 1 for Human ... Troll, the Skyborne have
+  -- bits 32 / 33 (High Order 95, Windshaper 96; 6.2.2, Discord 08.11.: Alliance teleports for a Horde mage)
+  local raceBit = raceID and 2 ^ (({ [95] = 32, [96] = 33 })[raceID] or (raceID - 1)) or 0
   local level = UnitLevel("player") or 1
   local maxLevel = 60
   local db = costsDB(c and c.token)
@@ -217,8 +232,10 @@ local function spellList(cid)
   if own then
     for _, s in ipairs(list) do
       local id, name, rank = s[2], s[3], s[4]
-      if rank > (known[name] or -1) and IsSpellKnown then
-        local ok, yes = pcall(IsSpellKnown, id)
+      if rank > (known[name] or -1) then
+        local ok, yes = pcall(IsSpellKnown or function() end, id)
+        -- rogue poisons are recipes of the Poisons skill, not in the spellbook (6.2.2): IsPlayerSpell knows them
+        if not (ok and yes) and IsPlayerSpell then ok, yes = pcall(IsPlayerSpell, id) end
         if ok and yes then known[name] = rank end
       end
     end
@@ -234,7 +251,7 @@ local function spellList(cid)
       local isKnown = have and have >= rank
       show = okRace and not isKnown and (not talent or have)
     end
-    if show then out[#out + 1] = { lvl, id, name, rank, learned and learned.c, icon, quest, talent } end
+    if show then out[#out + 1] = { lvl, id, name, rank, learned and learned.c, icon, quest, talent, race } end
   end
   table.sort(out, function(a, b)
     if a[1] ~= b[1] then return a[1] < b[1] end
@@ -244,6 +261,14 @@ local function spellList(cid)
   return out, level, own
 end
 FLT._trainerMissing = function() return spellList(myClass) end -- test hook
+-- the spells of your class you could learn at the trainer right now (level reached, not known): count, list
+-- (the info bar's "New trainer spells", 6.2.2; only called when the level or the spellbook changed)
+function FLT.TrainerSpellsDue()
+  local list, level = spellList(myClass)
+  local due = {}
+  for _, s in ipairs(list) do if s[1] <= level and not s[7] then due[#due + 1] = s end end
+  return #due, due
+end
 FLT._trainerMode = function(m) viewMode = m end -- test hook
 
 local frame
@@ -298,7 +323,8 @@ local function createFrame()
   -- no box around them, 30 % smaller than the class crests (user 27.10.)
   for _, m in ipairs({ { "spells", "Interface\\Icons\\INV_Misc_Book_09", N"Spells", N"What the class trainer teaches." },
       { "weapons", "Interface\\Icons\\INV_Sword_04", N"Weapon skills", N"Weapon skills this class can learn and where the weapon masters of your faction are." },
-      { "quests", "Interface\\Icons\\INV_Scroll_03", N"Class quests", N"The important class quests (abilities, pets, class items): what you have done and where the next quest starts." } }) do
+      { "quests", "Interface\\Icons\\INV_Scroll_03", N"Class quests", N"The important class quests (abilities, pets, class items): what you have done and where the next quest starts." },
+      { "pet", "Interface\\Icons\\Ability_Hunter_BeastTraining", N"Pet training", N"What the pet trainers teach (Growl, Great Stamina, Natural Armor, resistances ...) and where the pet trainers of your faction are." } }) do
     local b = CreateFrame("Button", nil, f); b:SetSize(26, 26); b:SetPoint("TOPLEFT", x, -116); x = x + 32
     local ic = b:CreateTexture(nil, "ARTWORK"); ic:SetPoint("TOPLEFT", 3, -3); ic:SetPoint("BOTTOMRIGHT", -3, 3)
     ic:SetTexture(m[2]); ic:SetTexCoord(0.08, 0.92, 0.08, 0.92)
@@ -306,6 +332,8 @@ local function createFrame()
     local hl = b:CreateTexture(nil, "HIGHLIGHT"); FLT.SetTex(hl, UI.ASSET_ROOT .. "talent_frame"); hl:SetAllPoints(); hl:SetBlendMode("ADD")
     hl:SetVertexColor(FLT.SkinC(1, 0.86, 0.40, 0.85)); b:SetHighlightTexture(hl)
     b.icon, b.ring = ic, ring
+    -- 6.2.x "New" mark (TODO.md "Neu-Markierungen")
+    if m[1] == "pet" and UI.NewMark then local nm = UI.NewMark(b, L["New in this version."]); nm:SetPoint("CENTER", b, "TOPRIGHT", -2, -2) end
     b:SetScript("OnClick", function() viewMode = m[1]; if f.sf then f.sf:SetVerticalScroll(0) end; FLT.RefreshTrainerSpells() end)
     b:SetScript("OnEnter", function(self)
       GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(L[m[3]], 1, 0.82, 0); GameTooltip:AddLine(L[m[4]], 1, 1, 1, true); GameTooltip:Show()
@@ -371,7 +399,13 @@ local function getRow(f, i)
     GameTooltip:AddLine(L["Every quest of the chain: green = done, yellow = in your quest log, Map = its quest giver."], 1, 1, 1, true); GameTooltip:Show()
   end)
   r.chain:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  r.map:SetScript("OnClick", function(self) local t = self.trainer; if t and FLT.ShowOnMap then FLT:ShowOnMap({ mapID = t.map, x = t.x, y = t.y, name = t.quest and string.format(L["%s (quest: %s)"], t.name, t.quest) or string.format(L["%s (Weapon Master)"], t.name) }) end end)
+  r.map:SetScript("OnClick", function(self)
+    local t = self.trainer
+    if not (t and FLT.ShowOnMap) then return end
+    local nm = FLT.Name and FLT.Name(t.name) or t.name
+    FLT:ShowOnMap({ mapID = t.map, x = t.x, y = t.y, name = t.quest and string.format(L["%s (quest: %s)"], t.name, t.quest)
+      or string.format(t.pet and L["%s (Pet Trainer)"] or L["%s (Weapon Master)"], nm) })
+  end)
   r:SetScript("OnEnter", function(self)
     if self.cq then
       local c, q = self.cq, self.cq.q
@@ -388,7 +422,16 @@ local function getRow(f, i)
     end
     if self.trainer then
       GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(FLT.Name and FLT.Name(self.trainer.name) or self.trainer.name, 1, 0.82, 0)
-      GameTooltip:AddLine(string.format(L["Weapon Master, %s"], FLT.ZoneName and FLT.ZoneName(self.trainer.city) or self.trainer.city), 1, 1, 1); GameTooltip:Show()
+      GameTooltip:AddLine(string.format(self.trainer.pet and L["Pet Trainer, %s"] or L["Weapon Master, %s"], FLT.ZoneName and FLT.ZoneName(self.trainer.city) or self.trainer.city), 1, 1, 1); GameTooltip:Show()
+      return
+    end
+    if self.pa then -- a Pet Trainer skill rank (no spell ID in our data)
+      local a, rk = self.pa.a, self.pa.r
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L[a.name] .. "  " .. string.format(L["Rank %s"], rk.rank), 1, 0.82, 0)
+      if rk.desc and rk.desc ~= "" then GameTooltip:AddLine(FLT.LNum and FLT.LNum(rk.desc) or rk.desc, 1, 1, 1, true) end
+      GameTooltip:AddLine(string.format(L["Pet level %s, %s training points"], rk.level or "?", rk.tp or 0), 0.8, 0.8, 0.8)
+      GameTooltip:AddLine(L["Learned from any Pet Trainer."], 0.65, 0.85, 1, true)
+      GameTooltip:Show()
       return
     end
     if not self.id then return end
@@ -623,6 +666,85 @@ local function refreshQuests(f, c, own)
   FLT._cqStatus = function() return total end -- test hook
 end
 
+-- Pet training (6.2.2, user 09.11.): hunters only. The ranks of the Pet Trainer skills (Data/HunterPets.lua, source
+-- "trainer") by level like the spells - your own: what Beast Training does not list yet (FLT:GetKnownPetRank, read by
+-- UI/HunterPets.lua) - then the pet trainers of your faction with a Map button (Data/PetTrainers.lua). Costs are read
+-- at a pet trainer like at the class trainer (readTrainer keeps them under the hunter's costs).
+local function refreshPet(f, c, own)
+  local level = UnitLevel and UnitLevel("player") or 1
+  local db = costsDB(c.token)
+  local list = {}
+  for _, a in ipairs(FLT.PET_ABILITIES or {}) do
+    if a.source == "trainer" then
+      local have = own and FLT.GetKnownPetRank and FLT:GetKnownPetRank(a.name) or 0
+      for _, rk in ipairs(a.ranks or {}) do
+        if rk.rank > have then list[#list + 1] = { lvl = rk.level or 1, a = a, r = rk } end
+      end
+    end
+  end
+  table.sort(list, function(x, y)
+    if x.lvl ~= y.lvl then return x.lvl < y.lvl end
+    if x.a.name ~= y.a.name then return x.a.name < y.a.name end
+    return x.r.rank < y.r.rank
+  end)
+  local y, ri, hi, lastGroup, stripe = 0, 0, 0, nil, 0
+  local nowCount, nowCost, nowUnknown = 0, 0, 0
+  local function head(text, r, g, b)
+    hi = hi + 1
+    if hi > 1 then y = y - 6 end
+    local h = getHead(f, hi)
+    h:ClearAllPoints(); h:SetPoint("TOPLEFT", 0, y); y = y - HEAD_H - 2
+    h.text:SetText(text); h.text:SetTextColor(r, g, b); h.right:SetText(""); h:Show()
+    stripe = 0
+  end
+  for _, e in ipairs(list) do
+    local group = (own and e.lvl <= level) and "now" or e.lvl
+    if group ~= lastGroup then
+      lastGroup = group
+      if group == "now" then head(L["Available now"], 0.45, 1.00, 0.50)
+      else head(string.format(L["Level %s"], e.lvl), FLT.SkinC(1, 0.84, 0.30)) end
+    end
+    ri = ri + 1; stripe = stripe + 1
+    local row = getRow(f, ri)
+    row:ClearAllPoints(); row:SetPoint("TOPLEFT", 0, y); y = y - ROW_H
+    row.bg:SetAlpha(stripe % 2 == 1 and 1 or 0)
+    row.id, row.label, row.questName, row.talent, row.pa = nil, e.a.name, nil, nil, e
+    local tp = (e.r.tp or 0) > 0 and ("   |cff9d9d9d" .. string.format(L["%s TP"], e.r.tp) .. "|r") or ""
+    row.name:SetText(L[e.a.name] .. "   |cff9d9d9d" .. string.format(L["Rank %s"], e.r.rank) .. "|r" .. tp)
+    if group == "now" or not own then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(0.80, 0.78, 0.72) end
+    row.icon:SetTexture("Interface\\Icons\\" .. e.a.icon)
+    row.quest:Hide()
+    local learned = db[L[e.a.name] .. "|" .. e.r.rank] or db[e.a.name .. "|" .. e.r.rank]
+    local cost = learned and learned.c
+    row.cost:SetText(cost and money(cost) or "|cff9d9d9d?|r")
+    if group == "now" then nowCount = nowCount + 1; if cost then nowCost = nowCost + cost else nowUnknown = nowUnknown + 1 end end
+    row:Show()
+  end
+  if #list == 0 then head(L["Nothing left to learn"], 0.75, 0.75, 0.75) end
+  -- the pet trainers of your faction (both sides: Zephras Isle)
+  local side = UnitFactionGroup and UnitFactionGroup("player") == "Horde" and "H" or "A"
+  local first = true
+  for _, t in ipairs(FLT.PET_TRAINERS or {}) do
+    if t.side:find(side, 1, true) then
+      if first then first = false; head(L["Pet trainers of your faction"], FLT.SkinC(1, 0.84, 0.30)) end
+      ri = ri + 1; stripe = stripe + 1
+      local row = getRow(f, ri)
+      row:ClearAllPoints(); row:SetPoint("TOPLEFT", 0, y); y = y - ROW_H
+      row.bg:SetAlpha(stripe % 2 == 1 and 1 or 0)
+      t.pet = true
+      row.id, row.label, row.questName, row.talent, row.trainer = nil, t.name, nil, nil, t
+      row.name:SetText((FLT.Name and FLT.Name(t.name) or t.name) .. "   |cff9d9d9d" .. (FLT.ZoneName and FLT.ZoneName(t.city) or t.city) .. "|r"); row.name:SetTextColor(1, 1, 1)
+      row.icon:SetTexture("Interface\\Icons\\Ability_Hunter_BeastTraining")
+      row.quest:Hide(); row.cost:SetText(""); row.map.trainer = t; row.map:Show()
+      row:Show()
+    end
+  end
+  f.child:SetHeight(math.max(10, -y + 4))
+  if not own then f.total:SetText(string.format(L["%d pet skills and ranks"], #list))
+  elseif nowCount > 0 then f.total:SetText(string.format(L["Available now: %d  |  Cost: %s%s"], nowCount, money(nowCost), nowUnknown > 0 and " + ?" or ""))
+  else f.total:SetText(L["Nothing to learn at the trainer right now"]) end
+end
+
 function FLT.RefreshTrainerSpells()
   local f = frame
   if not f or not f:IsShown() then return end
@@ -635,12 +757,15 @@ function FLT.RefreshTrainerSpells()
     btn.icon:SetAlpha(on and 1 or 0.6); FLT.Desat(btn.icon, not on)
     if on then btn.ring:SetVertexColor(FLT.SkinC(1, 0.84, 0.36, 1)) else btn.ring:SetVertexColor(FLT.SkinC(0.55, 0.42, 0.22, 1)) end
   end
+  -- Pet training only for hunters: picking another class goes back to the spells
+  if viewMode == "pet" and c.token ~= "HUNTER" then viewMode = "spells" end
+  if f.modeButtons.pet then f.modeButtons.pet:SetShown(c.token == "HUNTER") end
   for key, btn in pairs(f.modeButtons or {}) do
     local on = key == viewMode
     btn.icon:SetAlpha(on and 1 or 0.6); FLT.Desat(btn.icon, not on)
     if on then btn.ring:SetVertexColor(FLT.SkinC(1, 0.84, 0.36, 1)) else btn.ring:SetVertexColor(FLT.SkinC(0.55, 0.42, 0.22, 1)) end
   end
-  for _, row in ipairs(f.rows) do row:Hide(); row.trainer, row.cq = nil, nil; row.map:Hide(); row.map.trainer = nil; row.chain:Hide(); row.cost:ClearAllPoints(); row.cost:SetPoint("RIGHT", -10, 0); row.name:SetWidth(290) end
+  for _, row in ipairs(f.rows) do row:Hide(); row.trainer, row.cq, row.pa = nil, nil, nil; row.map:Hide(); row.map.trainer = nil; row.chain:Hide(); row.cost:ClearAllPoints(); row.cost:SetPoint("RIGHT", -10, 0); row.name:SetWidth(290) end
   for _, h in ipairs(f.heads) do h:Hide() end
   if viewMode == "quests" then
     local own = c.id == myClass
@@ -648,6 +773,15 @@ function FLT.RefreshTrainerSpells()
     f.sub:SetText(own and L["Your progress and where the next quest starts"] or L["The important quests of this class"])
     f.legend:Hide()
     refreshQuests(f, c, own)
+    return
+  end
+  if viewMode == "pet" then
+    local own = c.id == myClass
+    f.title:SetText(L["Pet training"])
+    f.sub:SetText(own and (type(OneForAllCharDB) == "table" and OneForAllCharDB.petAbilitiesScanned and L["What you can still learn for your pet, and where"]
+      or L["Open Beast Training once so OneForAll knows your ranks"]) or L["What the pet trainers teach, and where (your faction)"])
+    f.legend:Hide()
+    refreshPet(f, c, own)
     return
   end
   if viewMode == "weapons" then
@@ -660,6 +794,7 @@ function FLT.RefreshTrainerSpells()
   end
   f.legend:Show()
   local list, level, own = spellList(c.id)
+  local mySide = UnitFactionGroup and UnitFactionGroup("player")
   f.title:SetText(string.format(L["Class trainer - %s"], className(c)))
   if own then f.sub:SetText(L["Spells and ranks you have not learned yet, up to level 60"])
   else f.sub:SetText(L["Everything this trainer teaches, level 1 to 60"]) end
@@ -669,6 +804,13 @@ function FLT.RefreshTrainerSpells()
   for _, s in ipairs(list) do
     local lvl, id, name, rank, cost, icon, quest, talent = s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8]
     local group = (own and lvl <= level) and "now" or lvl
+    -- a spell of the other side (other classes show everything; user 09.11.: "Teleport: Stormwind (only Alliance)" in
+    -- blue for a Horde character, Horde ones in red for Alliance)
+    local only = sideOnly(s[9])
+    local sideTag = ""
+    if only and only ~= mySide then
+      sideTag = only == "Alliance" and ("  |cff4a90ff" .. L["(only Alliance)"] .. "|r") or ("  |cffff4a4a" .. L["(only Horde)"] .. "|r")
+    end
     if group ~= lastGroup then
       lastGroup = group
       hi = hi + 1
@@ -689,7 +831,7 @@ function FLT.RefreshTrainerSpells()
     row:ClearAllPoints(); row:SetPoint("TOPLEFT", 0, y); y = y - ROW_H
     row.bg:SetAlpha(stripe % 2 == 1 and 1 or 0)
     row.id, row.label, row.questName, row.talent = id, name, quest, talent
-    row.name:SetText((client() and spellName(id) or name) .. (rank > 0 and ("   |cff9d9d9d" .. string.format(L["Rank %s"], rank) .. "|r") or "") .. (talent and ("  |cff9d9d9d" .. L["(talent)"] .. "|r") or ""))
+    row.name:SetText((client() and spellName(id) or name) .. (rank > 0 and ("   |cff9d9d9d" .. string.format(L["Rank %s"], rank) .. "|r") or "") .. (talent and ("  |cff9d9d9d" .. L["(talent)"] .. "|r") or "") .. sideTag)
     row.icon:SetTexture(spellIcon(id, icon))
     row.quest:SetShown(quest and true or false)
     if group == "now" or not own then row.name:SetTextColor(1, 1, 1) else row.name:SetTextColor(0.80, 0.78, 0.72) end

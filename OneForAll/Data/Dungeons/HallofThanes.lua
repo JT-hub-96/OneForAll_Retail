@@ -3,7 +3,7 @@ local ADDON, FLT = ...
 -- Hall of Thanes: quests from QuestieDB Forever, rewards and loot checked against
 -- Wowhead (Forever), wowforevertalents.com and foreverchanges.pro. See DUNGEON_DATA_SOURCES.txt.
 FLT.DUNGEON_REGISTRY["Hall of Thanes"] = {
-    level = "13-18",
+    level = "13-20",
     location = "Ironforge, under the city",
     description = "Grave robbers have forced their way into the old burial halls of the dwarven kings deep below Ironforge.",
     icon = "Interface\\Icons\\INV_Misc_Bone_DwarfSkull_01",

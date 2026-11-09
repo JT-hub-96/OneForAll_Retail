@@ -378,12 +378,12 @@ local function createDungeonPanel(parent)
   local questFactionFilter={}
 
   local function questProgressForPlayer(d)
-    local counts = { completed=0, inlog=0, ready=0, available=0, unavailable=0 }
+    local counts = { completed=0, inlog=0, chain=0, ready=0, available=0, unavailable=0 }
     for _,q in ipairs(d.quests or {}) do
       local status = getDungeonQuestStatus(d, q)
       counts[status] = (counts[status] or 0) + 1
     end
-    local relevant = counts.completed + counts.inlog + counts.ready + counts.available
+    local relevant = counts.completed + counts.inlog + counts.chain + counts.ready + counts.available
     return counts.completed, relevant, counts
   end
 
@@ -1275,7 +1275,7 @@ local function createDungeonPanel(parent)
   -- Detail layout shared by the Quests and Key tabs: title, a row of small
   -- "chips" (level, faction, status ...), label rows and framed boxes.
   local CHIP_CREST={Alliance={0,0.25},Horde={0.25,0.5},Both={0.5,0.75}}
-  local STATUS_COLOR={completed={0.40,0.94,0.50},inlog={1,0.82,0.20},ready={1,0.82,0.20},available={0.92,0.90,0.84},unavailable={0.62,0.60,0.56},open={0.92,0.90,0.84}}
+  local STATUS_COLOR={completed={0.40,0.94,0.50},inlog={1,0.82,0.20},chain={0.45,0.85,0.70},ready={1,0.82,0.20},available={0.92,0.90,0.84},unavailable={0.62,0.60,0.56},open={0.92,0.90,0.84}}
   local function makeChip(parent,text,color,crest)
     local f=CreateFrame("Frame",nil,parent); f:SetHeight(22)
     Card(f,f,4,{0.50,0.40,0.24,0.90},{0.055,0.055,0.065,0.96},"BACKGROUND",0)
@@ -1364,9 +1364,11 @@ local function createDungeonPanel(parent)
     allianceBtn:SetActive(filter=="Alliance"); hordeBtn:SetActive(filter=="Horde")
     allianceBtn:SetScript("OnClick",function() questFactionFilter[d.key]="Alliance"; questSelection[d.key]=1; renderQuests(d) end)
     hordeBtn:SetScript("OnClick",function() questFactionFilter[d.key]="Horde"; questSelection[d.key]=1; renderQuests(d) end)
-    local legend=dynText(left,"GameFontDisableSmall"); legend:SetPoint("TOPLEFT",14,-48); legend:SetWidth(368); legend:SetJustifyH("LEFT"); legend:SetWordWrap(true); legend:SetText(string.format(L["Green = done   Half green = ready to turn in   Green text = in log   Dim = unavailable   %s + shared"],L[filter]))
+    local legend=dynText(left,"GameFontDisableSmall"); legend:SetPoint("TOPLEFT",14,-48); legend:SetWidth(368); legend:SetJustifyH("LEFT"); legend:SetWordWrap(true); legend:SetText(string.format(L["Green = done   Half green = ready to turn in   Green text = in log   Teal = chain started   Dim = unavailable   %s + shared"],L[filter]))
 
-    local qsf=dynFrame("ScrollFrame",left,"UIPanelScrollFrameTemplate"); qsf:SetPoint("TOPLEFT",10,-78); qsf:SetPoint("BOTTOMRIGHT",-3,8); tidyScroll(qsf,left)
+    -- the list starts below the legend (2 lines in English; 3 in some languages since the teal line, 6.2.2)
+    local listTop=math.max(78, 48+math.ceil(legend:GetStringHeight() or 26)+6)
+    local qsf=dynFrame("ScrollFrame",left,"UIPanelScrollFrameTemplate"); qsf:SetPoint("TOPLEFT",10,-listTop); qsf:SetPoint("BOTTOMRIGHT",-3,8); tidyScroll(qsf,left)
     local qchild=dynFrame("Frame",qsf); qchild:SetSize(LAYOUT.QUEST_LIST_WIDTH,1); qsf:SetScrollChild(qchild)
     local qy=-2
     local rows={}
@@ -1436,10 +1438,12 @@ local function createDungeonPanel(parent)
         -- the darker green
         row.bg:SetFill(row.status == "completed" and 0.10 or nil, 0.34, 0.12, 0.42)
         row.bg:SetHalfFill(row.status == "ready" and 0.10 or nil, 0.34, 0.12, 0.42) -- ready: green to the middle
-        if row.status == "inlog" or row.status == "ready" then -- ready: the teal name too (beta41, user 07.11.)
+        -- 6.2.2 (user 08.11.): white = not taken, teal = chain started (an earlier step in the log), green text = the
+        -- quest itself in the log; ready = green text + half green row, done = green text + green row
+        if row.status == "chain" then
           row.bg:SetColorTexture(FLT.SkinC(0.068,0.070,0.080,0.95))
           row.name:SetTextColor(FLT.SkinC(0.45,0.85,0.70))
-        elseif row.status == "completed" then
+        elseif row.status == "inlog" or row.status == "ready" or row.status == "completed" then
           row.bg:SetColorTexture(FLT.SkinC(0.068,0.070,0.080,0.95))
           row.name:SetTextColor(FLT.SkinC(0.25,1,0.35))
         elseif row.status == "unavailable" then
@@ -1617,7 +1621,7 @@ local function createDungeonPanel(parent)
         local col=STATUS_COLOR[questStatus] or STATUS_COLOR.available
         statusChip:Set(statusLabel,col); layoutChips(chips,18,-44)
 
-        if questStatus=="inlog" and stepIdx then statusLabel=statusLabel.." - "..string.format(L["chain step %d of %d"],stepIdx,stepTotal) end
+        if questStatus=="chain" and stepIdx then statusLabel=statusLabel.." - "..string.format(L["chain step %d of %d"],stepIdx,stepTotal) end
         statusValue:SetText(statusLabel); statusValue:SetTextColor(FLT.SkinC(col[1],col[2],col[3]))
         local ownInLog=(questStatus=="inlog" or questStatus=="ready") and not stepIdx and getQuestLogInfo(q)
         statusLog:ClearAllPoints(); statusLog:SetPoint("LEFT",statusValue,"LEFT",(statusValue:GetStringWidth() or 40)+8,0)
@@ -1923,9 +1927,18 @@ local function createDungeonPanel(parent)
   -- inside that dungeon, and by the Armory's "Show" buttons).
   -- bossName (optional): select that boss ("trash mobs" = the trash loot entry).
   -- openMode (optional): "map" opens the dungeon map.
-  UI.OpenDungeon=function(target, bossName, openMode)
+  -- questID (6.2.2, Gear Planner, user 09.11.): open the Quests view on that quest, in your faction's list
+  UI.OpenDungeon=function(target, bossName, openMode, questID)
     if not target then return end
     selectedDungeon=target; mode=openMode or "bosses"; browse:Hide(); detail:Show()
+    if questID then
+      local f=UnitFactionGroup and UnitFactionGroup("player"); if f~="Alliance" and f~="Horde" then f="Alliance" end
+      questFactionFilter[target.key]=f
+      local n=0
+      for _,q in ipairs(target.quests or {}) do
+        if q.side=="Both" or q.side=="Neutral" or q.side==f then n=n+1; if q.id==questID then questSelection[target.key]=n end end
+      end
+    end
     bossSelection[target.key]=bossSelection[target.key] or 1
     if bossName then
       local bosses=target.bosses or {}

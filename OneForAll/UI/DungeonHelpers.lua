@@ -57,6 +57,7 @@ end
 local QUEST_STATUS_LABELS = {
   completed = N"Completed",
   inlog = N"In log",
+  chain = N"In log", -- an earlier step of its chain is in the log (6.2.2, user 08.11.: teal; the quest itself = green)
   ready = N"Ready to turn in",
   available = N"Available",
   unavailable = N"Unavailable",
@@ -82,22 +83,21 @@ end
 local function getDungeonQuestStatus(d, q)
   if not q then return "unavailable" end
 
-  -- Faction/class relevance is checked before completion flags. This prevents
-  -- odd beta completion flags for opposite-faction quests from entering the
-  -- player's dungeon denominator. Dungeons both factions actually run
-  -- (openToBoth, e.g. Gnomeregan) skip the territory rule.
-  if not dungeonQuestEligible(q) then return "unavailable" end
-  local faction = UnitFactionGroup and UnitFactionGroup("player") or nil
-  if d and faction and not d.openToBoth and d.territory and (d.territory == "Alliance" or d.territory == "Horde") and d.territory ~= faction then
-    return "unavailable"
-  end
-
-  if q.id and FLT.IsQuestDone and FLT:IsQuestDone(q.id) then return "completed" end
-
+  -- A quest in the log is the player's, whatever the data says (6.2.2, Discord LINDA / BONNY 09.11.: Deviate Hides,
+  -- Trouble at the Docks, The Glowing Shard in the log showed "Unavailable" for an Alliance player in Wailing Caverns).
   local inLog, ready = getQuestLogInfo(q)
   if inLog then return ready and "ready" or "inlog" end -- ready: every objective done (beta38, user 07.11.)
-  -- Working on an earlier step of this quest's chain counts as "in log" too.
-  if getChainProgress(q) then return "inlog" end
+
+  -- Faction/class relevance is checked before completion flags, so completion flags of opposite-faction quests do
+  -- not enter the player's dungeon denominator. The quest's own faction (QuestieDB) decides; the old "territory"
+  -- rule (a Horde-territory dungeon = nothing for the Alliance) hid every quest of the other side's dungeons although
+  -- both factions run them (WC, SFK, RFK, SM, Ruins of Lordaeron have Alliance and "Both" quests) - removed 6.2.2.
+  if not dungeonQuestEligible(q) then return "unavailable" end
+
+  if q.id and FLT.IsQuestDone and FLT:IsQuestDone(q.id) then return "completed" end
+  -- Working on an earlier step of this quest's chain: "chain" (6.2.2, user 08.11.: teal text, the quest itself in the
+  -- log = green text)
+  if getChainProgress(q) then return "chain" end
 
   local playerLevel = UnitLevel and tonumber(UnitLevel("player")) or nil
   local required = tonumber(q.required or q.level)

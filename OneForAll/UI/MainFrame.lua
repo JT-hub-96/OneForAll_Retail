@@ -21,6 +21,7 @@ local function ensurePanel(key)
       local panel = spec.create(frame)
       if panel then
         panels[key] = panel; panel:Hide()
+        if spec.combatLock and UI.CombatLock then UI.CombatLock(panel) end -- settings pages: locked in combat
         -- the window's refresh ran before this tab existed: catch up now
         if panel.Refresh then panel:Refresh() end
       end
@@ -712,6 +713,7 @@ function FLT:OpenPanel(key)
 end
 
 function UI.IsWindowShown() return frame ~= nil and frame:IsShown() end
+function UI.ActiveTab() return activeTab end
 
 function FLT:ToggleUI()
   if not frame then createUI() end

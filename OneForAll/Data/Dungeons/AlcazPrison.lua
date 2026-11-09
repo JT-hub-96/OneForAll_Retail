@@ -4,7 +4,7 @@ local _, FLT = ...
 -- Bosses from the Forever client (DungeonEncounter, wago.tools 1.60.1.70862), NPC IDs and item IDs from Wowhead Forever,
 -- loot from wowtbc.gg (08.11.2026, still being discovered); tools/dungeon-check.
 FLT.DUNGEON_REGISTRY["Alcaz Prison"] = {
-    level = "48-53",
+    level = "48-55",
     location = "Alcaz Island, Dustwallow Marsh",
     description = "New Forever dungeon: a Defias prison on Alcaz Island where nobles were held for ransom, and rumour says Varian Wrynn was one of them. Now the Defias fight the naga inside. Its loot is still being discovered.",
     icon = "Interface\\Icons\\Spell_Frost_ChainsOfIce",

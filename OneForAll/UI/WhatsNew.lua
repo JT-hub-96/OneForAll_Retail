@@ -12,19 +12,52 @@ local makeTexture, makeButton = UI.makeTexture, UI.makeButton
 local NEWS_AUTO = true -- set true (and a new NEWS_ID) for the next release with news
 -- 6.1.6 (agreed with the user 06.11.): more reagent sources and more quest "!" on the world map, not shown automatically.
 -- 6.2.0 (user 07.11.): only the languages, shown automatically once.
-local NEWS_ID = "6.2.0"
+-- 6.2.2 (user 09.11.): the info bar and guild members on the world map, shown automatically once.
+local NEWS_ID = "6.2.2"
 
 -- images (optional): pictures in a row under the lines, each { tex, shown width, shown height, texcoord right,
 -- texcoord bottom } (made by tools/art/proc_news.py from the user's screenshots in source_images/news)
+-- qol = the Quality of Life group the button opens; shot = a screenshot behind a "Show me" button (user 09.11.):
+-- { texture, shown width, shown height, texcoord right, texcoord bottom } (tools/art/proc_news.py)
 local NEWS = {
-  { icon = "Interface\\Icons\\INV_Misc_Book_11", title = N"OneForAll speaks your language", tab = "settings", button = N"Open Settings",
+  { icon = "Interface\\Icons\\INV_Misc_PocketWatch_01", title = N"Info bar", tab = "qol", qol = "iface", button = N"Open Quality of Life",
+    shot = { "news_infobar", 1024, 84, 1, 0.65625 },
     lines = {
-      N"OneForAll now speaks German, French and Spanish. Choose it in Settings > General > Language.",
-      N"The translations have not been proofread yet. Please post improvements on our Discord.",
+      N"A band at the top of the screen with what you choose: gold, bags, durability, experience, clock, guild, friends, the game's windows and more.",
+      N"Switch it on in Quality of Life > Interface, then right-click the band to add elements. Size, colour and opacity are set there too.",
+    } },
+  { icon = "Interface\\Icons\\INV_Shirt_GuildTabard_01", title = N"Guild members on the world map", tab = "qol", qol = "guild", button = N"Open Quality of Life",
+    lines = {
+      N"Guild members who also use OneForAll show as dots in their class colour on the zone and continent map.",
+      N"Inside a dungeon or raid a green dot sits on its entrance, and its tooltip names who is inside.",
+      N"One switch in Quality of Life > Guild for both ways: switched off, nobody sees you and you see nobody.",
     } },
 }
 
 local frame
+
+-- the screenshot of an entry, in its own window over the popup (a click anywhere on it closes it)
+local shotFrame
+local function showShot(shot)
+  if not shotFrame then
+    local f = CreateFrame("Button", "OneForAllNewsShot", UIParent)
+    f:SetFrameStrata("FULLSCREEN_DIALOG"); f:SetFrameLevel(50); f:SetPoint("CENTER", 0, 160)
+    UI.FramedPanel(f)
+    for _, t in ipairs(UI.OrnateFrame(f, f, 18, 3, "OVERLAY", 4)) do t:SetVertexColor(FLT.SkinC(1, 1, 1, 1)) end
+    f.pic = f:CreateTexture(nil, "ARTWORK"); f.pic:SetPoint("TOPLEFT", 16, -32)
+    local close = UI.CloseButton(f, function() f:Hide() end); close:SetPoint("TOPRIGHT", -6, -6); close:SetFrameLevel(f:GetFrameLevel() + 5)
+    f:SetScript("OnClick", function(self) self:Hide() end)
+    -- movable like the popup (user 09.11.); a drag does not count as the closing click
+    f:SetMovable(true); f:SetClampedToScreen(true); f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    if UISpecialFrames then table.insert(UISpecialFrames, "OneForAllNewsShot") end -- Esc closes it
+    shotFrame = f
+  end
+  local f = shotFrame
+  FLT.SetTex(f.pic, UI.ASSET_ROOT .. shot[1]); f.pic:SetTexCoord(0, shot[4], 0, shot[5]); f.pic:SetSize(shot[2], shot[3])
+  f:SetSize(shot[2] + 32, shot[3] + 48)
+  f:Show()
+end
 
 local function addonVersion()
   local v
@@ -68,7 +101,15 @@ local function create()
       -- the button only for characters that have that tab (Hunter Pets: hunters)
       if entry.tab and (not entry.buttonClass or entry.buttonClass == class) then
         local b = UI.GoldButton(f, L[entry.button], 150, 24, nil, 12); b:SetPoint("TOPRIGHT", -16, y)
-        b:SetScript("OnClick", function() f:Hide(); if FLT.OpenPanel then FLT:OpenPanel(entry.tab) end end)
+        b:SetScript("OnClick", function()
+          f:Hide(); if shotFrame then shotFrame:Hide() end
+          if FLT.OpenPanel then FLT:OpenPanel(entry.tab) end
+          if entry.qol and UI.QoLSelect then UI.QoLSelect(entry.qol) end
+        end)
+      end
+      if entry.shot then -- "Show me" (user 09.11.): the screenshot in its own window
+        local b = UI.GoldButton(f, L["Show me"], 150, 24, nil, 12); b:SetPoint("TOPRIGHT", -16, y - 28)
+        b:SetScript("OnClick", function() showShot(entry.shot) end)
       end
       local ly = y - 24
       for _, line in ipairs(entry.lines) do
@@ -97,6 +138,7 @@ local function create()
   foot:SetText(L["Type /ofa news to show this again."])
   local ok = UI.GoldButton(f, L["Got it"], 110, 26, nil, 13); ok:SetPoint("BOTTOMRIGHT", -16, 14)
   ok:SetScript("OnClick", function() f:Hide() end)
+  f:HookScript("OnHide", function() if shotFrame then shotFrame:Hide() end end)
 
   f:SetHeight(-y + 40)
   f:Hide()
