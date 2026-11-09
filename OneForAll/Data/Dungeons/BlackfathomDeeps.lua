@@ -3,7 +3,7 @@ local ADDON, FLT = ...
 -- Blackfathom Deeps: quests from QuestieDB Forever, rewards and loot checked against
 -- Wowhead (Forever), wowforevertalents.com and foreverchanges.pro. See DUNGEON_DATA_SOURCES.txt.
 FLT.DUNGEON_REGISTRY["Blackfathom Deeps"] = {
-    level = "22-28",
+    level = "24-32",
     location = "Ashenvale, Zoram Strand",
     description = "Half-sunken night elf temple ruins on the Ashenvale coast. Naga, satyrs and the Twilight's Hammer gather here around the ancient beast Aku'mai.",
     icon = "Interface\\Icons\\Spell_Frost_SummonWaterElemental",
@@ -109,20 +109,6 @@ FLT.DUNGEON_REGISTRY["Blackfathom Deeps"] = {
             startItem = {16790, "Damp Note", 1, "Source: Blackfathom Tide Priestesses (tunnels outside the instance)."},
             rewardItems = {},
             rewardSummary = "1,300 XP · 11s · +75 Darkspear Trolls",
-        },
-        {
-            level = 22,
-            id = 6562,
-            liveXPFallback = 440,
-            name = "Trouble in the Deeps",
-            requires = 17,
-            faction = "Horde",
-            pickup = "Tsunaman, Stonetalon Mountains (47.4, 64.2)",
-            objective = "Speak to Je'neu Sancrea in Ashenvale.",
-            turnin = "Je'neu Sancrea, Ashenvale (11.6, 34.3)",
-            rewardItems = {},
-            rewardSummary = "440 XP · +25 Darkspear Trolls · +100 Earthen Ring",
-            note = "Leads to The Essence of Aku'Mai.",
         },
         {
             level = 22,

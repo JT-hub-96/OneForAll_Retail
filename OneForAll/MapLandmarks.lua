@@ -104,6 +104,7 @@ end
 -- Pins ------------------------------------------------------------------------
 local pool, used = {}, 0
 local tops = {} -- reused: x, y of the entrances on the shown map
+local guildDots = {} -- [pin] = green dot texture (guild members inside, MapGuild.lua)
 
 local function openDungeon(d)
   if WorldMapFrame and WorldMapFrame:IsShown() and HideUIPanel then pcall(HideUIPanel, WorldMapFrame) end
@@ -145,6 +146,17 @@ local function onEnter(pin)
     end
     GameTooltip:AddLine(e.kind == "raid" and L["Raid entrance"] or L["Dungeon entrance"], 0.8, 0.8, 0.8)
     GameTooltip:AddLine(#e.list > 1 and L["Click: choose one to open in OneForAll"] or L["Click: open in OneForAll"], 0.4, 0.8, 1)
+    -- guild members with OneForAll inside (MapGuild.lua, user 09.11.)
+    local GM = FLT.MapGuild
+    local inside = GM and GM.Inside and GM.Inside(e.list)
+    if inside and #inside > 0 then
+      GameTooltip:AddLine(L["Guild members inside:"], 0.3, 1, 0.3)
+      for _, n in ipairs(inside) do
+        local m = GM.Member(n)
+        local c = m and RAID_CLASS_COLORS and RAID_CLASS_COLORS[m.cls]
+        GameTooltip:AddLine("  " .. (Ambiguate and Ambiguate(n, "guild") or n), c and c.r or 1, c and c.g or 1, c and c.b or 1)
+      end
+    end
   elseif e.book then
     local b = e.book
     GameTooltip:AddLine(FLT.ItemName and FLT.ItemName(b.itemId, b.name) or b.name, 1, 0.82, 0.2, true)
@@ -255,6 +267,17 @@ function LM.Refresh()
         pin:ClearAllPoints()
         pin:SetPoint("CENTER", child, "TOPLEFT", x, y)
         pin:Show()
+        -- a green dot at the edge of an entrance while a guild member is inside (MapGuild.lua, user 09.11.)
+        local GM = e.list and FLT.MapGuild
+        local dot = guildDots[pin]
+        if GM and GM.Inside and #GM.Inside(e.list) > 0 then
+          if not dot then
+            dot = pin:CreateTexture(nil, "OVERLAY", nil, 7); guildDots[pin] = dot
+            dot:SetSize(12, 12); dot:SetPoint("CENTER", pin, "TOPRIGHT", -5, -5)
+            FLT.SetTex(dot, ASSET .. "gem_fill"); dot:SetVertexColor(0.25, 1, 0.3)
+          end
+          dot:Show()
+        elseif dot then dot:Hide() end
       end
     end
   end

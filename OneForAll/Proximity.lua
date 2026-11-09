@@ -143,6 +143,19 @@ local function createAlertFrame()
   if FLT.UI and FLT.UI.SkinBlizzButton then FLT.UI.SkinBlizzButton(dismiss, 25) end
 
   f.dismissButton = dismiss
+  -- book alerts: snooze them all for 30 minutes (Discord 09.11., Hyehowareyou: "spamming"; user: "snooze for 30
+  -- minutes" right in the popup). Kept over a reload (time()), shown only on book alerts.
+  local snooze = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+  snooze:SetSize(130, 25)
+  snooze:SetPoint("LEFT", dismiss, "RIGHT", 8, 0)
+  snooze:SetText(L["Snooze 30 min"])
+  snooze:SetScript("OnClick", function()
+    if type(OneForAllDB) == "table" and time then OneForAllDB.bookAlertSnooze = time() + 30 * 60 end
+    f:Hide()
+  end)
+  if FLT.UI and FLT.UI.SkinBlizzButton then FLT.UI.SkinBlizzButton(snooze, 25) end
+  snooze:Hide()
+  f.snoozeButton = snooze
   -- Free button row for generic alerts (opts.buttons).
   f.customButtons = {}
   for i = 1, 3 do
@@ -199,6 +212,7 @@ end
 function FLT:ShowAlert(opts)
   local f = createAlertFrame()
   f.book = nil
+  f.snoozeButton:Hide()
   f.eyebrow:SetText(opts.eyebrow or "ONEFORALL")
   FLT.SetTex(f.icon, opts.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
   f.title:SetText(opts.title or "")
@@ -270,6 +284,7 @@ function FLT:ShowNearbyBookAlert(book, distance)
   f:SetWidth(470)
   f.mapButton:Show()
   f.dismissButton:Show()
+  f.snoozeButton:Show()
   for _, b in ipairs(f.customButtons) do b:Hide() end
   f.book = book
   f.title:SetText(book.name)
@@ -339,6 +354,11 @@ end
 
 function FLT:CheckNearbyBooks()
   if not self:IsNearbyAlertsEnabled() then return end
+  local snoozed = OneForAllDB and OneForAllDB.bookAlertSnooze
+  if snoozed then
+    if time and time() < snoozed then return end
+    OneForAllDB.bookAlertSnooze = nil
+  end
   if not C_Map or not C_Map.GetBestMapForUnit then return end
   if IsInInstance and IsInInstance() then return end
 

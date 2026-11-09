@@ -15,7 +15,9 @@ local UI = FLT.UI
 local LR = {}
 FLT.LowRank = LR
 
-local NUM_SLOTS = 120
+-- action slots: 1-120 = bars 1-5 and the class / stance pages, 145-180 = bars 6-8 of the newer client (MultiBar5-7;
+-- user report 09.11.: Thorns rank 1 on bar 6 was not found). 121-144 are the override / skyriding pages: skipped.
+local RANGES = { 1, 120, 145, 180 }
 local MAX_ROWS = 8
 local LEARN_DELAY, LOGIN_DELAY, TRAINER_DELAY = 4, 8, 0.8
 
@@ -92,7 +94,7 @@ function LR.Scan()
   local out, byID = {}, {}
   if not GetActionInfo then return out end
   local best, keep = bestRanks(), keepList()
-  for slot = 1, NUM_SLOTS do
+  for r = 1, #RANGES, 2 do for slot = RANGES[r], RANGES[r + 1] do
     local kind, id = GetActionInfo(slot)
     if kind == "spell" and id and not FLT.IsSecret(kind, id) and not keep[id] then
       local name, r = spellNameRank(id)
@@ -106,7 +108,7 @@ function LR.Scan()
         e.slots[#e.slots + 1] = slot
       end
     end
-  end
+  end end
   table.sort(out, function(a, b) if a.name ~= b.name then return a.name < b.name end return a.rank < b.rank end)
   return out
 end

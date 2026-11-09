@@ -3,7 +3,7 @@ local ADDON, FLT = ...
 -- City of Dalaran: quests from QuestieDB Forever, rewards and loot checked against
 -- Wowhead (Forever), wowforevertalents.com and foreverchanges.pro. See DUNGEON_DATA_SOURCES.txt.
 FLT.DUNGEON_REGISTRY["City of Dalaran"] = {
-    level = "28-33",
+    level = "28-35",
     location = "Alterac Mountains",
     description = "A WoW Forever dungeon inside the shielded city of Dalaran. Boss loot has not been recorded yet.",
     icon = "Interface\\Icons\\Spell_Arcane_Blink",

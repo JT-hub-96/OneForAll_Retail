@@ -258,6 +258,62 @@ local function slotFor(loc, slots)
   return slots[1]
 end
 
+-- Set bonuses (6.2.2, user 09.11.: "kann der gearplaner auch set-boni einberechnen?"): Data/ItemSets.lua lists the
+-- sets with plain stat bonuses (from the client). Putting an item on can lose a bonus of the worn set (3/5 -> 2/5) or
+-- complete one: the Value of the bonuses before and after counts into the change. Procs are not in the data.
+local setWorn -- [setID] = pieces worn; nil = count again (gear changed)
+local function wornSets()
+  if setWorn then return setWorn end
+  setWorn = {}
+  local S = FLT.ITEM_SETS
+  if not (S and GetInventoryItemID) then return setWorn end
+  for slot = 1, 19 do
+    local id = GetInventoryItemID("player", slot)
+    local set = id and S.items[id]
+    if set then setWorn[set] = (setWorn[set] or 0) + 1 end
+  end
+  return setWorn
+end
+local sstats = {} -- reused
+local function bonusValue(set, pieces)
+  local list = FLT.ITEM_SETS.bonus[set]
+  if not list or pieces < 2 then return 0 end
+  wipe(sstats)
+  for _, b in ipairs(list) do
+    if b[1] <= pieces then
+      for k, v in pairs(b[2]) do
+        local pk = k:match("^PCT_(.+)$")
+        if pk then local st = KEYS[pk]; sstats[pk] = (sstats[pk] or 0) + v * (st and RATING[st] or 1)
+        else sstats[k] = (sstats[k] or 0) + v end
+      end
+    end
+  end
+  return score(sstats, 0, nil, false)
+end
+-- change of the set bonuses when the item `id` replaces the worn items in `slots` (nil = nothing)
+local function setDelta(id, slots)
+  local S = FLT.ITEM_SETS
+  if not S then return 0 end
+  local newSet = S.items[id]
+  local old = {}
+  for _, sl in ipairs(slots) do
+    local w = GetInventoryItemID and GetInventoryItemID("player", sl)
+    local set = w and S.items[w]
+    if set then old[set] = (old[set] or 0) + 1 end
+  end
+  if not newSet and not next(old) then return 0 end
+  local counts, d = wornSets(), 0
+  local touched = {}
+  if newSet then touched[newSet] = true end
+  for set in pairs(old) do touched[set] = true end
+  for set in pairs(touched) do
+    local before = counts[set] or 0
+    local after = before - (old[set] or 0) + (set == newSet and 1 or 0)
+    if after ~= before then d = d + bonusValue(set, after) - bonusValue(set, before) end
+  end
+  return d
+end
+
 -- Value of an item and the change against what is worn: value, delta (nil = no data yet / not gear). With the link the
 -- random bonus counts (user 05.11.: "... of the Bear" in the bags was valued without its stats - always a downgrade)
 function GV.Upgrade(id, link)
@@ -277,33 +333,42 @@ function GV.Upgrade(id, link)
     local mh = GetInventoryItemID and GetInventoryItemID("player", 16)
     if mh and select(4, GetItemInfoInstant(mh)) == "INVTYPE_2HWEAPON" then return v end
   end
-  local base, replaced
+  local base, replaced, cover
   if loc == "INVTYPE_2HWEAPON" then
     local a, b = wornValue(16), wornValue(17)
-    base = a and b and (a + b)
+    base = a and b and (a + b); cover = { 16, 17 }
   elseif #slots == 2 and (loc ~= "INVTYPE_WEAPON" or (FLT.CanDualWield() and select(6, GetItemInfoInstant(GetInventoryItemID("player", 17) or 0)) == 2)) then
     local a, b = wornValue(slots[1]), wornValue(slots[2])
     base = a and b and math.min(a, b)
-    if base then replaced = (a <= b) and slots[1] or slots[2] end -- the weaker one, named in the tooltip
+    if base then replaced = (a <= b) and slots[1] or slots[2]; cover = { replaced } end -- the weaker one, named in the tooltip
   else
-    base = wornValue(slot)
+    base = wornValue(slot); cover = { slot }
   end
   if not base then return v end
-  return v, v - base, false, base, replaced
+  -- the delta is the item alone; 6th value: what set bonuses add / take on top (shown as an own tooltip line)
+  return v, v - base, false, base, replaced, setDelta(id, cover)
 end
 
 -- What players see is the change in % against the worn item (user 16.10.): kind, pct
 -- kind: "up" / "down" / "same" / "new" (nothing worn there, or it has no value) / "worn"; nil = no data yet;
 -- third value: the slot compared with when there are two (rings, trinkets, dual wield)
+-- 4th / 5th value: kind and % with the set bonuses it loses or completes (user 09.11.: the arrows stay for the item
+-- alone - "theoretically better", worth taking along - and the tooltip shows the set line too); nil = no set change
+local function kindOf(d, base)
+  local pct = d / base * 100
+  if pct >= 0.5 then return "up", pct elseif pct <= -0.5 then return "down", -pct end
+  return "same"
+end
 function GV.Change(id, link)
-  local v, d, equipped, base, replaced = GV.Upgrade(id, link)
+  local v, d, equipped, base, replaced, sd = GV.Upgrade(id, link)
   if not v then return nil end
   if equipped then return "worn" end
   if not d then return nil end
   if not base or base <= 0 then return v > 0 and "new" or "same" end
-  local pct = d / base * 100
-  if pct >= 0.5 then return "up", pct, replaced elseif pct <= -0.5 then return "down", -pct, replaced end
-  return "same"
+  local kind, pct = kindOf(d, base)
+  local sKind, sPct
+  if sd and sd ~= 0 then sKind, sPct = kindOf(d + sd, base) end
+  return kind, pct, kind == "up" and replaced or nil, sKind, sPct, sd
 end
 
 -- own arrows (tools/art/arrows.py); the client's Arrow-Up-Up was tiny and odd in the tooltip (beta10)
@@ -319,15 +384,23 @@ GV.WISH = OFA .. "|T" .. ASSET .. "icon_star:16:16:0:0:64:64:0:64:0:64:255:209:6
 function GV.TooltipLine(tt, id, itemLink)
   local _, _, _, loc, _, cid, sub = GetItemInfoInstant(id)
   if not (loc and FLT.GEAR_LOC_SLOTS and FLT.GEAR_LOC_SLOTS[loc]) or not FLT.GearCanUse(loc, cid, sub) then return end
-  local kind, pct, slot = GV.Change(id, itemLink)
+  local kind, pct, slot, sKind, sPct, sd = GV.Change(id, itemLink)
   -- with two slots (rings, trinkets, dual wield): which worn item it is compared with (user 17.10.)
   -- only for upgrades: a downgrade replaces nothing (user 22.10.)
   local link = kind == "up" and slot and GetInventoryItemLink("player", slot)
   local which = link and link:match("%[(.-)%]")
   which = which and ("  |cffb0b0b0" .. string.format(L["(replaces %s)"], which) .. "|r") or ""
-  if kind == "up" then tt:AddLine(UP .. string.format(L["Upgrade: %d%%"], math.floor(pct + 0.5)) .. which, 0.25, 1, 0.25)
-  elseif kind == "new" then tt:AddLine(UP .. L["Upgrade (slot empty)"], 0.25, 1, 0.25)
-  elseif kind == "down" then tt:AddLine(DOWN .. string.format(L["Downgrade: %d%%"], math.floor(pct + 0.5)) .. which, 1, 0.3, 0.3) end
+  local function line(k, p, extra)
+    if k == "up" then tt:AddLine(UP .. string.format(L["Upgrade: %d%%"], math.floor(p + 0.5)) .. extra, 0.25, 1, 0.25)
+    elseif k == "down" then tt:AddLine(DOWN .. string.format(L["Downgrade: %d%%"], math.floor(p + 0.5)) .. extra, 1, 0.3, 0.3) end
+  end
+  if kind == "new" then tt:AddLine(UP .. L["Upgrade (slot empty)"], 0.25, 1, 0.25) return end
+  line(kind, pct, which)
+  -- set bonuses (6.2.2, user 09.11.): a second line with the bonus it loses / completes, e.g. green "Upgrade: 8%" and
+  -- red "Downgrade: 5% (set bonus lost)" - the item itself is better, worn now it costs the bonus
+  if sKind then
+    line(sKind, sPct, "  |cffb0b0b0" .. (sd < 0 and L["(set bonus lost)"] or L["(with set bonus)"]) .. "|r")
+  end
 end
 
 -- refresh: talents / level change the weights, gear changes the worn values
@@ -335,6 +408,6 @@ local ev = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_LEVEL_UP", "PLAYER_TALENT_UPDATE", "CHARACTER_POINTS_CHANGED", "TRAIT_CONFIG_UPDATED",
   "ACTIVE_TALENT_GROUP_CHANGED", "PLAYER_EQUIPMENT_CHANGED" }) do pcall(ev.RegisterEvent, ev, e) end
 ev:SetScript("OnEvent", function(_, event)
-  if event == "PLAYER_EQUIPMENT_CHANGED" then wipe(worn) else W = nil end
+  if event == "PLAYER_EQUIPMENT_CHANGED" then wipe(worn); setWorn = nil else W = nil end
 end)
-GV._reset = function() W = nil; wipe(values); wipe(worn); wipe(speeds); wipe(classOK) end -- tests
+GV._reset = function() W = nil; setWorn = nil; wipe(values); wipe(worn); wipe(speeds); wipe(classOK) end -- tests

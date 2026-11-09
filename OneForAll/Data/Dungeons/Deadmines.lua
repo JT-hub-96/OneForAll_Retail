@@ -3,7 +3,7 @@ local ADDON, FLT = ...
 -- The Deadmines: quests from QuestieDB Forever, rewards and loot checked against
 -- Wowhead (Forever), wowforevertalents.com and foreverchanges.pro. See DUNGEON_DATA_SOURCES.txt.
 FLT.DUNGEON_REGISTRY["The Deadmines"] = {
-    level = "15-22",
+    level = "17-26",
     location = "Westfall, Moonbrook",
     description = "Hidden in the old mines below Moonbrook, the Defias Brotherhood is secretly finishing a pirate ship.",
     icon = "Interface\\Icons\\Ability_Rogue_Ambush",

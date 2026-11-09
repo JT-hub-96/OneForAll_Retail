@@ -24,6 +24,9 @@ local DEFAULTS = {
   mapFog = true, -- Remove Fog: on (user 22.10.)
   hideAppearance = false, -- hide "You haven't collected this appearance" in item tooltips: off (user 01.11.)
   questSellCoin = true, -- gold coin on the quest reward with the best sell price: on (user 02.11.)
+  infoBarScale = 100, -- info bar size in % (6.2.2, slider; 100 = as before)
+  infoBarAlpha = 100, -- info bar opacity in % (whole bar, 6.2.2-beta43, user 09.11.); infoBarColor { r, g, b } = background, nil = default
+  infoBarDelay = 3, -- seconds the info bar stays open after the mouse left it, when not pinned (user 09.11.: default 3)
   buffScale = 100, buffIconOnly = false, -- buff reminder size in % and icon only (6.0.3, user 01.11.)
   flightMapNow = true, -- open the flight map at once at a flight master (6.1.5): on (user 05.11.)
   flightTimes = true, -- flight times: bar while flying, times on the flight map (6.1.5): on (user 05.11.)
@@ -31,8 +34,10 @@ local DEFAULTS = {
   buffSnoozeBtn = false, -- "Zz" snooze button on the cards (6.1.4): off (user 05.11.)
   mapZoneLevel = true, -- level range of the zone on the world map: on (user 01.11.)
   mapQuests = true, -- quest icons on the world map: on (user 01.11., first off)
+  npcQuestTip = true, -- quests to take / turn in on NPC tooltips (6.2.2): on, off while Questie is loaded (user 08.11.)
   mapQuestsContinent = true, -- quest icons also on the continent map: on (user 04.11.)
   mapQuestGivers = true, mapQuestTurnins = true, -- "!" and "?" each on their own: both on (user 07.11.)
+  guildMap = true, -- guild members on the map, sends and shows (MapGuild.lua, 6.2.2): on (user 09.11.)
   mapFogAlpha = 100, -- how visible the unexplored parts are, 0-100 %; 100 (user 01.11.)
   mapBooks = true, -- Library Books on the world map: on (user 23.10.)
   mapButton = true, -- OneForAll button on the world map: on (user 01.11.)
@@ -64,15 +69,27 @@ function QoL.Get(key)
   if v == nil then v = DEFAULTS[key] end
   -- Skyborne map pins: on by default for Skyborne characters, off for the other races (user 30.10.)
   if v == nil and key == "lmSkyborne" then v = UnitRace and select(2, UnitRace("player")) == "Skyborne" or false end
+  -- all ammo on the quiver: on by default for hunters, off for the other classes (user 09.11.)
+  if v == nil and key == "quiverAmmo" then v = UnitClass and select(2, UnitClass("player")) == "HUNTER" or false end
   return v
 end
 
 local listeners = {}
+-- In combat (6.2.2, user 08.11.: "fehler weil jemand waehrend des kampfes irgendwas im addon umstellt") a change is
+-- saved at once but put into effect after combat: many switches touch Blizzard frames that are locked in combat.
 function QoL.Set(key, value)
   local d = db()
   if not d then return end
   d[key] = value
-  if listeners[key] then listeners[key](value) end
+  if not listeners[key] then return end
+  if InCombatLockdown and InCombatLockdown() then QoL._waiting = QoL._waiting or {}; QoL._waiting[key] = true; return end
+  listeners[key](value)
+end
+function QoL.ApplyWaiting()
+  local w, d = QoL._waiting, db()
+  QoL._waiting = nil
+  if not (w and d) then return end
+  for key in pairs(w) do if listeners[key] then listeners[key](d[key]) end end
 end
 local function on(key, fn) listeners[key] = fn end
 QoL.On = on
@@ -653,7 +670,43 @@ do
     end
     return imbueNames[name] or name:find("Weapon") or name:find("Waffe") or false
   end
+  -- tracking (6.2.2, user 09.11.: Find Herbs / Find Minerals as suggestions for gatherers): not a buff on you but the
+  -- minimap's tracking - read from there (no duration: 0 = on, nil = off; nil from tracking() = not a tracking spell)
+  local TRACKING = { 2383, 2580, 2481 } -- Find Herbs, Find Minerals, Find Treasure (dwarves)
+  QoL.TRACKING = TRACKING
+  local trackNames, trackCount = {}, 0
+  local function tracking(name)
+    if trackCount < #TRACKING then -- (again until the client has named all three)
+      trackCount = 0
+      for _, id in ipairs(TRACKING) do
+        local ok, n = pcall(function() return C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id) or (GetSpellInfo and GetSpellInfo(id)) end)
+        if ok and type(n) == "string" then trackNames[n] = id; trackCount = trackCount + 1 end
+      end
+    end
+    local id = trackNames[name]
+    if not id then return nil end
+    local M = C_Minimap
+    if M and M.GetNumTrackingTypes and M.GetTrackingInfo then
+      local ok, num = pcall(M.GetNumTrackingTypes)
+      for i = 1, (ok and tonumber(num) or 0) do
+        local ok2, a, _, c = pcall(M.GetTrackingInfo, i) -- Classic: name, texture, active; newer: one table
+        if ok2 then
+          local n, active, sid = a, c, nil
+          if type(a) == "table" then n, active, sid = a.name, a.active, a.spellID end
+          if sid == id or n == name then return active and true or false end
+        end
+      end
+    end
+    if GetTrackingTexture then
+      local ok, tex = pcall(GetTrackingTexture)
+      local ok2, mine = pcall(function() return C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(id) or (GetSpellTexture and GetSpellTexture(id)) end)
+      if ok and ok2 then return tex ~= nil and tex == mine end
+    end
+    return nil
+  end
   local function findBuff(name)
+    local tr = tracking(name)
+    if tr ~= nil then if tr then return 0, 0 end return end
     local item, slot = weapon(name)
     if not item and imbue(name) then item, slot = name, 16 end
     if item then -- expiration, duration, charges of the temporary enchant on that weapon
@@ -887,8 +940,11 @@ do
           local item, slot = weapon(c.spell)
           if item then -- use the item on that weapon (the game's own "target-slot")
             sb:SetAttribute("type", "item"); sb:SetAttribute("item", item); sb:SetAttribute("target-slot", slot); sb:SetAttribute("spell", nil)
+            sb:SetAttribute("unit", nil)
           else
+            -- always on yourself (6.2.2, user 09.11.: with a friendly target the buff went on the target)
             sb:SetAttribute("type", "spell"); sb:SetAttribute("spell", c.spell); sb:SetAttribute("item", nil); sb:SetAttribute("target-slot", nil)
+            sb:SetAttribute("unit", "player")
           end
           sb:Show()
         else sb:Hide() end
@@ -995,13 +1051,19 @@ do
             elseif not nextAt or left - sec < nextAt then nextAt = left - sec end
           end
         elseif buffExp[name] and (fight or exp == false or renewed[name]) then
+          -- a cast counts 5 s out of combat; look again then - a buff cast on someone else is not on you, and no
+          -- aura event of yours would bring the card back (6.2.2, user 09.11.)
+          local g = renewed[name] and not fight and renewed[name] + 5.05 - t
+          if g and g > 0 and (not nextAt or g < nextAt) then nextAt = g end
           -- the game does not tell (combat, or the aura of a cast is not there yet): go by the time the buff has -
           -- from when it was last seen, or cast time + its duration (6.1.3/6.1.4, Discord 05.11.: a Seal cast before
           -- the pull gave no card at 10 s)
           local left = buffExp[name] - t
           if left <= sec then due[#due + 1] = name
           elseif not nextAt or left - sec < nextAt then nextAt = left - sec end
-        elseif renewed[name] then -- cast again, its time not known: done for now
+        elseif renewed[name] then -- cast again, its time not known: done for now (look again after the 5 s)
+          local g = not fight and renewed[name] + 5.05 - t
+          if g and g > 0 and (not nextAt or g < nextAt) then nextAt = g end
         elseif fight or exp == false then -- not readable and no time known (idea from PR #36): keep the card as it was
           if wasDue[name] then due[#due + 1] = name end
         elseif buffSeen[name] then due[#due + 1] = name; buffExp[name] = nil -- ran out after it was up
@@ -1172,6 +1234,9 @@ do
     20744, 20746, 20750, 20749, 20745, 20747, 20748, 3824, 3829, -- Wizard and Mana Oils, Shadow Oil, Frost Oil
   }
   local POISONS = { 6947, 2892, 3775, 5237, 10918 } -- Instant, Deadly, Crippling, Mind-numbing, Wound Poison
+  -- warlock stones imbue the weapon in Forever (Discord 08.11., Knucklarn: only suggested with a stone in the bags):
+  -- Spellstone, Greater / Major Spellstone, Lesser / - / Greater / Major Firestone (Wowhead dataEnv=16)
+  local WARLOCK_STONES = { 5522, 13602, 13603, 1254, 13699, 13700, 13701 }
   local function spellNameOf(id)
     local n
     pcall(function() n = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)) or (GetSpellInfo and GetSpellInfo(id)) end)
@@ -1238,6 +1303,11 @@ do
       local n = spellNameOf(id)
       if n and (isKnown[n] or #known == 0) then add(n, true) end
     end
+    -- gatherers: Find Herbs / Find Minerals (and Find Treasure) when you know them (user 09.11.)
+    for _, id in ipairs(TRACKING) do
+      local n = spellNameOf(id)
+      if n and isKnown[n] then add(n, true) end
+    end
     if text ~= "" then for _, n in ipairs(known) do add(n, false) end end
     -- usable items in the bags (oils, sharpening stones, poisons ...) for the main / off hand, from 2 letters on
     -- (user 03.11.: "sh" showed nothing); then the usual weapon items even when none is in the bags
@@ -1280,7 +1350,7 @@ do
         end
       end
       suggest(WEAPON_ITEMS)
-      if class == "ROGUE" then suggest(POISONS) end
+      if class == "ROGUE" then suggest(POISONS) elseif class == "WARLOCK" then suggest(WARLOCK_STONES) end
     end
     return out
   end
@@ -1439,6 +1509,7 @@ local MOVABLE = {
   "AddonList", -- the AddOns window (user 02.11.)
   "SettingsPanel", "HelpFrame", "GameMenuFrame", -- Options, Customer Support, Game Menu (user 02.11.)
   "SocialUIFrame", "CalendarFrame", "CatalogShopFrame", -- Social (Friends), Calendar, Shop (Discord Stiandresius 06.11.)
+  "LegacySystemFrame", -- Forever's Legacy System (user 09.11.)
 }
 -- windows whose pages cover them completely: the pages take the mouse, so they are grips as well
 local GRIPS = { LFGParentFrame = { "LFGWhoListFrame", "LFGListingFrame", "LFGBrowseFrame" } }
@@ -1454,8 +1525,21 @@ local function padBag(name)
   local ok, ids = pcall(function() return C_GamePad and C_GamePad.GetAllDeviceIDs and C_GamePad.GetAllDeviceIDs() end)
   return ok and type(ids) == "table" and #ids > 0
 end
+-- another addon hides the game's window by moving it off the screen or making it invisible (TSM's crafting / vendor
+-- view, Discord Levixa 09.11.: both windows showed): leave it where that addon put it
+local function hiddenByAddon(f)
+  if f.GetAlpha and (f:GetAlpha() or 1) < 0.05 then return true end
+  local sc = f.GetScale and f:GetScale()
+  if sc and sc < 0.1 then return true end
+  local l, t, r, b = f:GetLeft(), f:GetTop(), f.GetRight and f:GetRight(), f.GetBottom and f:GetBottom()
+  if not (l and t and UIParent.GetWidth) then return false end
+  local k = (f.GetEffectiveScale and f:GetEffectiveScale() or 1) / (UIParent:GetEffectiveScale() or 1)
+  local W, H = UIParent:GetWidth() or 0, UIParent:GetHeight() or 0
+  if W <= 0 or H <= 0 then return false end
+  return l * k >= W or t * k <= 0 or (r and r * k <= 0) or (b and b * k >= H) or false
+end
 local function applyPos(f, name)
-  if padBag(name) then return end
+  if padBag(name) or hiddenByAddon(f) then return end
   local p = positions()[name]
   if not p or not QoL.Get("moveWindows") then return end
   if inCombat() and f:IsProtected() then return end
@@ -1470,7 +1554,7 @@ local function scales()
   return d.windowScale
 end
 local function applyScale(f, name)
-  if padBag(name) then return end
+  if padBag(name) or hiddenByAddon(f) then return end
   local sc = scales()[name]
   if not sc or not QoL.Get("resizeWindows") then return end
   if inCombat() and f:IsProtected() then return end
@@ -1536,7 +1620,9 @@ local function makeMovable(name)
     return
   end
   f.ofaMovable = true
-  f:SetMovable(true); f:SetClampedToScreen(true)
+  -- kept on the screen only while it is dragged (6.2.2, Discord Levixa 09.11.: always clamped, TSM's off-screen hiding
+  -- pulled the game's crafting / vendor window back into the corner - both windows showed)
+  f:SetMovable(true)
   if f.EnableMouse then f:EnableMouse(true) end
   local function down(_, button)
     if button == "RightButton" then
@@ -1545,12 +1631,14 @@ local function makeMovable(name)
     end
     if button ~= "LeftButton" or not QoL.Get("moveWindows") then return end
     if inCombat() and f:IsProtected() then return end
+    if f.SetClampedToScreen then f.ofaClamp = f.IsClampedToScreen and f:IsClampedToScreen() or false; f:SetClampedToScreen(true) end
     f.ofaMoving = true; f:StartMoving()
   end
   local function up(_, button)
     if button == "RightButton" then sizeStop(); return end
     if not f.ofaMoving then return end
     f.ofaMoving = nil; f:StopMovingOrSizing()
+    if f.SetClampedToScreen and not (inCombat() and f:IsProtected()) then f:SetClampedToScreen(f.ofaClamp and true or false) end
     if f.SetUserPlaced then pcall(f.SetUserPlaced, f, false) end
     local left, top = f:GetLeft(), f:GetTop()
     if left and top then positions()[name] = { math.floor(left + 0.5), math.floor(top + 0.5) } end
@@ -1576,9 +1664,11 @@ local function makeMovable(name)
     and not (close.IsProtected and close:IsProtected()) and close:GetFrameLevel() <= title:GetFrameLevel() then
     close:SetFrameLevel(title:GetFrameLevel() + 2)
   end
+  -- at once (Discord 09.11., Faith: the window showed at its default place for a moment, then jumped), and once more a
+  -- frame later in case the game places it again after its OnShow
   f:HookScript("OnShow", function(self)
-    if C_Timer and C_Timer.After then C_Timer.After(0, function() applyScale(self, name); applyPos(self, name) end)
-    else applyScale(self, name); applyPos(self, name) end
+    applyScale(self, name); applyPos(self, name)
+    if C_Timer and C_Timer.After then C_Timer.After(0, function() applyScale(self, name); applyPos(self, name) end) end
   end)
 end
 local function setupMovable()
@@ -1637,15 +1727,25 @@ local function rewardXP(questID, index)
   end
   return questFallbackXP(questID) or 0
 end
+-- "Only tracked quests" (6.2.2, Discord 09.11., Deaders; off): a quest counts only while it is watched in the tracker
+local function watched(questID, index)
+  if C_QuestLog and C_QuestLog.GetQuestWatchType and questID then
+    local ok, w = pcall(C_QuestLog.GetQuestWatchType, questID)
+    if ok then return w ~= nil end
+  end
+  if IsQuestWatched and index then local ok, w = pcall(IsQuestWatched, index); if ok then return w and true or false end end
+  return true
+end
 -- list (optional, 6.2.0, user 07.11.): filled with { title, xp } of each quest for the tooltip of the XP bar
 function QoL.CompletedQuestXP(list)
   local total, n = 0, 0
+  local onlyWatched = QoL.Get("questXPTracked")
   if C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo then
     for i = 1, C_QuestLog.GetNumQuestLogEntries() or 0 do
       local info = C_QuestLog.GetInfo(i)
       if info and not info.isHeader and info.questID then
         local complete = C_QuestLog.IsComplete and C_QuestLog.IsComplete(info.questID)
-        if complete then
+        if complete and (not onlyWatched or watched(info.questID, i)) then
           local xp = rewardXP(info.questID, i)
           total = total + xp; n = n + 1
           if list then list[#list + 1] = { info.title or "?", xp } end
@@ -1655,7 +1755,7 @@ function QoL.CompletedQuestXP(list)
   elseif GetNumQuestLogEntries and GetQuestLogTitle then
     for i = 1, GetNumQuestLogEntries() or 0 do
       local title, _, _, isHeader, _, isComplete, _, questID = GetQuestLogTitle(i)
-      if not isHeader and (isComplete == 1 or isComplete == true) then
+      if not isHeader and (isComplete == 1 or isComplete == true) and (not onlyWatched or watched(questID, i)) then
         local xp = rewardXP(questID, i)
         total = total + xp; n = n + 1
         if list then list[#list + 1] = { title or "?", xp } end
@@ -1764,6 +1864,34 @@ local function updateBagSlots()
   bagText:SetText(free and tostring(free) or "")
   if free and free <= 2 then bagText:SetTextColor(1, 0.3, 0.3) else bagText:SetTextColor(1, 1, 1) end
   bagText:Show()
+end
+
+-- Ammo on the bag bar (beta48/49, user 09.11.): a quiver / ammo pouch slot (and the ammo slot) shows ALL arrows / bullets
+-- in the bags, the same number as the info bar's Class reagent ("wie im info panel alle aus den taschen"), not only
+-- what the quiver holds, and never the game's "*" (more than 999; above 9999 as "12k"). A hook after
+-- SetItemButtonCount: returns at once for item buttons that are not the bag bar / ammo slot.
+function QoL._bagBarCount(btn, count) -- a field, not a local: QoL.lua is at Lua's 200 locals
+  if type(count) ~= "number" or count < 1 then return end
+  local ammoSlot = btn == _G.CharacterAmmoSlot
+  if not (ammoSlot or btn.isBag) or not QoL.Get("quiverAmmo") then return end
+  if not ammoSlot then -- bag slots: only quivers and ammo pouches (item class 11)
+    local GII = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    local id = GetInventoryItemID and btn.GetID and GetInventoryItemID("player", btn:GetID())
+    if not (id and GII and select(6, GII(id)) == 11) then return end
+  end
+  local IB = FLT.InfoBar
+  local n = IB and IB.AmmoCount and IB.AmmoCount() or count
+  local fs = btn.Count or (btn.GetName and btn:GetName() and _G[btn:GetName() .. "Count"])
+  if fs and fs.SetText then fs:SetText(n > 9999 and (math.floor(n / 1000) .. "k") or tostring(n)) end
+end
+if hooksecurefunc and type(SetItemButtonCount) == "function" then hooksecurefunc("SetItemButtonCount", QoL._bagBarCount) end
+-- switched on or off: the bag slots draw their count again (the game's own number when off)
+function QoL._bagBarRedraw()
+  if type(SetItemButtonCount) ~= "function" or not GetInventoryItemCount then return end
+  for _, n in ipairs({ "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot", "CharacterAmmoSlot" }) do
+    local b = _G[n]
+    if type(b) == "table" and b.GetID then pcall(SetItemButtonCount, b, GetInventoryItemCount("player", b:GetID()) or 0) end
+  end
 end
 
 -- ---------------------------------------------------------------------------
@@ -1979,13 +2107,19 @@ local function shortenTooltip(tt)
 end
 QoL.ShortStat = shortStat -- mock tests
 
+-- quests you can take / turn in at the NPC (MapQuests.lua, 6.2.2)
+local function addQuestLines(tt)
+  if not QoL.Get("npcQuestTip") or not (FLT.MapQuests and FLT.MapQuests.AddUnitLines) or not tt.GetUnit then return end
+  local _, unit = tt:GetUnit()
+  FLT.MapQuests.AddUnitLines(tt, unit)
+end
 local function setupTooltips()
   if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Unit then
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tt)
-      if tt == GameTooltip then pcall(addTargetLine, tt) end
+      if tt == GameTooltip then pcall(addTargetLine, tt); pcall(addQuestLines, tt) end
     end)
   elseif GameTooltip and GameTooltip.HookScript then
-    pcall(GameTooltip.HookScript, GameTooltip, "OnTooltipSetUnit", function(tt) pcall(addTargetLine, tt) end)
+    pcall(GameTooltip.HookScript, GameTooltip, "OnTooltipSetUnit", function(tt) pcall(addTargetLine, tt); pcall(addQuestLines, tt) end)
   end
   local function handler(tt)
     if not (QoL.Get("bossDrops") or QoL.Get("recipeTip") or QoL.Get("gearValue")) then return end
@@ -2773,11 +2907,12 @@ local EVENTS = {
   "LOOT_READY", "LOOT_OPENED", "MERCHANT_SHOW",
   "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING", "GOSSIP_SHOW", "QUEST_ACCEPT_CONFIRM",
   "PARTY_INVITE_REQUEST", "CHAT_MSG_WHISPER", "DUEL_REQUESTED",
-  "UPDATE_INVENTORY_DURABILITY", "BAG_UPDATE_DELAYED", "QUEST_LOG_UPDATE", "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP",
+  "UPDATE_INVENTORY_DURABILITY", "BAG_UPDATE_DELAYED", "QUEST_LOG_UPDATE", "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "QUEST_WATCH_LIST_CHANGED",
   "PLAYER_TARGET_CHANGED", "GROUP_ROSTER_UPDATE", "CHAT_MSG_LOOT", "CHAT_MSG_MONEY", "PLAYER_MONEY", "UI_ERROR_MESSAGE", "LOOT_CLOSED", "CVAR_UPDATE", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "ZONE_CHANGED_NEW_AREA",
 }
 for _, e in ipairs(EVENTS) do pcall(ev.RegisterEvent, ev, e) end
 if ev.RegisterUnitEvent then pcall(ev.RegisterUnitEvent, ev, "UNIT_AURA", "player") else pcall(ev.RegisterEvent, ev, "UNIT_AURA") end
+pcall(ev.RegisterEvent, ev, "MINIMAP_UPDATE_TRACKING") -- Find Herbs / Minerals in the buff reminder (6.2.2)
 -- buff reminder: weapon enchants are no aura (user 05.11.: Flametongue clicked off gave no card until another buff
 -- changed) - the weapon enchant / inventory events check too (debounced)
 pcall(ev.RegisterEvent, ev, "WEAPON_ENCHANT_CHANGED")
@@ -2830,6 +2965,7 @@ local function onEventSafe(_, event, ...)
   elseif event == "CHAT_MSG_WHISPER" then whisper(...)
   elseif event == "DUEL_REQUESTED" then duelRequested(...)
   elseif event == "UNIT_AURA" then playerAura(...); if (...) == "player" then buffAura() end
+  elseif event == "MINIMAP_UPDATE_TRACKING" then buffAura()
   elseif event == "WEAPON_ENCHANT_CHANGED" or event == "UNIT_INVENTORY_CHANGED" then buffAura(true)
   elseif event == "UNIT_SPELLCAST_SUCCEEDED" then QoL.BuffCast(select(3, ...))
   elseif event == "UI_ERROR_MESSAGE" then errorMessage(...)
@@ -2849,7 +2985,8 @@ local function onEventSafe(_, event, ...)
       else helper:Hide() end
     end
   elseif event == "CVAR_UPDATE" then cvarChanged(...)
-  elseif event == "PLAYER_REGEN_ENABLED" then if SPK.pending then applySparkles() end; if QoL.Get("buffReminder") then checkBuffs() end
+  elseif event == "PLAYER_REGEN_ENABLED" then if QoL._waiting then QoL.ApplyWaiting() end
+    if SPK.pending then applySparkles() end; if QoL.Get("buffReminder") then checkBuffs() end
     if movablePending then local l = movablePending; movablePending = nil; for name in pairs(l) do makeMovable(name) end end
   elseif event == "PLAYER_REGEN_DISABLED" then QoL.BuffCombatStart()
   elseif event == "ZONE_CHANGED_NEW_AREA" then if QoL.Get("buffReminder") and QoL.Get("buffSleepCities") then checkBuffs() end
@@ -2858,7 +2995,7 @@ local function onEventSafe(_, event, ...)
   elseif event == "PLAYER_MONEY" then moneyChanged()
   elseif event == "UPDATE_INVENTORY_DURABILITY" then checkDurability()
   elseif event == "BAG_UPDATE_DELAYED" then updateBagSlots(); bagsChanged()
-  elseif event == "QUEST_LOG_UPDATE" or event == "PLAYER_XP_UPDATE" or event == "PLAYER_LEVEL_UP" then
+  elseif event == "QUEST_LOG_UPDATE" or event == "PLAYER_XP_UPDATE" or event == "PLAYER_LEVEL_UP" or event == "QUEST_WATCH_LIST_CHANGED" then
     -- QUEST_LOG_UPDATE fires very often; read the quest log at most twice a second
     if QoL.Get("questXP") and not xpPending then
       xpPending = true
@@ -2892,7 +3029,9 @@ on("resizeWindows", function(v)
   end
 end)
 on("bagSlots", updateBagSlots)
+on("quiverAmmo", QoL._bagBarRedraw)
 on("questXP", updateXP)
+on("questXPTracked", updateXP)
 on("classColors", refreshClassColors)
 on("classBright", refreshClassColors)
 on("mapFog", function() if FLT.RefreshMapFog then FLT.RefreshMapFog() end end)

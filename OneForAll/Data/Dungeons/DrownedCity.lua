@@ -1,10 +1,12 @@
 local _, FLT = ...
 
 -- The Drowned City: quests (wowforevertalents.com beta quest cache), boss names and NPC IDs (Wowhead Forever database via foreverchanges.pro); October 2026.
+-- Loot (09.11.2026): boss loot lists of wowtbc.gg, item IDs and the dropping boss checked on Wowhead Forever (search, built-in browser).
+-- Viscera Spaulders 274607 and Ritual-Binder's Gloves 274610 (same ID range, item level 41-42) have no known boss yet - left out.
 FLT.DUNGEON_REGISTRY["The Drowned City"] = {
-    level = "35-40",
+    level = "35-42",
     location = "Gillijim's Isle, off the coast of Stranglethorn Vale",
-    description = "New Forever dungeon: I'lalai, a lost troll city that has risen from the sea. Naga, risen trolls and stranded pirates fight over its ruins. Its loot is still being discovered.",
+    description = "New Forever dungeon: I'lalai, a lost troll city that has risen from the sea. Naga, risen trolls and stranded pirates fight over its ruins. Its loot is still being discovered: what players have recorded so far is listed.",
     icon = "Interface\\Icons\\INV_Misc_Idol_03",
     quests = {
         {
@@ -53,43 +55,62 @@ FLT.DUNGEON_REGISTRY["The Drowned City"] = {
             loot = {
                 {274598, "Bloodslash Axe", "One-Hand, Axe", 3},
                 {274599, "Oathbound Bracers", "Wrist, Leather", 3},
+                {274600, "Berserker Shackles", "Wrist, Mail", 3},
             },
         },
         {
             name = "Var'Taka",
             npcID = 270883,
-            loot = {},
+            loot = {
+                {274601, "Harpoon of Command", "Two-Hand, Polearm", 3},
+                {274602, "Brinebelly Leggings", "Legs, Leather", 3},
+                {274613, "Priestess Cloak", "Back", 3},
+            },
         },
         {
             name = "Captain Dreadrise",
             npcID = 270884,
-            loot = {},
+            loot = {
+                {274603, "Dreadfrost Saber", "Main Hand, Sword", 3},
+                {274604, "Frosty Blunderbuss", "Ranged, Gun", 3},
+                {274605, "Briny Sash", "Waist, Cloth", 3},
+            },
         },
         {
             name = "Deathless Marrow",
             npcID = 270885,
-            description = "Fought together with a Primeval Elemental.",
-            loot = {},
+            loot = {
+                {274606, "Bloodspine Staff", "Two-Hand, Staff", 3},
+                {274614, "Knucklebone Ring", "Finger", 3},
+            },
         },
         {
             name = "Gill",
             npcID = 270888,
-            loot = {},
+            loot = {
+                {286646, "Gill's Gills", "Trinket", 3},
+                {286649, "Tidebound Dagger", "Main Hand, Dagger", 3},
+            },
         },
         {
-            description = "Its own encounter in the game's boss list (fought near the Deathless Marrow).",
             name = "Primeval Elemental",
             npcID = 270887,
-            loot = {},
+            loot = {
+                {274611, "Robe of the Drowned", "Chest, Cloth", 3},
+                {274612, "Waterlogged Burial Shroud", "Back", 3},
+                {274615, "Heart of the Primeval", "Trinket", 3},
+            },
         },
         {
             name = "Min'loth the Serpent",
             npcID = 270886,
-            loot = {},
+            loot = {
+                {274608, "Maw of Min'loth", "Off Hand, Shield", 3},
+                {274609, "Serpentbane Crown", "Head, Mail", 3},
+            },
         },
         {
             name = "Zin'aka",
-            description = "Not in the game's boss list; players list it as a boss (wowtbc.gg).",
             loot = {},
         },
     },

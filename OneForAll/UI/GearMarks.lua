@@ -79,9 +79,10 @@ end
 local function decorateRoll(frame)
   local icon = frame and iconOf(frame)
   if not icon then return end
-  local id = frame.rollID and GetLootRollItemLink and itemID(GetLootRollItemLink(frame.rollID))
+  local link = frame.rollID and GetLootRollItemLink and GetLootRollItemLink(frame.rollID)
+  local id = itemID(link)
   local wish = on() and id and FLT.IsOnWishlist and FLT.IsOnWishlist(id)
-  local up, lighter = isUpgrade(id)
+  local up, lighter = isUpgrade(id, nil, link) -- with the link: random suffix stats
   mark(icon, "ofaStar", "icon_star", 18, "TOPLEFT", -6, 6, true):SetShown(wish and true or false)
   upMark(icon, 18, "BOTTOMRIGHT", 5, -5, up, lighter)
 end
@@ -143,7 +144,9 @@ local function hookBaganator()
     local id = details and (details.itemID or itemID(details.itemLink))
     if not id then return false end
     if not GetItemInfo(id) then return nil end
-    local up, lighter = isUpgrade(id, true)
+    -- with the link: random suffix items ("of the Owl") have their stats only in the link (user 09.11.: an upgrade with
+    -- 12 % in the tooltip had no arrow in Baganator)
+    local up, lighter = isUpgrade(id, true, details.itemLink)
     if up and type(t) == "table" and t.SetTexture and t.ofaFile ~= arrowFile(lighter) then
       t.ofaFile = arrowFile(lighter); FLT.SetTex(t, ASSET .. t.ofaFile)
     end

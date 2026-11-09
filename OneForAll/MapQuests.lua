@@ -409,6 +409,68 @@ function MQ.Apply()
   listen(Q("mapQuests") and open and true or false)
   MQ.Refresh()
 end
+-- Quests on NPC tooltips (6.2.2, user 08.11.: "wenn ich einen npc ... drueber hover ... sollte dort die quest stehen die
+-- ich annehmen oder abgeben kann"; on, off while Questie is loaded - user 08.11.): the same data and rules as the map's
+-- ! and ?. The NPC is found by its name (in the client's language) on the map you are on, the nearest one when a name
+-- is there twice. Lean: nothing is read unless the name is a giver / turn-in NPC of this map (index per map, built once).
+local tipIndex = {} -- [mapID] = { [name in the client's language] = { starts = {...}, ends = {...} } }
+local function npcsOf(mapID)
+  local idx = tipIndex[mapID]
+  if idx ~= nil then return idx end
+  local d = mapData(mapID)
+  if not d then tipIndex[mapID] = false; return false end
+  idx = {}
+  local function put(kind, e)
+    local n = FLT.Name and FLT.Name(e.name) or e.name
+    local t = idx[n]; if not t then t = { starts = {}, ends = {} }; idx[n] = t end
+    t[kind][#t[kind] + 1] = e
+  end
+  for _, g in ipairs(d.starts) do put("starts", g) end
+  for _, e in ipairs(d.ends) do put("ends", e) end
+  tipIndex[mapID] = idx
+  return idx
+end
+local function nearest(list, px, py)
+  if #list < 2 or not px then return list[1] end
+  local best, bd
+  for _, e in ipairs(list) do
+    local dd = (e.x - px) ^ 2 + (e.y - py) ^ 2
+    if not bd or dd < bd then best, bd = e, dd end
+  end
+  return best
+end
+local AVAIL_ICON, TURNIN_ICON = "|TInterface\\GossipFrame\\AvailableQuestIcon:0|t ", "|TInterface\\GossipFrame\\ActiveQuestIcon:0|t "
+function MQ.AddUnitLines(tt, unit)
+  if not Q("npcQuestTip") or questieLoaded() or not unit then return end
+  if not (UnitExists and UnitExists(unit)) or (UnitIsPlayer and UnitIsPlayer(unit)) then return end
+  local name = UnitName and UnitName(unit)
+  if type(name) ~= "string" or (FLT.IsSecret and FLT.IsSecret(name)) then return end
+  local mapID = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+  local idx = mapID and npcsOf(mapID)
+  local npc = idx and idx[name]
+  if not npc then return end
+  local px, py
+  local pos = C_Map.GetPlayerMapPosition and C_Map.GetPlayerMapPosition(mapID, "player")
+  if pos and pos.GetXY then
+    local x, y = pos:GetXY()
+    if x and y and not (FLT.IsSecret and FLT.IsSecret(x, y)) then px, py = x * 100, y * 100 end
+  end
+  readLog(); readMe()
+  local added = false
+  local e = nearest(npc.ends, px, py)
+  for _, id in ipairs(e and e.ids or {}) do
+    if complete[id] then tt:AddLine(TURNIN_ICON .. (titles[id] or title({ id = id })), 0.4, 0.9, 0.4, true); added = true end
+  end
+  local g = nearest(npc.starts, px, py)
+  for _, q in ipairs(g and g.quests or {}) do
+    if available(q) then
+      local c = GetQuestDifficultyColor and GetQuestDifficultyColor(q.lvl) or { r = 1, g = 1, b = 1 }
+      tt:AddLine(AVAIL_ICON .. "[" .. q.lvl .. "] " .. title(q), c.r, c.g, c.b, true); added = true
+    end
+  end
+  if added then tt:Show() end
+end
+
 MQ.QuestieLoaded = questieLoaded
 MQ._mapData, MQ._available, MQ._pool, MQ._xpRange = mapData, available, pool, xpRange -- for tools/tests/t_mapquests.lua
 function MQ._me(t) for k, v in pairs(t) do me[k] = v end wipe(bagHas) end

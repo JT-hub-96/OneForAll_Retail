@@ -252,8 +252,18 @@ local function buildIndex()
     for _, it in ipairs(d.trashLoot or {}) do local e = add(it.id, it.name, it.quality, where .. " - " .. L["trash"], d.minLevel, d); if e then e.boss = "trash mobs" end end
     for _, qu in ipairs(d.quests or {}) do
       for _, it in ipairs(qu.rewards or {}) do
-        local e = add(it.id, it.name, it.quality, string.format(L["Quest: %s"], NM(qu.name) or "?"), qu.level)
-        if e then e.qid = qu.id; e.side = SIDE[qu.side] end
+        local e = add(it.id, it.name, it.quality, string.format(L["Quest: %s"], NM(qu.name) or "?"), qu.level, d)
+        -- dq: a dungeon quest - its row opens the quest in Dungeons & Raids (user 09.11.)
+        if e then e.qid = qu.id; e.side = SIDE[qu.side]; e.dq = true; if (qu.required or 0) > 0 then e.qreq = qu.required end
+        else
+          -- the same reward from the other faction's version of the quest (Blackfathom Villainy 1200 / 6561, Gravestone
+          -- Scepter; user 09.11.: a Horde priest never got it suggested): for both sides, with the own side's quest
+          local o = byId[it.id]
+          if o and o.qid and o.side and o.side ~= "" and SIDE[qu.side] ~= o.side then
+            if SIDE[qu.side] == (UnitFactionGroup and SIDE[UnitFactionGroup("player")]) then o.qid = qu.id end
+            o.side = nil
+          end
+        end
       end
     end
   end
@@ -947,12 +957,14 @@ function UI.CreateGearPlanner(parent)
       local d = r.e.d
       if not d then return end
       FLT:OpenPanel("dungeons")
-      if UI.OpenDungeon then UI.OpenDungeon(d, r.e.boss) end
+      if UI.OpenDungeon then
+        if r.e.dq then UI.OpenDungeon(d, nil, "quests", r.e.qid) else UI.OpenDungeon(d, r.e.boss) end
+      end
     end)
     r.go:SetScript("OnEnter", function(self)
       local d = r.e.d; GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
       GameTooltip:AddLine(d and d.name or "", 1, 0.82, 0)
-      GameTooltip:AddLine(r.e.boss == "trash mobs" and L["Open the trash loot in Dungeons & Raids."] or r.e.boss and string.format(L["Open %s in Dungeons & Raids."], r.e.boss) or L["Open the dungeon in Dungeons & Raids."], 1, 1, 1, true)
+      GameTooltip:AddLine(r.e.dq and L["Open the quest in Dungeons & Raids."] or r.e.boss == "trash mobs" and L["Open the trash loot in Dungeons & Raids."] or r.e.boss and string.format(L["Open %s in Dungeons & Raids."], r.e.boss) or L["Open the dungeon in Dungeons & Raids."], 1, 1, 1, true)
       GameTooltip:Show()
     end)
     r.go:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1245,6 +1257,7 @@ function UI.CreateGearPlanner(parent)
       local hasMap = e.qid and FLT.QuestStart(e.qid)
       local steps = e.qid and FLT.QUEST_REWARDS and #FLT.QuestChain(e.qid) or 0
       if steps > 1 then hasMap = nil end -- a chain: Map is on each step in the chain popup (user 16.10.)
+      if e.dq then hasMap = nil end -- a dungeon quest: the dungeon swirl opens the quest in Dungeons & Raids (user 09.11.)
       r.map:SetShown(hasMap and true or false)
       r.go:SetShown(d and not hasMap and steps <= 1 and true or false)
       if r.go:IsShown() and r.go.raid ~= (d.raid and true or false) then
