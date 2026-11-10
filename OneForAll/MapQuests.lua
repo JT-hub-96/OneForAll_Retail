@@ -23,6 +23,25 @@ local function setIcon(tex, turnin)
   tex:SetTexture(turnin and TURNIN_TEX or AVAIL_TEX, nil, nil, "TRILINEAR")
 end
 local SIZE = 18
+-- dungeon / raid quests (6.2.3, user 10.11.: "[D35] Rig Wars" and a mark on the map icon): [questID] = dungeon entry,
+-- from the quest lists of Dungeons & Raids, built on first use
+local dungeonQ
+local function dungeonOf(id)
+  if not dungeonQ then
+    if not FLT.DUNGEONS then return nil end
+    dungeonQ = {}
+    for _, d in ipairs(FLT.DUNGEONS) do for _, q in ipairs(d.quests or {}) do if q.id then dungeonQ[q.id] = d end end end
+  end
+  return dungeonQ[id]
+end
+local function dLetter(d) -- "D" / "R", in the client's language (keys with a hint, the English text is the letter)
+  local v = d.raid and L["R (raid quest)"] or L["D (dungeon quest)"]
+  return v:find("quest", 1, true) and (d.raid and "R" or "D") or v
+end
+local function dName(d) -- short like the Gear Planner ("SM: Graveyard"), the client's name when it has its own
+  local n = FLT.DungeonName and FLT.DungeonName(d.name)
+  return n and n ~= d.name and n or d.short or d.name
+end
 
 local function Q(key) return FLT.QoL and FLT.QoL.Get(key) end
 
@@ -194,12 +213,10 @@ end
 
 -- Pins -----------------------------------------------------------------------------------------------------------------
 local pool, used = {}, 0
--- the mouse only for the tooltip: clicks go through to the map below (GitHub #38: our "?" sat on Blizzard's own
--- turn-in icon and took the click that opens the quest in the quest log)
-local function hoverOnly(f)
-  f:EnableMouse(true)
-  if f.SetMouseClickEnabled then f:SetMouseClickEnabled(false) end
-end
+-- no mouse on the pins at all, so every click goes to the map below (GitHub #38: our "?" took the click on Blizzard's
+-- turn-in icon; user 10.11.: many "!" on the continent blocked the click into a zone - SetMouseClickEnabled(false) did
+-- not let it through in the Forever client). The tooltip comes from a hover watcher instead (below).
+local function hoverOnly(f) f:EnableMouse(false) end
 local spots = {} -- reused per refresh: key "x,y" -> { x, y, name, avail = {}, turnin = {} }
 local spotList = {}
 
@@ -208,7 +225,7 @@ local routeFrame, lines, nLines = nil, {}, 0
 -- invisible hover spots along the routes (6.1.1, user 04.11.: like Questie, the route shows its giver's tooltip and
 -- lights up on mouseover); pooled like the lines
 local hits, nHits = {}, 0
-local onEnter, onLeave -- forward (the tooltip of the pins)
+local onEnter, onLeave, openDungeonQuest -- forward (the tooltip of the pins, Shift-click)
 local function paintRoute(r, on)
   for i = r.first, r.last do
     local l = lines[i]
@@ -250,7 +267,6 @@ local function showRoute(route, child, w, h, scale, level, s)
           local hf = hits[nHits]
           if not hf then
             hf = CreateFrame("Frame", nil, routeFrame); hoverOnly(hf)
-            hf:SetScript("OnEnter", hitEnter); hf:SetScript("OnLeave", hitLeave)
             hits[nHits] = hf
           end
           hf.spot, hf.route = s, r
@@ -270,30 +286,78 @@ onEnter = function(pin)
   if not s or not GameTooltip then return end
   GameTooltip:SetOwner(pin, "ANCHOR_RIGHT")
   GameTooltip:AddLine(FLT.Name and FLT.Name(s.name) or s.name, 1, 0.82, 0.2)
-  for _, id in ipairs(s.turnin) do GameTooltip:AddLine(string.format(L["Turn in: %s"], titles[id] or title({ id = id })), 0.4, 0.9, 0.4, true) end
+  for _, id in ipairs(s.turnin) do
+    local d = dungeonOf(id)
+    GameTooltip:AddLine(string.format(L["Turn in: %s"], (d and ("[" .. dLetter(d) .. "] ") or "") .. (titles[id] or title({ id = id })))
+      .. (d and ("  |cff9d9d9d" .. dName(d) .. "|r") or ""), 0.4, 0.9, 0.4, true)
+  end
   for _, q in ipairs(s.avail) do
     local c = GetQuestDifficultyColor and GetQuestDifficultyColor(q.lvl) or { r = 1, g = 1, b = 1 }
     local lo, hi = xpRange(q)
-    GameTooltip:AddLine("[" .. q.lvl .. "] " .. title(q) .. "  |cff9d9d9d(" .. lo .. (hi > lo and ("-" .. hi) or "") .. ")|r", c.r, c.g, c.b, true)
+    local d = dungeonOf(q.id)
+    GameTooltip:AddLine("[" .. (d and dLetter(d) or "") .. q.lvl .. "] " .. title(q) .. "  |cff9d9d9d(" .. lo .. (hi > lo and ("-" .. hi) or "") .. ")"
+      .. (d and ("  " .. dName(d)) or "") .. "|r", c.r, c.g, c.b, true)
   end
+  if pin.dq then GameTooltip:AddLine(L["Shift-click: open in OFA"], 0.6, 0.6, 0.6, true) end
   GameTooltip:Show()
 end
 onLeave = function() if GameTooltip then GameTooltip:Hide() end end
 
+-- Shift-click on a "!" / "?" with a dungeon quest opens that quest in Dungeons & Raids (user 10.11.). The pins take
+-- no mouse (clicks go to the map); only while Shift is held the ones with a dungeon quest take it (MODIFIER_STATE_CHANGED,
+-- registered while the map is open).
+openDungeonQuest = function(pin, button)
+  if button ~= "LeftButton" or not pin.dq or not (IsShiftKeyDown and IsShiftKeyDown()) then return end
+  local d, qid = pin.dq, pin.dqid -- read first: closing the map clears the pins
+  if WorldMapFrame and WorldMapFrame:IsShown() and HideUIPanel then pcall(HideUIPanel, WorldMapFrame) end
+  FLT:OpenPanel("dungeons")
+  if FLT.UI and FLT.UI.OpenDungeon then FLT.UI.OpenDungeon(d, nil, "quests", qid) end
+end
+local function shiftPins()
+  local sh = IsShiftKeyDown and IsShiftKeyDown() and true or false
+  for i = 1, used do local p = pool[i]; p:EnableMouse(sh and p.dq ~= nil) end
+end
 local function acquire(parent)
   used = used + 1
   local pin = pool[used]
   if not pin then
     pin = CreateFrame("Frame", nil, parent)
     pin.tex = pin:CreateTexture(nil, "OVERLAY"); pin.tex:SetAllPoints()
+    -- dungeon / raid swirl at the corner when a quest there is a dungeon or raid quest (user 10.11.)
+    pin.badge = pin:CreateTexture(nil, "OVERLAY", nil, 2); pin.badge:SetSize(13, 13); pin.badge:SetPoint("CENTER", pin, "BOTTOMRIGHT", -1, 3)
     hoverOnly(pin)
-    pin:SetScript("OnEnter", onEnter); pin:SetScript("OnLeave", onLeave)
+    pin:SetScript("OnMouseUp", openDungeonQuest)
     pool[used] = pin
   end
   return pin
 end
+-- hover watcher: while pins are shown, a small frame on the open map looks every 0.1 s which pin (or route spot) is under
+-- the cursor and shows its tooltip. It is a child of the map, so it never runs while the map is closed.
+local watch, hovered, hoveredHit, wt = nil, nil, false, 0
+local function unhover()
+  if hovered then if hoveredHit then hitLeave(hovered) else onLeave() end end
+  hovered = nil
+end
+local function watchTick(_, el)
+  wt = wt + el
+  if wt < 0.1 then return end
+  wt = 0
+  local p, hit
+  for i = 1, used do if pool[i]:IsMouseOver() then p = pool[i]; break end end
+  if not p then for i = 1, nHits do if hits[i]:IsMouseOver() then p, hit = hits[i], true; break end end end
+  if p == hovered then return end
+  unhover()
+  if p then hovered, hoveredHit = p, hit and true or false; if hit then hitEnter(p) else onEnter(p) end end
+end
+local function setWatch(on)
+  if on and not watch and WorldMapFrame then watch = CreateFrame("Frame", nil, WorldMapFrame) end
+  if not watch then return end
+  wt = 0
+  watch:SetScript("OnUpdate", on and watchTick or nil)
+end
 local function hideAll()
-  for i = 1, used do pool[i]:Hide(); pool[i].spot = nil end
+  unhover(); setWatch(false)
+  for i = 1, used do local p = pool[i]; p:Hide(); p:EnableMouse(false); p.spot, p.dq, p.dqid = nil, nil, nil end
   used = 0
 end
 
@@ -375,12 +439,21 @@ function MQ.Refresh()
     local pin = acquire(child)
     pin.spot = s
     setIcon(pin.tex, #s.turnin > 0)
-    pin:SetSize(size, size); pin:SetScale(scale); pin:SetFrameLevel(level)
+    local dq, dqid
+    for _, q in ipairs(s.avail) do if not dq then dq = dungeonOf(q.id); dqid = dq and q.id end end
+    for _, id in ipairs(s.turnin) do if not dq then dq = dungeonOf(id); dqid = dq and id end end
+    pin.dq, pin.dqid = dq, dqid
+    local atlas = dq and (dq.raid and "raid" or "dungeon")
+    if atlas and pin.badge.SetAtlas and pin.badge.atlas ~= atlas then pin.badge.atlas = atlas; pcall(pin.badge.SetAtlas, pin.badge, atlas) end
+    pin.badge:SetShown(atlas and pin.badge.atlas == atlas or false)
+    pin:SetSize(size, size); pin:SetScale(scale); pin:SetFrameLevel(level + 10) -- above books and entrances (user 10.11.)
     pin:ClearAllPoints()
     pin:SetPoint("CENTER", child, "TOPLEFT", (s.x / 100) * w / scale, -(s.y / 100) * h / scale)
     pin:Show()
     if s.route then showRoute(s.route, child, w, h, scale, level, s) end
   end
+  setWatch(used > 0)
+  shiftPins()
 end
 
 -- quest log changes while the map is open (accept, finish, turn in, level up): debounced
@@ -392,7 +465,12 @@ ev:SetScript("OnEvent", function()
   pending = true
   C_Timer.After(0.5, function() pending = false; MQ.Refresh() end)
 end)
-local function listen(on) for _, e in ipairs(EVENTS) do if on then ev:RegisterEvent(e) else ev:UnregisterEvent(e) end end end
+local mod = CreateFrame("Frame")
+mod:SetScript("OnEvent", function() shiftPins() end)
+local function listen(on)
+  for _, e in ipairs(EVENTS) do if on then ev:RegisterEvent(e) else ev:UnregisterEvent(e) end end
+  if on then mod:RegisterEvent("MODIFIER_STATE_CHANGED") else mod:UnregisterEvent("MODIFIER_STATE_CHANGED") end
+end
 
 local hooked
 local function onShow() if Q("mapQuests") then listen(true) end; MQ.Refresh() end
@@ -472,7 +550,7 @@ function MQ.AddUnitLines(tt, unit)
 end
 
 MQ.QuestieLoaded = questieLoaded
-MQ._mapData, MQ._available, MQ._pool, MQ._xpRange = mapData, available, pool, xpRange -- for tools/tests/t_mapquests.lua
+MQ._mapData, MQ._available, MQ._pool, MQ._xpRange, MQ._dungeonOf, MQ._openDQ = mapData, available, pool, xpRange, dungeonOf, openDungeonQuest -- for tools/tests/t_mapquests.lua
 function MQ._me(t) for k, v in pairs(t) do me[k] = v end wipe(bagHas) end
 
 local boot = CreateFrame("Frame")

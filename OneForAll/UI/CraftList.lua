@@ -593,8 +593,79 @@ local function openWindow(prof)
   if shown(CraftFrame) and call(GetCraftDisplaySkillLine) == name then return 2 end
 end
 local function say(text) if FLT.Msg then FLT.Msg(text) end end
+-- index of the recipe in the open window (2 = Enchanting craft window, 1 = trade skill window)
+local function findIndex(r, how)
+  local want = spellName(r.s) or r.n
+  if how == 2 then
+    for i = 1, (call(GetNumCrafts) or 0) do
+      if call(GetCraftInfo, i) == want then return i end
+    end
+  elseif how == 1 then
+    for i = 1, (call(GetNumTradeSkills) or 0) do
+      local link = GetTradeSkillRecipeLink and call(GetTradeSkillRecipeLink, i)
+      local sid = link and tonumber(link:match("enchant:(%d+)") or link:match("spell:(%d+)"))
+      if sid == r.s or call(GetTradeSkillInfo, i) == want then return i end
+    end
+  end
+end
+-- show the recipe in the profession window: select it and scroll it into view (user 10.11.: "Craft" opened
+-- Enchanting on Enchanted Lute instead of Enchant Cloak - Minor Agility)
+-- Only the old windows: C_TradeSkillUI.OpenRecipe is protected (user 10.11.: ADDON_ACTION_BLOCKED from the event), and
+-- the Forever client answers C_TradeSkillUI also while the old Enchanting window is the one shown - so check the frames.
+local function selectRecipe(r)
+  local function shown(f) return type(f) == "table" and f.IsShown and f:IsShown() end
+  -- the new profession window (Forever shows it also for Enchanting, user 10.11. /fstack: ProfessionsFrame.CraftingPage):
+  -- its recipe list selects and scrolls by itself; plain call, no protected function
+  local list = shown(ProfessionsFrame) and ProfessionsFrame.CraftingPage and ProfessionsFrame.CraftingPage.RecipeList
+  if type(list) == "table" and type(list.SelectRecipe) == "function" then
+    local info = C_TradeSkillUI and call(C_TradeSkillUI.GetRecipeInfo, r.s)
+    if type(info) ~= "table" then return false end
+    return pcall(list.SelectRecipe, list, info, true) and true or false
+  end
+  local how = (shown(CraftFrame) and 2) or (shown(TradeSkillFrame) and 1) or nil
+  if not how then return false end
+  local i = findIndex(r, how)
+  if not i then return false end
+  local setSel = how == 2 and (CraftFrame_SetSelection or SelectCraft) or (TradeSkillFrame_SetSelection or SelectTradeSkill)
+  call(setSel, i)
+  local sf = how == 2 and CraftListScrollFrame or TradeSkillListScrollFrame
+  local rows = how == 2 and (CRAFTS_DISPLAYED or 8) or (TRADE_SKILLS_DISPLAYED or 8)
+  if type(sf) == "table" and FauxScrollFrame_GetOffset and FauxScrollFrame_SetOffset then
+    local off = call(FauxScrollFrame_GetOffset, sf) or 0
+    if i <= off or i > off + rows then
+      local total = how == 2 and (call(GetNumCrafts) or 0) or (call(GetNumTradeSkills) or 0)
+      local new = math.max(0, math.min(i - 1, total - rows))
+      call(FauxScrollFrame_SetOffset, sf, new)
+      local bar = sf.ScrollBar or _G[(sf.GetName and sf:GetName() or "") .. "ScrollBar"]
+      if bar and bar.SetValue then pcall(bar.SetValue, bar, new * (how == 2 and (CRAFT_SKILL_HEIGHT or 16) or (TRADE_SKILL_HEIGHT or 16))) end
+    end
+  end
+  call(how == 2 and CraftFrame_Update or TradeSkillFrame_Update)
+  return true
+end
+-- after "Craft" opened the window: select the recipe once its list is there (events only while waiting, max 10 s)
+local pending, waiter
+local function selectWhenOpen(prof, r)
+  pending = { prof = prof, r = r, untilT = (GetTime and GetTime() or 0) + 10 }
+  if not waiter then
+    waiter = CreateFrame("Frame")
+    waiter:SetScript("OnEvent", function(self)
+      local p = pending
+      if not p or (GetTime and GetTime() or 0) > p.untilT then pending = nil; self:UnregisterAllEvents(); return end
+      if not openWindow(p.prof) then return end
+      -- a moment later: the new window picks its own first recipe when it has built its list
+      pending = nil; self:UnregisterAllEvents()
+      if C_Timer and C_Timer.After then C_Timer.After(0.3, function() selectRecipe(p.r) end) else selectRecipe(p.r) end
+    end)
+  end
+  for _, e in ipairs({ "CRAFT_SHOW", "CRAFT_UPDATE", "TRADE_SKILL_SHOW", "TRADE_SKILL_UPDATE", "TRADE_SKILL_LIST_UPDATE" }) do
+    pcall(waiter.RegisterEvent, waiter, e)
+  end
+end
+CL._selectWhenOpen = selectWhenOpen -- (for the tests)
 local function craft(prof, r, n, how)
   local want = spellName(r.s) or r.n
+  selectRecipe(r) -- the window shows what is being made
   if how == 3 then
     -- not more than the materials allow (6.1.5, user 05.11.: 2 planned, materials for 2 - only 1 was made, then the
     -- second click with 2 did nothing)
@@ -604,16 +675,11 @@ local function craft(prof, r, n, how)
     if call(C_TradeSkillUI.CraftRecipe, r.s, n) == nil and not C_TradeSkillUI.CraftRecipe then say(L["Crafting is not possible here."]) end
     return
   end
-  if how == 2 then
-    for i = 1, (call(GetNumCrafts) or 0) do
-      if call(GetCraftInfo, i) == want then if DoCraft then DoCraft(i) end return end
-    end
-  else
-    for i = 1, (call(GetNumTradeSkills) or 0) do
-      local link = GetTradeSkillRecipeLink and call(GetTradeSkillRecipeLink, i)
-      local sid = link and tonumber(link:match("enchant:(%d+)") or link:match("spell:(%d+)"))
-      if sid == r.s or call(GetTradeSkillInfo, i) == want then if DoTradeSkill then DoTradeSkill(i, n) end return end
-    end
+  local i = findIndex(r, how)
+  if i then
+    if how == 2 then if DoCraft then DoCraft(i) end
+    elseif DoTradeSkill then DoTradeSkill(i, n) end
+    return
   end
   say(string.format(L["%s was not found in the profession window (a search or filter there may hide it)."], want))
 end
@@ -641,7 +707,7 @@ secureCraft = function(btn, target, onState)
     local prof, r, n = target()
     if not prof then return end
     if openHow then craft(prof, r, n, openHow); onState(L["Craft"])
-    else onState(L["Craft now"]) end -- the profession window opens: the next click crafts
+    else onState(L["Craft now"]); selectWhenOpen(prof, r) end -- the window opens: the next click crafts
   end)
 end
 CL._secureCraft = secureCraft

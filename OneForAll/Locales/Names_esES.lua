@@ -1,5 +1,5 @@
 local _, FLT = ...
--- QuestieDB c1b50fe (2026-11-08) (tools/locale/names.lua) - generated, do not edit by hand.
+-- QuestieDB ae4404b (2026-11-09) (tools/locale/names.lua) - generated, do not edit by hand.
 -- Names of quests, NPCs, objects and items (and quest objective sentences) in esES, English -> esES,
 -- only those our data files use. Source: QuestieDB Forever l10n (GPL-3, see THIRD_PARTY_LICENSES.txt).
 -- Made into a table only when this language is chosen and the game client speaks it (Locales/Locale.lua FLT.Name).
@@ -457,6 +457,7 @@ FLT.NAME_LOCALES.esES = function() return {
 ["Beguiler Robes"]="Togas de cautivador",
 ["Belandiel Farflight"]="Belandiel Vuelolejano",
 ["Belgrom Rockmaul"]="Belgrom Destrozarroca",
+["Belia Thundergranite"]="Belia Tronagranito",
 ["Bell of Dethmoora"]="La Campana de Dethmoora",
 ["Bellygrub"]="Panzallena",
 ["Belt of Arugal"]="Cinturón de Arugal",
@@ -2761,6 +2762,7 @@ FLT.NAME_LOCALES.esES = function() return {
 ["Herod's Shoulder"]="Hombro de Herod",
 ["Heroes of Darrowshire"]="Los héroes de Villa Darrow",
 ["Heroes of Old"]="Los héroes de los antiguos",
+["Hesuwa Thunderhorn"]="Hesuwa Tronacuerno",
 ["Hex of Weakness"]="Maleficio de Debilidad",
 ["Hezrul Bloodmark"]="Hezrul Marcasangre",
 ["Hi-Explosive Bomb"]="Bomba de gran carga",
@@ -3844,6 +3846,7 @@ FLT.NAME_LOCALES.esES = function() return {
 ["Nagmara's Whipping Belt"]="Cinturón de castigo de Nagmara",
 ["Nail Spitter"]="Escupeuñas",
 ["Naleeia Tattermend"]="Naleeia Coseandrajo",
+["Nalesette Wildbringer"]="Nalesette Asilvestra",
 ["Nalpak in the Wailing Caverns wants 20 Deviate Hides."]="Nalpak de las Cuevas de los Lamentos quiere 20 cueros descarriados.",
 ["Namdo Bizzfizzle"]="Namdo Silvabín",
 ["Nan Mistrunner"]="Nan Correbruma",
@@ -4355,6 +4358,7 @@ FLT.NAME_LOCALES.esES = function() return {
 ["Quartermaster Lewis"]="Intendente Lewis",
 ["Quartermaster Miranda Breechlock"]="Intendente Cerrobrecha",
 ["Quartermaster Zigris"]="Intendente Zigris",
+["Quel'dora Quickgale"]="Quel'dora Prestovendaval",
 ["Quel'dorai Channeling Rod"]="Vara de mediación Quel'dorai",
 ["Questioning Reethe"]="El interrogatorio de Reethe",
 ["Quickdraw Gloves"]="Guantes rápidos",
@@ -4446,6 +4450,7 @@ FLT.NAME_LOCALES.esES = function() return {
 ["Read the Pariah's Instructions. Afterwards, obtain the Amulet of Union from Maraudon and return it to the Centaur Pariah in southern Desolace."]="Lee las instrucciones del Paria. Busca el Amuleto de Unidad en Maraudon y llévaselo al sur de Desolace.",
 ["Reagents for Reclaimers Inc."]="Componentes para Reivindicadores y Cía.",
 ["Reanimated Corpse"]="Cadáver reanimado",
+["Reban Freerunner"]="Reban Corredor",
 ["Reception from Tyrande"]="El recibimiento de Tyrande",
 ["Recipe: Greater Dreamless Sleep"]="Receta: letargo sin sueños superior",
 ["Recipe: Living Action Potion"]="Receta: poción de acción viva",
@@ -5311,7 +5316,6 @@ FLT.NAME_LOCALES.esES = function() return {
 ["Spaulders of a Lost Age"]="Bufas de una época remota",
 ["Spawn of Hakkar"]="Alevín de Hakkar",
 ["Spawn of Mar'li"]="Alevín de Mar'li",
-["Speak to Je'neu Sancrea in Ashenvale."]="Habla con Je'neu Sancrea en Vallefresno.",
 ["Speak with Alchemist Arbington at Chillwind Point, Western Plaguelands."]="Habla con el alquimista Arbington en el Alto del Orvallo, en las Tierras de la Peste del Oeste.",
 ["Speak with Apothecary Dithers at the Bulwark, Western Plaguelands."]="Habla con el boticario Dithers en el Baluarte, en las Tierras de la Peste del Oeste.",
 ["Speak with Coleman"]="Habla con Coleman",
@@ -6811,9 +6815,4 @@ FLT.NAME_LOCALES.esES = function() return {
 ["Zulian Tiger"]="Tigre Zulian",
 ["Zureetha Fargaze"]="Zureetha Vistalonga",
 ["rAnS0m"]="ReScaTe",
-["Belia Thundergranite"]="Belia Tronagranito",
-["Hesuwa Thunderhorn"]="Hesuwa Tronacuerno",
-["Nalesette Wildbringer"]="Nalesette Asilvestra",
-["Quel'dora Quickgale"]="Quel'dora Prestovendaval",
-["Reban Freerunner"]="Reban Corredor",
 } end

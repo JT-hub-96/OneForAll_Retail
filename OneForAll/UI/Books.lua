@@ -21,12 +21,13 @@ local unpack = unpack or table.unpack
 local relayout
 
 local STATE = {
-  done={text=N"Turned in", color={0.45,0.85,0.45}},
-  manual={text=N"Manual", color={0.72,0.58,0.90}},
-  bag={text=N"Bag", color={0.92,0.78,0.35}},
-  bank={text=N"Bank", color={0.45,0.68,0.92}},
-  questflag={text=N"Quest flagged", color={0.92,0.58,0.28}},
-  missing={text=N"Missing", color={0.55,0.53,0.50}},
+  -- mark = the symbol (UI.Mark, 6.2.3: shapes as well as colours, user 10.11.)
+  done={text=N"Turned in", color={0.45,0.85,0.45}, mark="check"},
+  manual={text=N"Manual", color={0.72,0.58,0.90}, mark="pencil"},
+  bag={text=N"Bag", color={0.92,0.78,0.35}, mark="bag"},
+  bank={text=N"Bank", color={0.45,0.68,0.92}, mark="bank"},
+  questflag={text=N"Quest flagged", color={0.92,0.58,0.28}, mark="bang"},
+  missing={text=N"Missing", color={0.55,0.53,0.50}, mark="ring"},
 }
 local TERRITORY = {
   Alliance={text=N"Alliance", short="A", color={0.30,0.62,1.00}},
@@ -179,18 +180,12 @@ local function createBooksPanel(frame)
   local navY = ny
 
   -- the "Nearby book alerts" option lives in the Settings tab
-  -- small gem: tinted stone inside a gold rim
-  local function gem(parent, size)
-    local f = parent:CreateTexture(nil, "ARTWORK", nil, 1); f:SetSize(size, size); FLT.SetTex(f, UI.ASSET_ROOT .. "gem_fill")
-    local r = parent:CreateTexture(nil, "ARTWORK", nil, 2); r:SetAllPoints(f); FLT.SetTex(r, UI.ASSET_ROOT .. "gem_rim")
-    return f
-  end
   local legendKeys = { "done", "bag", "bank", "manual", "questflag", "missing" }
   local legendHolds = {} -- ht8: the legend at the bottom of the side list (placed once the sets are listed)
   for i = 1, #legendKeys do
     local st = STATE[legendKeys[i]]
     local hold = CreateFrame("Frame", nil, nav)
-    local d = gem(hold, 12); d:SetPoint("LEFT", 0, 0); d:SetVertexColor(unpack(st.color))
+    local d = UI.Mark(hold, 14, st.mark, unpack(st.color)); d:SetPoint("LEFT", -1, 0)
     local t = FLT.NewFS(hold, nil, "OVERLAY", "GameFontHighlightSmall"); t:SetPoint("LEFT", d, "RIGHT", 6, 0); t:SetText(L[st.text]); t:SetTextColor(FLT.SkinC(0.84, 0.81, 0.74))
     hold:SetSize(140, 18)
     legendHolds[i] = hold
@@ -247,7 +242,7 @@ local function createBooksPanel(frame)
     local card = UI.QuietRow(row) -- ht8: no frame, a fine line under the row
     row.card = card
 
-    local dot = gem(row, 13); dot:SetPoint("LEFT", COL.status - 1, 0)
+    local dot = UI.Mark(row, 14, "ring"); dot:SetPoint("LEFT", COL.status - 1, 0)
     row.statusDot = dot
     local status = FLT.NewFS(row, nil, "OVERLAY", "GameFontNormalSmall")
     status:SetPoint("LEFT", COL.status + 18, 0); status:SetWidth(COL_W.status - 20); status:SetJustifyH("LEFT")
@@ -341,7 +336,7 @@ local function createBooksPanel(frame)
       local st = FLT:GetBookState(row.book)
       local s = STATE[st] or STATE.missing
       row.statusText:SetText(L[s.text]); row.statusText:SetTextColor(unpack(s.color))
-      row.statusDot:SetVertexColor(unpack(s.color))
+      row.statusDot:SetKind(s.mark); row.statusDot:SetColor(unpack(s.color))
       local territory = FLT:GetTerritory(row.book.zone)
       local tc = CREST_TC[territory] or CREST_TC.Contested
       row.crest:SetTexCoord(tc[1], tc[2], 0, 1)

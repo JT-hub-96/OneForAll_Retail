@@ -1239,9 +1239,10 @@ local function createDungeonPanel(parent)
               local k,gu,ot=FLT.RecipeKnowState(e.prof,r)
               local cx=-10
               local K=UI.KNOW_COLORS
-              for _,c in ipairs({{ot,K.other},{gu,K.guild},{k,K.me}}) do
+              local M=UI.KNOW_MARKS
+              for _,c in ipairs({{ot,K.other,M.other},{gu,K.guild,M.guild},{k,K.me,M.me}}) do
                 if c[1] then
-                  local t=UI.Gem(row,12,unpack(c[2])); t:SetPoint("RIGHT",cx,0)
+                  local t=UI.Mark(row,14,c[3],unpack(c[2])); t:SetPoint("RIGHT",cx,0)
                 end
                 cx=cx-16
               end

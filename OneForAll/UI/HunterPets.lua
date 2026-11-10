@@ -189,11 +189,50 @@ local function rankNumber(sub)
   return tonumber(type(sub) == "string" and sub:match("(%d+)") or nil) or 1
 end
 
+-- One spell ID per pet ability (all ranks share the name), from the Forever client (wago SkillLineAbility, the
+-- hunter "Pet - <family>" skill lines, 1.60.1). The client names the spell in its own language, so this maps the
+-- word back to our English name also for languages we have no translation for (Discord andrei_al 09.11.: Claw
+-- rank 4 not seen on a Russian client).
+local PET_SPELL = {
+  ["Arcane Resistance"] = 24493, Bite = 17253, Charge = 7371, Claw = 16827, Cower = 1742, Dash = 23099,
+  ["Demoralizing Screech"] = 24423, Dismember = 1264758, Dive = 23145, ["Dust Cloud"] = 1265899,
+  ["Fire Resistance"] = 23992, ["Frost Resistance"] = 24446, ["Furious Howl"] = 24597, ["Great Stamina"] = 4187,
+  Growl = 2649, ["Lava Breath"] = 444678, ["Lightning Breath"] = 24844, ["Mine!"] = 1265054, ["Natural Armor"] = 24545,
+  ["Nature Resistance"] = 24492, Pinch = 1264735, Prowl = 24450, ["Savage Rend"] = 1265065, ["Scorpid Poison"] = 24583,
+  ["Shadow Resistance"] = 24488, ["Shell Shield"] = 26064, Swipe = 1264494, ["Tendon Rip"] = 1265038,
+  Thunderstomp = 26090, ["Trickster's Dance"] = 1310612, Web = 1265843,
+}
+FLT.PET_ABILITY_SPELL = PET_SPELL -- (for the tests)
+local byClient -- the client's ability name -> English, made when first needed
+local function abilityEN(name)
+  local en = EN(name) -- the German client names the ability in German
+  if PET_SPELL[en] then return en end
+  if not byClient then
+    byClient = {}
+    for e, id in pairs(PET_SPELL) do
+      local n
+      pcall(function() n = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)) or (GetSpellInfo and GetSpellInfo(id)) end)
+      if type(n) == "string" and n ~= "" then byClient[n] = e end
+    end
+    -- ranks an older version stored under the client's own word: move them to the English name
+    local t, move = knownTable(), nil
+    for k, r in pairs(t or {}) do
+      if byClient[k] and byClient[k] ~= k then move = move or {}; move[k] = r end
+    end
+    for k, r in pairs(move or {}) do
+      local e = byClient[k]
+      if (t[e] or 0) < r then t[e] = r end
+      t[k] = nil
+    end
+  end
+  return byClient[name] or en
+end
+
 local function noteKnown(name, rank)
   local t = knownTable()
   if not t or not name or name == "" then return false end
   rank = rank or 1
-  name = EN(name) -- the German client names the ability in German
+  name = abilityEN(name)
   if (t[name] or 0) < rank then t[name] = rank; return true end
   return false
 end

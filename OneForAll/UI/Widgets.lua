@@ -1017,14 +1017,20 @@ function UI.Slider(parent, w, minV, maxV, step, onChange)
   return s
 end
 
--- Small gem marker (tinted stone in a gold rim). Returns a frame with
--- :SetColor(r,g,b) and the usual Show/Hide/SetShown.
+-- colours of the recipe knowers (I / guild / other players), shown with UI.Mark below
 UI.KNOW_COLORS = { me = {0.92, 0.78, 0.35}, guild = {0.45, 0.85, 0.45}, other = {0.45, 0.68, 0.92} }
-function UI.Gem(parent, size, r, g, b)
+
+-- Status symbol instead of a plain coloured dot (6.2.3, user 10.11.: colour weakness): a white glyph from
+-- Assets/know_marks (tools/art/know_marks.py) tinted in the state's colour, so the shape tells the state too.
+-- m = UI.Mark(parent, size, kind, r, g, b); m:SetKind(kind); m:SetColor(r, g, b)
+UI.MARK_CELL = { check = 0, guild = 1, person = 2, bag = 3, bank = 4, pencil = 5, bang = 6, ring = 7 }
+UI.KNOW_MARKS = { me = "check", guild = "guild", other = "person" }
+function UI.Mark(parent, size, kind, r, g, b)
   local f = CreateFrame("Frame", nil, parent); f:SetSize(size, size)
-  local fill = f:CreateTexture(nil, "ARTWORK", nil, 1); fill:SetAllPoints(); FLT.SetTex(fill, ASSET_ROOT .. "gem_fill")
-  local rim = f:CreateTexture(nil, "ARTWORK", nil, 2); rim:SetAllPoints(); FLT.SetTex(rim, ASSET_ROOT .. "gem_rim")
-  function f:SetColor(cr, cg, cb) fill:SetVertexColor(FLT.SkinC(cr, cg, cb)) end
+  local t = f:CreateTexture(nil, "ARTWORK", nil, 2); t:SetAllPoints(); FLT.SetTex(t, ASSET_ROOT .. "know_marks")
+  function f:SetKind(k) local c = UI.MARK_CELL[k] or 7; t:SetTexCoord(c / 8, (c + 1) / 8, 0, 1) end
+  function f:SetColor(cr, cg, cb) t:SetVertexColor(FLT.SkinC(cr, cg, cb)) end
+  f:SetKind(kind)
   if r then f:SetColor(r, g, b) end
   return f
 end
@@ -1221,7 +1227,7 @@ function UI.ShowDiscord()
 end
 
 -- Shared drop-down list (one at a time); a click outside closes it.
--- options = { {key=, label=[, checked=][, remove=]}, ... }; the current one (or every o.checked) gets a check mark.
+-- options = { {key=, label=[, checked=][, remove=][, header=]}, ... }; the current one (or every o.checked) gets a check mark.
 -- width: list width (default: the owner's width).
 local ddMenu, ddCatcher
 function UI.OpenDropDown(owner, options, current, onPick, width)
@@ -1254,13 +1260,16 @@ function UI.OpenDropDown(owner, options, current, onPick, width)
     end
     r:ClearAllPoints(); r:SetPoint("TOPLEFT", 4, -4 - (i - 1) * 22)
     r.text:SetText(o.label)
+    -- o.header: a gold heading, not clickable (Gear Planner filter "Armor type", 6.2.3)
+    r:SetEnabled(not o.header); r.text:ClearAllPoints(); r.text:SetPoint("LEFT", o.header and 6 or 22, 0)
     -- the menu grows with its longest entry (6.1.0, user 03.11.: long buff names ran over the edge)
     local need = (r.text:GetStringWidth() or 0) + 22 + (o.remove and 24 or 10) + 8
     if need > w then w = math.ceil(need) end
-    local sel = o.key == current
+    local sel = not o.header and o.key == current
     if o.checked ~= nil then sel = o.checked end -- several picks at once (Gear Planner sources, user 31.10.)
     r.check:SetShown(sel); r.del:SetShown(o.remove and true or false)
-    if sel then r.text:SetTextColor(FLT.SkinC(1, 0.82, 0.2)) else r.text:SetTextColor(0.92, 0.90, 0.84) end
+    if o.header then r.text:SetTextColor(FLT.SkinC(0.90, 0.66, 0.22))
+    elseif sel then r.text:SetTextColor(FLT.SkinC(1, 0.82, 0.2)) else r.text:SetTextColor(0.92, 0.90, 0.84) end
     r:SetScript("OnClick", function() ddMenu:Hide(); onPick(o.key) end)
     r:Show()
   end

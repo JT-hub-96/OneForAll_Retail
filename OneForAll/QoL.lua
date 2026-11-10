@@ -1765,33 +1765,53 @@ function QoL.CompletedQuestXP(list)
   return total, n
 end
 
-local xpMarker, xpBar, xpHooked
+local xpMarker, xpBar, xpHooked -- xpHooked = { line = tooltip hook, done = { XP bars that have it } }
 local xpPending
+-- Each status bar container has its own XP bar: with a tracked reputation the game shows the
+-- reputation in one container and the XP in the other, so take the XP bar that is shown
+-- (Discord sparklebeard 09.11.: quest XP gone while a reputation was tracked).
 local function findXPBar()
   if type(MainMenuExpBar) == "table" then return MainMenuExpBar, MainMenuExpBar end
+  local first, firstHolder
   for _, cname in ipairs({ "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer", "StatusTrackingBarManager" }) do
     local c = _G[cname]
     if type(c) == "table" and c.GetChildren then
       for _, ch in ipairs({ c:GetChildren() }) do
         if ch.ExhaustionTick or ch.ExhaustionLevelFillBar then
           local sb = ch.StatusBar or ch
-          if sb.GetMinMaxValues then return sb, ch end
+          if sb.GetMinMaxValues then
+            if not ch.IsVisible or ch:IsVisible() then return sb, ch end
+            if not first then first, firstHolder = sb, ch end
+          end
         end
       end
     end
   end
+  return first, firstHolder
 end
 local function updateXP()
   if not QoL.Get("questXP") then if xpMarker then xpMarker:Hide() end; return end
   local bar, holder = findXPBar()
   if not bar then return end
-  xpBar = bar
   if not xpMarker then
     xpMarker = bar:CreateTexture(nil, "ARTWORK", nil, 2)
     xpMarker:SetColorTexture(1, 0.82, 0.25, 0.45)
+  elseif xpBar ~= bar then
+    xpMarker:SetParent(bar) -- the shown XP bar changed (reputation tracked / untracked)
   end
+  xpBar = bar
   if not xpHooked then
-    xpHooked = true
+    xpHooked = { done = {} }
+    -- the game swaps the bars when a reputation is tracked or untracked: follow it (fires only then)
+    local mgr = _G.StatusTrackingBarManager
+    if hooksecurefunc and type(mgr) == "table" and type(mgr.UpdateBarsShown) == "function" then
+      hooksecurefunc(mgr, "UpdateBarsShown", function()
+        if QoL.Get("questXP") and not xpPending and C_Timer and C_Timer.After then
+          xpPending = true
+          C_Timer.After(0.5, function() xpPending = false; updateXP() end)
+        end
+      end)
+    end
     local quests = {} -- reused (only while the tooltip is built)
     local function byXP(a, b) return a[2] > b[2] end
     local function addLine(self)
@@ -1817,12 +1837,16 @@ local function updateXP()
       end
       if C_Timer and C_Timer.After then C_Timer.After(0, add) else add() end
     end
-    -- only frames that already show the game's tooltip (adding an OnEnter to
-    -- another frame would let it catch the mouse and hide that tooltip)
-    for _, f in ipairs({ holder, bar }) do
-      if f and f.HookScript and f.GetScript and f:GetScript("OnEnter") then pcall(f.HookScript, f, "OnEnter", addLine) end
-    end
+    xpHooked.line = addLine
     if GameTooltip and GameTooltip.HookScript then GameTooltip:HookScript("OnHide", function(t) t.ofaQuestXP = nil end) end
+  end
+  -- tooltip line on every XP bar we use (each container has its own); only frames that already
+  -- show the game's tooltip (adding an OnEnter to another frame would catch the mouse and hide it)
+  if not xpHooked.done[holder or bar] then
+    xpHooked.done[holder or bar] = true
+    for _, f in ipairs({ holder, bar }) do
+      if f and f.HookScript and f.GetScript and f:GetScript("OnEnter") then pcall(f.HookScript, f, "OnEnter", xpHooked.line) end
+    end
   end
   local xp = QoL.CompletedQuestXP()
   local cur, max = UnitXP and UnitXP("player") or 0, UnitXPMax and UnitXPMax("player") or 0

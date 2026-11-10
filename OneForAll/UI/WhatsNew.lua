@@ -29,7 +29,7 @@ local NEWS = {
   { icon = "Interface\\Icons\\INV_Shirt_GuildTabard_01", title = N"Guild members on the world map", tab = "qol", qol = "guild", button = N"Open Quality of Life",
     lines = {
       N"Guild members who also use OneForAll show as dots in their class colour on the zone and continent map.",
-      N"Inside a dungeon or raid a green dot sits on its entrance, and its tooltip names who is inside.",
+      N"Inside a dungeon or raid a green guild flag sits on its entrance, and its tooltip names who is inside.",
       N"One switch in Quality of Life > Guild for both ways: switched off, nobody sees you and you see nobody.",
     } },
 }

@@ -548,7 +548,8 @@ function UI.CreateRecipeBrowser(parent)
   do
     local lx = -14
     local K = UI.KNOW_COLORS
-    local specs = {{L["Other users"] .. " |cff9d9d9d(" .. L["only visible when online"] .. ")|r", K.other}, {L["Guild member"], K.guild}, {L["I know it"], K.me}}
+    local M = UI.KNOW_MARKS
+    local specs = {{L["Other users"] .. " |cff9d9d9d(" .. L["only visible when online"] .. ")|r", K.other, M.other}, {L["Guild member"], K.guild, M.guild}, {L["I know it"], K.me, M.me}}
     if FLT.RecipeChannelOff then table.remove(specs, 1) end -- 6.1.4: no search among other users
     for i, spec in ipairs(specs) do
       local t = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); t:SetPoint("TOPRIGHT", lx, -14); t:SetText(spec[1]); t:SetTextColor(FLT.SkinC(0.85, 0.82, 0.75))
@@ -556,7 +557,7 @@ function UI.CreateRecipeBrowser(parent)
         -- keeps its width when the text changes (see f:Refresh), so the other entries stay put
         t:SetWidth(t:GetStringWidth() or 200); t:SetJustifyH("RIGHT"); f.otherLegend = t
       end
-      local ic = UI.Gem(f, 13, unpack(spec[2])); ic:SetPoint("RIGHT", t, "LEFT", -4, 0)
+      local ic = UI.Mark(f, 14, spec[3], unpack(spec[2])); ic:SetPoint("RIGHT", t, "LEFT", -4, 0)
       legendFirst = ic -- the last one created is the left-most ("I know it")
       lx = lx - (t:GetStringWidth() or 60) - 34
     end
@@ -1095,8 +1096,9 @@ function UI.CreateRecipeBrowser(parent)
     -- three check columns side by side: yellow = you, green = guild, blue = other players
     b.checks = {}
     local K = UI.KNOW_COLORS
-    for k, spec in ipairs({{-66, K.me}, {-50, K.guild}, {-34, K.other}}) do
-      local c = UI.Gem(b, 12, unpack(spec[2])); c:SetPoint("RIGHT", spec[1] - 1, 0); c:Hide()
+    local M = UI.KNOW_MARKS
+    for k, spec in ipairs({{-66, K.me, M.me}, {-50, K.guild, M.guild}, {-34, K.other, M.other}}) do
+      local c = UI.Mark(b, 14, spec[3], unpack(spec[2])); c:SetPoint("RIGHT", spec[1], 0); c:Hide()
       b.checks[k] = c
     end
     b:SetScript("OnClick", function(self, button)

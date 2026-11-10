@@ -70,6 +70,28 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.2.3 - Gear Planner "All slots", dungeon quests on the map, symbols
+======================================================================
+- Gear Planner, Suggested: new button "All slots" - the 3 best upgrades of every slot at once, grouped under small
+  slot headings (also in the Wishlist's "All slots"). A click on a slot shows that slot again.
+- Gear Planner filter: new section "Armor type" with the armor your class can wear. By default the types you can wear
+  now; mail / plate can be picked before level 40 and are on by default from level 40.
+- World map quest marks: dungeon and raid quests show "[D35]" / "[R60]" and the dungeon's short name in the tooltip,
+  and the "!" / "?" gets a small dungeon (or raid) swirl. Shift-click opens the quest in Dungeons & Raids.
+- World map: our quest "!" / "?" no longer catch clicks - they go to the map below (zoom into a zone, Blizzard's quest
+  icons); the tooltip still shows on mouseover. They are always drawn above book and dungeon entrance icons.
+- Symbols instead of coloured dots, easier to tell apart with colour weakness: Professions (check = you, guild flag =
+  guild, also in the boss loot's recipe drops), Library Books (check, bag, bank, pencil, "!", ring) and the guild
+  flag on a dungeon entrance while a guild member is inside (was a green dot).
+- "Craft" (recipe view, Crafting List) selects the chosen recipe in the profession window, also in WoW Forever's new
+  profession window (Enchanting); before, it opened on the first recipe.
+- Quest XP on the experience bar also works while a reputation is tracked (Discord report by sparklebeard).
+- Hunter Pets: learned ability ranks are recognised on client languages without a OneForAll translation, e.g. Russian
+  (Discord report by andrei_al).
+- Gear Value: a one-hand weapon is compared with each hand as that hand values it; the off hand uses its own weapon
+  speed weight (Discord report by Jax).
+- Data update: QuestieDB (Forever NPC and quest fixes), Sharpie's Gear Judge 3.3.2 weights.
+
 6.2.2 - Info bar, guild members on the map
 ==========================================
 - New Quality of Life option "Info bar" (Interface, off): a band at the top middle of the screen, empty at first -

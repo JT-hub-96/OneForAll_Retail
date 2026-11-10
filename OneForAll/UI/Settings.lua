@@ -183,7 +183,7 @@ local function createSettingsPanel(parent)
   right[#right + 1] = { L["Highest levels first"], L["Shows the high-level brackets at the top of the dungeon list and sorts the dungeons from the highest level down."],
     function() return browseCfg().highFirst and true or false end,
     function(v) browseCfg().highFirst = v or nil; if UI.RefreshDungeonList then UI.RefreshDungeonList() end end }
-  right[#right + 1] = { L["Show recipe drops in boss loot"], L["Lists the recipes a boss can drop below its loot, with the yellow / green / blue markers."],
+  right[#right + 1] = { L["Show recipe drops in boss loot"], L["Lists the recipes a boss can drop below its loot, with the same markers as in Professions."],
     function() return db().dungeonRecipes ~= false end,
     function(v) db().dungeonRecipes = v end }
   -- "Dungeon map on M" moved to Quality of Life > World Map (5.6.8, user 22.10.)

@@ -452,6 +452,7 @@ function UI.CreateGearPlanner(parent)
   local f = CreateFrame("Frame", nil, parent); f:SetAllPoints(); f:Hide()
   local prefs = (type(OneForAllCharDB) == "table") and OneForAllCharDB or {}
   local selected = 1 -- inventory slot
+  local allSlots, suggestAllBtn -- "All slots" on Suggested (6.2.3)
   local enchMode = false -- the right side shows the enchants of the selected slot
   local tab = "suggest"
   local search = ""
@@ -577,7 +578,7 @@ function UI.CreateGearPlanner(parent)
         local link = GetInventoryItemLink("player", self.slot); if link then HandleModifiedItemClick(link) end; return
       end
       if self.grey then return end
-      selected = self.slot; enchMode = false; search = ""; prefs.wishAll = nil; -- a slot click shows that slot again
+      selected = self.slot; enchMode = false; search = ""; prefs.wishAll = nil; prefs.suggestAll = nil -- a slot click shows that slot again
       if f.searchBox then f.searchBox:SetText("") end
       f.paintSlots()
       refreshList()
@@ -720,12 +721,57 @@ function UI.CreateGearPlanner(parent)
   local SOURCES = { { key = "boe", label = N"Bind on Equip" }, { key = "quest", label = N"Quest rewards" },
     { key = "dungeon", label = N"Dungeon drops" }, { key = "raid", label = N"Raid drops" }, { key = "crafted", label = N"Crafted" } }
   local SOURCE_SHORT = { boe = N"BoE", quest = N"Quests", dungeon = N"Dungeons", raid = N"Raids", crafted = N"Crafted" }
+  -- armor type filter (6.2.3, user 10.11.): in the same menu, the armor types the class can wear; by default the ones
+  -- it can wear now (mail / plate from level 40), the next one can be picked before. prefs.gearArmor = { pick = { [sub]
+  -- = true }, b40 = level >= 40 when picked }; dropped when level 40 is crossed (then the new defaults apply), nil = defaults.
+  local ARMOR_NAMES = { N"Cloth", N"Leather", N"Mail", N"Plate" }
+  local function armorLimits()
+    local cls = f.class or select(2, UnitClass("player"))
+    local maxA = ARMOR_MAX[cls] or 1
+    local defA = maxA
+    if maxA >= 3 and (UnitLevel and UnitLevel("player") or 60) < 40 then defA = maxA - 1 end
+    return maxA, defA
+  end
+  local armorDefault = {}
+  local function armorPick()
+    local maxA, defA = armorLimits()
+    local g = prefs.gearArmor
+    local b40 = (UnitLevel and UnitLevel("player") or 60) >= 40
+    if type(g) == "table" and type(g.pick) == "table" and g.b40 == b40 then return g.pick, false end
+    prefs.gearArmor = nil
+    wipe(armorDefault); for s = 1, defA do armorDefault[s] = true end
+    return armorDefault, true
+  end
+  local function setArmor(s)
+    local maxA, defA = armorLimits()
+    local cur = armorPick()
+    local pick = {}
+    for i = 1, maxA do pick[i] = cur[i] or nil end
+    pick[s] = not pick[s] or nil
+    if not next(pick) then return end -- at least one type stays
+    local same = true
+    for i = 1, maxA do if (pick[i] or false) ~= (i <= defA) then same = false end end
+    prefs.gearArmor = (not same) and { pick = pick, b40 = (UnitLevel and UnitLevel("player") or 60) >= 40 } or nil
+  end
+  local function armorOK(e)
+    if e.cid ~= 4 or e.loc == "INVTYPE_CLOAK" or not e.sub or e.sub < 1 or e.sub > 4 then return true end
+    return armorPick()[e.sub] and true or false
+  end
+  local function armorNames()
+    local maxA = armorLimits()
+    if maxA < 2 then return nil end
+    local pick, def = armorPick()
+    if def then return nil end
+    local out = {}
+    for s = 1, maxA do if pick[s] then out[#out + 1] = L[ARMOR_NAMES[s]] end end
+    return table.concat(out, ", ")
+  end
   if prefs.gearSource then prefs.gearSources = { [prefs.gearSource] = true }; prefs.gearSource = nil end -- old single choice
   local function picked() local t = prefs.gearSources; return t and next(t) and t or nil end
   local srcBtn = CreateFrame("Button", nil, right); srcBtn:SetSize(22, 22)
   srcBtn.tex = srcBtn:CreateTexture(nil, "ARTWORK"); srcBtn.tex:SetAllPoints(); FLT.SetTex(srcBtn.tex, UI.ASSET_ROOT .. "icon_filter")
   local shl2 = UI.makeTexture(srcBtn, "HIGHLIGHT", 1, 0.82, 0.3, 0.12); shl2:SetAllPoints()
-  local function paintSource() srcBtn.tex:SetAlpha(picked() and 1 or 0.5) end
+  local function paintSource() srcBtn.tex:SetAlpha((picked() or armorNames()) and 1 or 0.5) end
   local function shortNames()
     local t = picked(); if not t then return nil end
     local out = {}
@@ -735,6 +781,8 @@ function UI.CreateGearPlanner(parent)
   srcBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["Source filter"], 1, 0.82, 0)
     GameTooltip:AddLine(shortNames() or L["All sources"], 1, 1, 1)
+    local an = armorNames()
+    if an then GameTooltip:AddLine(L["Armor type"] .. ": " .. an, 1, 1, 1) end
     GameTooltip:AddLine(L["Pick one or more. Bind on Equip: items you can buy in the auction house. Crafted: your own professions with everything, other professions only Bind on Equip."], 0.8, 0.8, 0.8, true)
     GameTooltip:Show()
   end)
@@ -743,8 +791,21 @@ function UI.CreateGearPlanner(parent)
     local t = picked() or {}
     local opts = { { key = "all", label = L["All sources"], checked = next(t) == nil } }
     for _, o in ipairs(SOURCES) do opts[#opts + 1] = { key = o.key, label = L[o.label], checked = t[o.key] and true or false } end
+    local maxA, defA = armorLimits()
+    do -- also for cloth-only classes (user 10.11.: "Magier -> Stoff"), there the one entry stays checked
+      local pick = armorPick()
+      opts[#opts + 1] = { key = "hdr", label = L["Armor type"], header = true }
+      for s = 1, maxA do
+        local lab = L[ARMOR_NAMES[s]]
+        if s > defA then lab = lab .. "  |cff9d9d9d(" .. string.format(L["From level %d"], 40) .. ")|r" end
+        opts[#opts + 1] = { key = "a" .. s, label = lab, checked = pick[s] and true or false }
+      end
+    end
     UI.OpenDropDown(self, opts, nil, function(k)
-      if k == "all" then prefs.gearSources = nil
+      if k == "hdr" then return end
+      local a = tonumber(tostring(k):match("^a(%d)$"))
+      if a then setArmor(a)
+      elseif k == "all" then prefs.gearSources = nil
       else prefs.gearSources = prefs.gearSources or {}; prefs.gearSources[k] = not prefs.gearSources[k] or nil end
       paintSource(); refreshList()
       openSources(self) -- stays open for more picks; a click outside closes it
@@ -752,6 +813,7 @@ function UI.CreateGearPlanner(parent)
   end
   srcBtn:SetScript("OnClick", openSources)
   paintSource()
+  do local m = UI.NewMark(srcBtn, L["New: armor type filter."]); m:SetPoint("CENTER", srcBtn, "TOPRIGHT", 0, 0) end -- 6.2.x (TODO.md "Neu-Markierungen")
   -- your professions (crafted items: Bind on Pickup only from your own, user 31.10.)
   local myProfs = {}
   local function readProfessions()
@@ -798,7 +860,17 @@ function UI.CreateGearPlanner(parent)
   box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
   f.searchBox = box
 
-  local title = newText(right, "GameFontNormal", 170, GOLD); title:SetPoint("TOPLEFT", 16, -48)
+  -- "All slots" on Suggested (6.2.3): the 3 best upgrades of every slot; a slot click shows that slot again
+  suggestAllBtn = UI.GoldButton(right, L["All slots"], 70, 22, nil, 11); suggestAllBtn:SetPoint("TOPLEFT", 12, -44)
+  suggestAllBtn:SetScript("OnClick", function() prefs.suggestAll = not prefs.suggestAll or nil; refreshList() end)
+  suggestAllBtn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine(L["All slots"], 1, 0.82, 0)
+    GameTooltip:AddLine(L["Shows the 3 best upgrades of every slot. Click again for the selected slot only."], 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  suggestAllBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  do local m = UI.NewMark(suggestAllBtn, L["New in this version."]); m:SetPoint("CENTER", suggestAllBtn, "TOPRIGHT", -2, -2) end -- 6.2.x (TODO.md "Neu-Markierungen")
+  local title = newText(right, "GameFontNormal", 150, GOLD); title:SetPoint("TOPLEFT", 90, -48)
   if title.SetWordWrap then title:SetWordWrap(false) end
   -- mouseover: what the list shows and every chosen source (the line itself may be cut off)
   local titleHover = CreateFrame("Frame", nil, right); titleHover:SetAllPoints(title); titleHover:EnableMouse(true)
@@ -1023,6 +1095,18 @@ function UI.CreateGearPlanner(parent)
     return r
   end
 
+  -- slot headers in "All slots" on Suggested and Wishlist (user 10.11.): gold slot name and a fine line, so the groups of 3 stand apart
+  local heads = {}
+  local function head(i)
+    local h = heads[i]; if h then return h end
+    h = CreateFrame("Frame", nil, child); h:SetHeight(18)
+    h.text = newText(h, "GameFontNormalSmall", nil, GOLD); h.text:SetPoint("LEFT", 4, -1)
+    h.line = UI.makeTexture(h, "ARTWORK", 0.72, 0.50, 0.12, 0.45); h.line:SetHeight(1)
+    h.line:SetPoint("LEFT", h.text, "RIGHT", 8, 0); h.line:SetPoint("RIGHT", h, "RIGHT", -4, 0)
+    heads[i] = h
+    return h
+  end
+
   -- ENCHANT LIST (enchant field of a slot) ---------------------------------------------
   local erows = {}
   local function erow(i)
@@ -1157,19 +1241,24 @@ function UI.CreateGearPlanner(parent)
     if not f:IsShown() then return end
     readProfessions()
     srcBtn:SetShown(not (enchMode and search == ""))
+    -- the "All slots" button is only on Suggested; the title starts after it there
+    local sa = not enchMode and tab ~= "wish" and search == ""
+    suggestAllBtn:SetShown(sa); title:ClearAllPoints(); title:SetPoint("TOPLEFT", sa and 90 or 16, -48); title:SetWidth(sa and 150 or 170)
     if enchMode and search == "" then refreshEnchants(); return end
     for _, r in ipairs(erows) do r:Hide() end
     local idx, ids = FLT.GearIndex()
     local cls = f.class
-    local plevel = playerLevel()
     local minLevel, maxLevel = range()
     if maxLevel >= MAX_LEVEL then maxLevel = 999 end
     paintRange()
     local w = sf:GetWidth(); if w and w > 0 then child:SetWidth(w) end
     wipe(list)
     local slotName = SW(SLOT_NAME[selected]) or ""
+    -- "All slots" on Suggested (6.2.3, user 08.11. / 10.11.): the 3 best upgrades of every slot
+    allSlots = tab ~= "wish" and search == "" and prefs.suggestAll and true or false
+    suggestAllBtn:SetActive(allSlots)
     local function fits(e) for _, s in ipairs(LOC_SLOTS[e.loc] or {}) do if s == selected then return true end end return false end
-    local function offhandOK(e) return selected ~= 17 or e.loc ~= "INVTYPE_WEAPON" or DUAL_WIELD[cls] end
+    local function offhandOK(e) return allSlots or selected ~= 17 or e.loc ~= "INVTYPE_WEAPON" or DUAL_WIELD[cls] end
     if search ~= "" then
       title:SetText(L["Search: all slots"])
       for _, e in ipairs(idx) do
@@ -1197,9 +1286,9 @@ function UI.CreateGearPlanner(parent)
         return (a.req or a.lvl or 0) > (b.req or b.lvl or 0)
       end)
     else
-      title:SetText(slotName) -- without "Suggested:" so the sources fit (user 31.10.); the full text is on mouseover
+      title:SetText(allSlots and L["All slots"] or slotName) -- without "Suggested:" so the sources fit (user 31.10.); the full text is on mouseover
       for _, e in ipairs(idx) do
-        if fits(e) and offhandOK(e) and usable(e, cls, plevel) and (e.lvl or 0) <= maxLevel and sourceOK(e) then
+        if (allSlots or fits(e)) and offhandOK(e) and usable(e, cls, 60) and armorOK(e) and (e.lvl or 0) <= maxLevel and sourceOK(e) then
           local lv = reqLevel(e)
           if e.qreq and e.qreq > lv then lv = e.qreq end -- quest rewards: not before the quest can be taken
           -- no required level (0) counts as level 1, else the low items fell out of a "1 - x" range (6.0.2, user 31.10.)
@@ -1229,15 +1318,37 @@ function UI.CreateGearPlanner(parent)
         if (a.ilvl or 0) ~= (b.ilvl or 0) then return (a.ilvl or 0) > (b.ilvl or 0) end
         return (a.q or 0) > (b.q or 0)
       end)
+      if allSlots then
+        -- grouped by the item's first slot (rings / trinkets / one-handers once), the 3 best per slot, slots in order
+        local perSlot, n = {}, 0
+        for _, e in ipairs(list) do
+          local s = (LOC_SLOTS[e.loc] or {})[1]
+          if s and (perSlot[s] or 0) < 3 then perSlot[s] = (perSlot[s] or 0) + 1; n = n + 1; list[n] = e end
+        end
+        for i = #list, n + 1, -1 do list[i] = nil end
+        table.sort(list, function(a, b)
+          local sa, sb = SLOT_INDEX[(LOC_SLOTS[a.loc] or {})[1]] or 99, SLOT_INDEX[(LOC_SLOTS[b.loc] or {})[1]] or 99
+          if sa ~= sb then return sa < sb end
+          return (a.delta or -1) > (b.delta or -1)
+        end)
+      end
       for i = #list, 61, -1 do list[i] = nil end
     end
     local short = shortNames()
-    titleHover.head = (search == "" and tab ~= "wish") and string.format(L["Suggested: %s"], slotName) or title:GetText()
+    titleHover.head = (search == "" and tab ~= "wish") and string.format(L["Suggested: %s"], allSlots and L["all slots"] or slotName) or title:GetText()
     titleHover.sources = short
     if short then title:SetText(title:GetText() .. "  |cffb0b0b0" .. short .. "|r") end
     for _, r in ipairs(rows) do r:Hide() end
-    local y = -2
+    for _, h in ipairs(heads) do h:Hide() end
+    local y, nh, lastSlot = -2, 0, nil
     for i, e in ipairs(list) do
+      local slot = (allSlots or tab == "wish" and prefs.wishAll) and (LOC_SLOTS[e.loc] or {})[1]
+      if slot and slot ~= lastSlot then
+        lastSlot = slot; nh = nh + 1
+        local h = head(nh); h:ClearAllPoints(); h:SetPoint("TOPLEFT", 0, y - (nh > 1 and 4 or 0)); h:SetPoint("RIGHT", child, "RIGHT", -2, 0)
+        h.text:SetText(SW(SLOT_NAME[slot]) or ""); h:Show()
+        y = y - (nh > 1 and 24 or 20)
+      end
       local r = row(i); r.e = e
       r:ClearAllPoints(); r:SetPoint("TOPLEFT", 0, y); r:SetPoint("RIGHT", child, "RIGHT", -2, 0); r:Show(); y = y - 44
       r.icon:SetTexture(e.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
@@ -1249,7 +1360,7 @@ function UI.CreateGearPlanner(parent)
       if e.qreq and (lv or 0) < e.qreq then lv = e.qreq end
       local parts = {}
       if lv and lv > 0 then parts[#parts + 1] = string.format(L[e.req and N"lvl %d" or N"lvl ~%d"], lv) end
-      if search ~= "" or (tab == "wish" and prefs.wishAll) then parts[#parts + 1] = SW(SLOT_NAME[(LOC_SLOTS[e.loc] or {})[1]]) or "" end
+      if search ~= "" then parts[#parts + 1] = SW(SLOT_NAME[(LOC_SLOTS[e.loc] or {})[1]]) or "" end
       if e.src then parts[#parts + 1] = e.src end
       r.sub:SetText(table.concat(parts, "  ·  "))
       -- star, then Chain or the map icon in the same place (a chain has its maps in the popup)
@@ -1282,7 +1393,7 @@ function UI.CreateGearPlanner(parent)
     if #list == 0 then
       empty:SetText(short and (tab ~= "wish" and search == "" and FLT.GearValue
           and string.format(L["No upgrade among the \"%s\" items for this slot in your level range.\nOnly items better than what you wear (for your spec) are listed.\nThe filter button is next to the Wishlist tab."], short)
-          or string.format(L["Nothing here with the source filter \"%s\".\nThe filter button is next to the Wishlist tab."], short)) or search ~= "" and L["No item found."] or L[tab == "wish" and (prefs.wishAll and N"Your wishlist is empty.\nClick the star on an item to add it." or N"Your wishlist has no item for this slot yet.\nClick the star on an item to add it.") or (FLT.GearValue and N"No upgrade for this slot in your level range yet." or N"No item from our data fits this slot and level yet.")])
+          or string.format(L["Nothing here with the source filter \"%s\".\nThe filter button is next to the Wishlist tab."], short)) or search ~= "" and L["No item found."] or L[tab == "wish" and (prefs.wishAll and N"Your wishlist is empty.\nClick the star on an item to add it." or N"Your wishlist has no item for this slot yet.\nClick the star on an item to add it.") or (allSlots and N"No upgrade for any slot in your level range yet." or FLT.GearValue and N"No upgrade for this slot in your level range yet." or N"No item from our data fits this slot and level yet.")])
       empty:Show()
     else empty:Hide() end
   end
