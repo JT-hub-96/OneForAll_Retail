@@ -181,6 +181,18 @@ FLT.DUNGEON_REGISTRY["Stratholme"] = {
             turnin = "Seril Scourgebane, Winterspring",
             rewardItems = {{12825, "Plans: Blazing Rapier", 2}},
         },
+        {
+            level = 56,
+            id = 5961,
+            name = "The Champion of the Banshee Queen",
+            requires = 54,
+            faction = "Horde",
+            pickup = "Lady Sylvanas Windrunner, Undercity (58.0, 91.8)",
+            objective = "Speak with Nathanos Blightcaller in the Eastern Plaguelands. He is said to have taken up residence at the Marris Stead. ",
+            turnin = "Nathanos Blightcaller, Eastern Plaguelands",
+            rewardItems = {
+            },
+        },
     },
     bosses = {
         {

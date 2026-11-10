@@ -145,6 +145,36 @@ FLT.DUNGEON_REGISTRY["Lower Blackrock Spire"] = {
             objective = "Bring the Fifth and Sixth Mosh'aru Tablets to Prospector Ironboot in Tanaris.",
             turnin = "Prospector Ironboot, Tanaris",
         },
+        {
+            level = 59,
+            id = 4982,
+            name = "Bijou's Belongings",
+            requires = 55,
+            faction = "Horde",
+            pickup = "Bijou, inside Lower Blackrock Spire",
+            objective = "Find Bijou's Belongings and return them to her. You recall her mentioning that she stashed them on the bottom floor of the city. ",
+            turnin = "Bijou, inside Lower Blackrock Spire",
+            rewardItems = {
+            },
+        },
+        {
+            level = 60,
+            id = 5081,
+            name = "Maxwell's Mission",
+            requires = 55,
+            faction = "Alliance",
+            pickup = "Marshal Maxwell, Burning Steppes (84.7, 69.0)",
+            objective = "Travel to Blackrock Spire and destroy War Master Voone, Highlord Omokk, and Overlord Wyrmthalak. Return to Marshal Maxwell when the job is done.",
+            turnin = "Marshal Maxwell, Burning Steppes",
+            rewardChoice = true,
+            rewardItems = {
+                {13958, "Wyrmthalak's Shackles", 3},
+                {13959, "Omokk's Girth Restrainer", 3},
+                {13961, "Halycon's Muzzle", 3},
+                {13962, "Vosh'gajin's Strand", 3},
+                {13963, "Voone's Vice Grips", 3},
+            },
+        },
     },
     bosses = {
         {

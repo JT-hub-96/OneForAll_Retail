@@ -67,6 +67,13 @@ FLT.MAP_IDS = {
   ["Hillsbrad Foothills"] = 1424,
   ["Un'Goro Crater"] = 1449,
   ["Moonglade"] = 1450,
+  -- the rest of the Forever client's zones (UiMap, 6.2.4: quest starts there got no Map button)
+  ["Deadwind Pass"] = 1430,
+  ["Silithus"] = 1451,
+  ["Mount Hyjal"] = 2482,
+  ["Zephras Isle"] = 2521,
+  ["Riverglades"] = 2548,
+  ["Shen'dralas"] = 2652,
 }
 
 -- This describes the zone's normal Classic territory, not a faction restriction on the book itself.

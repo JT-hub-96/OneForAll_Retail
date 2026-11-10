@@ -157,6 +157,30 @@ FLT.DUNGEON_REGISTRY["Upper Blackrock Spire"] = {
             objective = "That is one stupid orc. It would appear as if you need to find this brand and gain the Mark of Drakkisath in order to access the Orb of Command.  The letter indicates that General Drakkisath guards the brand. Perhaps you should investigate.",
             turnin = "Drakkisath's Brand, inside Upper Blackrock Spire",
         },
+        {
+            level = 60,
+            id = 4764,
+            name = "Doomrigger's Clasp",
+            requires = 57,
+            faction = "Alliance",
+            pickup = "Mayara Brightwing, Burning Steppes (84.8, 69.1)",
+            objective = "Bring Doomrigger's Clasp to Mayara Brightwing in the Burning Steppes.",
+            turnin = "Mayara Brightwing, Burning Steppes",
+            rewardItems = {
+            },
+        },
+        {
+            level = 60,
+            id = 4766,
+            name = "Mayara Brightwing",
+            requires = 57,
+            faction = "Alliance",
+            pickup = "Count Remington Ridgewell, Stormwind City (76.9, 47.8)",
+            objective = "Speak with Mayara Brightwing in the Burning Steppes.",
+            turnin = "Mayara Brightwing, Burning Steppes",
+            rewardItems = {
+            },
+        },
     },
     bosses = {
         {

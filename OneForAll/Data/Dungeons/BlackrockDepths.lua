@@ -299,6 +299,30 @@ FLT.DUNGEON_REGISTRY["Blackrock Depths"] = {
             rewardItems = {{12066, "Shaleskin Cape", 2}, {12082, "Wyrmhide Spaulders", 2}, {12083, "Valconian Sash", 2}},
             rewardChoice = true,
         },
+        {
+            level = 1,
+            id = 4295,
+            name = "Rocknot's Ale",
+            requires = 42,
+            faction = "Both",
+            pickup = "Private Rocknot, inside Blackrock Depths",
+            turnin = "Private Rocknot, inside Blackrock Depths",
+            rewardItems = {
+            },
+        },
+        {
+            level = 60,
+            id = 7604,
+            name = "A Binding Contract",
+            requires = 60,
+            faction = "Both",
+            pickup = "Thorium Brotherhood Contract, a drop inside Blackrock Depths",
+            objective = "Turn the Thorium Brotherhood Contract in to Lokhtos Darkbargainer if you would like to receive the plans for Sulfuron.",
+            turnin = "Lokhtos Darkbargainer, inside Blackrock Depths",
+            rewardItems = {
+                {18592, "Plans: Sulfuron Hammer", 4},
+            },
+        },
     },
     bosses = {
         {

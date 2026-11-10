@@ -236,3 +236,13 @@ Generated with tools/armory-gen/armory.py:
   wowtbc.gg only.
 - Watched daily by tools/dungeon-check (client bosses / item stats, QuestieDB
   dungeon quests).
+
+Dungeon quests completed (6.2.4, 2026-11-10)
+- 70 quests added (City of Dalaran, Krol'dok Stronghold, Blackmaw Hold, The Drowned City, Alcaz Prison, Shaper's
+  Terrace, Dire Maul class books and librams, Sunken Temple class quests and more): names, levels, factions, classes,
+  givers, turn-ins, objectives and prerequisite chains from QuestieDB Forever (tools/dungeon-gen/add_quests.lua,
+  add_chains.lua), reward items from QuestieDB with their quality from the Wowhead tooltip API. Three quests that
+  QuestieDB does not have yet (Claws That Rend, Tusks that Gore; A Lost Memento; Rot and Regret): name, level and
+  objective from the Wowhead tooltip API (Forever).
+- City of Dalaran chains: An Alarming Request (Alliance) and Prison Break In, Key to the City, Dalaran Patrols,
+  Blood in the Streets (Horde) end at the Image of Archmage Modera, who gives the dungeon quests (QuestieDB).

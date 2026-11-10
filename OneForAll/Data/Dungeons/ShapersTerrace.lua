@@ -9,6 +9,18 @@ FLT.DUNGEON_REGISTRY["Shaper's Terrace"] = {
     description = "New Forever dungeon: titan terraces, power crystals and ancient wildlife in the hills of Un'Goro Crater. Its loot is still being discovered.",
     icon = "Interface\\Icons\\INV_Misc_Gem_Crystal_02",
     quests = {
+        {
+            level = 60,
+            id = 95928,
+            name = "Crystalline Elements",
+            requires = 55,
+            faction = "Horde",
+            pickup = "Mayena Earthseeker, Mulgore (33.6, 21.2)",
+            objective = "Bring Mayena Earthseeker a Moist Crystal, a Charged Crystal, a Noxious Crystal and a Fiery Crystal from Shaper's Terrace.",
+            turnin = "Mayena Earthseeker, Mulgore",
+            rewardItems = {
+            },
+        },
     },
     bosses = {
         {

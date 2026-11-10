@@ -621,12 +621,32 @@ function FLT:ShowOnMap(book)
   C_Timer.After(0.25, function() positionMarker(book, mapID) end)
 end
 
+-- where a quest (or a step of its chain) starts: our checked QUEST_START_MAPS first, else the coordinates in its pickup
+-- text ("Tran'gul, Riverglades (59.4, 44.2)"), else QuestieDB (FLT.QuestStart). 6.2.4, user 10.11.: every quest and
+-- chain step with coordinates gets the Map button. Built on first use per text.
+local pickupLoc = {} -- pickup text -> loc or false
+function FLT:QuestLoc(id, pickup)
+  local loc = id and self.QUEST_START_MAPS and self.QUEST_START_MAPS[id]
+  if loc then return loc end
+  if type(pickup) == "string" then
+    local c = pickupLoc[pickup]
+    if c == nil then
+      local who, zone, x, y = pickup:match("^(.-), (.-) %((%-?[%d%.]+), (%-?[%d%.]+)%)")
+      local mapID = zone and self:FindMapID(zone)
+      c = mapID and { mapID = mapID, x = tonumber(x), y = tonumber(y), label = (FLT.PlaceText or tostring)(who .. ", " .. zone) } or false
+      pickupLoc[pickup] = c
+    end
+    if c then return c end
+  end
+  return id and FLT.QuestStart and FLT.QuestStart(id) or nil
+end
+
 function FLT:ShowQuestStartOnMap(quest)
   if not quest or not quest.id then
     self.Msg("No recorded quest-start location is available.")
     return
   end
-  local loc = self.QUEST_START_MAPS and self.QUEST_START_MAPS[quest.id]
+  local loc = self:QuestLoc(quest.id, quest.starts)
   if not loc then
     self.Msg("No reliable map position is recorded for this quest start yet.")
     return
