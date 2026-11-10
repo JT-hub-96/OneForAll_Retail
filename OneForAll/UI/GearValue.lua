@@ -186,9 +186,12 @@ local function score(stats, slot, id, isWand)
       end
     end
   end
-  if (slot == 16 or slot == 17) and (W.speed or 0) > 0 and stats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT then
+  -- weapon speed: the main hand's weight for the main hand, the off hand's own one (speedoh) for the off hand
+  -- (6.2.3, Discord Jax 09.11.: the main-hand speed weight counted for the off hand too)
+  local wsp = (slot == 16 and W.speed) or (slot == 17 and W.speedoh) or 0
+  if wsp > 0 and stats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT then
     local sp = weaponSpeed(id)
-    if sp then total = total + sp * W.speed end
+    if sp then total = total + sp * wsp end
   end
   return total
 end
@@ -339,8 +342,21 @@ function GV.Upgrade(id, link)
     base = a and b and (a + b); cover = { 16, 17 }
   elseif #slots == 2 and (loc ~= "INVTYPE_WEAPON" or (FLT.CanDualWield() and select(6, GetItemInfoInstant(GetInventoryItemID("player", 17) or 0)) == 2)) then
     local a, b = wornValue(slots[1]), wornValue(slots[2])
-    base = a and b and math.min(a, b)
-    if base then replaced = (a <= b) and slots[1] or slots[2]; cover = { replaced } end -- the weaker one, named in the tooltip
+    if a and b then
+      -- the item is valued for each slot it can go to: main hand and off hand weigh weapon DPS very differently (6.2.3,
+      -- Discord Jax 09.11.: a weaker dagger was valued as a main hand against the worn off-hand dagger -> "Upgrade 70%").
+      -- It replaces where it gains most; rings / trinkets (same value in both slots): the weaker worn one, as before.
+      local va, vb = itemValue(id, slots[1], link), itemValue(id, slots[2], link)
+      if not (va and vb) then return v end
+      local useA
+      if a <= 0 or b <= 0 then useA = a <= 0
+      else
+        local ra, rb = (va - a) / a, (vb - b) / b
+        useA = ra > rb or (ra == rb and a <= b)
+      end
+      if useA then v, base, replaced = va, a, slots[1] else v, base, replaced = vb, b, slots[2] end
+      cover = { replaced } -- named in the tooltip
+    end
   else
     base = wornValue(slot); cover = { slot }
   end

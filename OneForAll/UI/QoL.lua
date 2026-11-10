@@ -653,7 +653,7 @@ local function createQoLPanel(parent)
   -- GUILD (own category, user 09.11.: "eventuell kommt ja noch mehr dazu")
   c = category("guild", N"Guild", "Interface\\Icons\\INV_Shirt_GuildTabard_01", N"What you share with your guild members who also use OneForAll.")
   g = group(c, N"World Map")
-  check(g, N"Guild members on the map", N"Guild members with OneForAll as dots in their class colour - and you on their map.", N"Only guild members who also use OneForAll and have this switched on. Switched off, your position is not sent any more and you see nobody else either. Inside a dungeon or raid only which one is sent: a green dot on its entrance, the names in its tooltip. Members in your group are left out, the game shows them already. Also on the continent map, a little smaller.", "guildMap")
+  check(g, N"Guild members on the map", N"Guild members with OneForAll as dots in their class colour - and you on their map.", N"Only guild members who also use OneForAll and have this switched on. Switched off, your position is not sent any more and you see nobody else either. Inside a dungeon or raid only which one is sent: a green guild flag on its entrance, the names in its tooltip. Members in your group are left out, the game shows them already. Also on the continent map, a little smaller.", "guildMap")
 
   -- WORLD MAP
   c = category("map", N"World Map", "Interface\\Icons\\INV_Misc_Map_01", N"Icons on the world map.")

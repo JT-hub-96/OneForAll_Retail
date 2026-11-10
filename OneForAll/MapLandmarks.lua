@@ -104,7 +104,7 @@ end
 -- Pins ------------------------------------------------------------------------
 local pool, used = {}, 0
 local tops = {} -- reused: x, y of the entrances on the shown map
-local guildDots = {} -- [pin] = green dot texture (guild members inside, MapGuild.lua)
+local guildDots = {} -- [pin] = guild banner texture (guild members inside, MapGuild.lua)
 
 local function openDungeon(d)
   if WorldMapFrame and WorldMapFrame:IsShown() and HideUIPanel then pcall(HideUIPanel, WorldMapFrame) end
@@ -267,14 +267,16 @@ function LM.Refresh()
         pin:ClearAllPoints()
         pin:SetPoint("CENTER", child, "TOPLEFT", x, y)
         pin:Show()
-        -- a green dot at the edge of an entrance while a guild member is inside (MapGuild.lua, user 09.11.)
+        -- the guild banner at the edge of an entrance while a guild member is inside (MapGuild.lua, user 09.11.)
         local GM = e.list and FLT.MapGuild
         local dot = guildDots[pin]
         if GM and GM.Inside and #GM.Inside(e.list) > 0 then
           if not dot then
             dot = pin:CreateTexture(nil, "OVERLAY", nil, 7); guildDots[pin] = dot
-            dot:SetSize(12, 12); dot:SetPoint("CENTER", pin, "TOPRIGHT", -5, -5)
-            FLT.SetTex(dot, ASSET .. "gem_fill"); dot:SetVertexColor(0.25, 1, 0.3)
+            -- the guild banner of the recipe list (UI.Mark, user 10.11.: "dann ist es einheitlich")
+            local c, K = FLT.UI.MARK_CELL.guild, FLT.UI.KNOW_COLORS.guild
+            dot:SetSize(14, 14); dot:SetPoint("CENTER", pin, "TOPRIGHT", -4, -4)
+            FLT.SetTex(dot, ASSET .. "know_marks"); dot:SetTexCoord(c / 8, (c + 1) / 8, 0, 1); dot:SetVertexColor(FLT.SkinC(K[1], K[2], K[3]))
           end
           dot:Show()
         elseif dot then dot:Hide() end

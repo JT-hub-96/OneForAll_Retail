@@ -1,5 +1,5 @@
 local _, FLT = ...
--- QuestieDB c1b50fe (2026-11-08) (tools/locale/names.lua) - generated, do not edit by hand.
+-- QuestieDB ae4404b (2026-11-09) (tools/locale/names.lua) - generated, do not edit by hand.
 -- Names of quests, NPCs, objects and items (and quest objective sentences) in frFR, English -> frFR,
 -- only those our data files use. Source: QuestieDB Forever l10n (GPL-3, see THIRD_PARTY_LICENSES.txt).
 -- Made into a table only when this language is chosen and the game client speaks it (Locales/Locale.lua FLT.Name).
@@ -3988,6 +3988,7 @@ FLT.NAME_LOCALES.frFR = function() return {
 ["Quartermaster Lewis"]="Intendant Lewis",
 ["Quartermaster Miranda Breechlock"]="Intendante Miranda Breechlock",
 ["Quartermaster Zigris"]="Intendant Zigris",
+["Quel'dora Quickgale"]="Quel'dora Vent-Vif",
 ["Quel'dorai Channeling Rod"]="Bâtonnet de canalisation de Quel'dorai",
 ["Questioning Reethe"]="Questionner Reethe",
 ["Quickdraw Gloves"]="Gants de tir rapide",
@@ -4901,7 +4902,6 @@ FLT.NAME_LOCALES.frFR = function() return {
 ["Spaulders of a Lost Age"]="Spallières d'un autre temps",
 ["Spawn of Hakkar"]="Rejeton d'Hakkar",
 ["Spawn of Mar'li"]="Rejetons de Mar'li",
-["Speak to Je'neu Sancrea in Ashenvale."]="Parler à Je'neu Sancrea, à Ashenvale.",
 ["Speak with Alchemist Arbington at Chillwind Point, Western Plaguelands."]="Parler à l’alchimiste Arbington à la pointe du Noroît, dans les Maleterres de l’ouest.",
 ["Speak with Apothecary Dithers at the Bulwark, Western Plaguelands."]="Parler au Pharmacien Dithers à la Barricade, dans les Maleterres de l'ouest.",
 ["Speak with Caitlin Grassman in Menethil Harbor."]="Parlez à Caitlin Grassman au port de Menethil.",
@@ -6303,5 +6303,4 @@ FLT.NAME_LOCALES.frFR = function() return {
 ["Zulian Prowler"]="Rôdeur zulien",
 ["Zulian Tiger"]="Tigre zulien",
 ["rAnS0m"]="rANçOn !",
-["Quel'dora Quickgale"]="Quel'dora Vent-Vif",
 } end

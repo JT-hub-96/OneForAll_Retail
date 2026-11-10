@@ -1,5 +1,5 @@
 local _, FLT = ...
--- QuestieDB c1b50fe (2026-11-08) (tools/locale/names.lua) - generated, do not edit by hand.
+-- QuestieDB ae4404b (2026-11-09) (tools/locale/names.lua) - generated, do not edit by hand.
 -- Names of quests, NPCs, objects and items (and quest objective sentences) in deDE, English -> deDE,
 -- only those our data files use. Source: QuestieDB Forever l10n (GPL-3, see THIRD_PARTY_LICENSES.txt).
 -- Made into a table only when this language is chosen and the game client speaks it (Locales/Locale.lua FLT.Name).
@@ -176,7 +176,6 @@ FLT.NAME_LOCALES.deDE = function() return {
 ["Ancient Bone Bow"]="Antiker Knochenbogen",
 ["Ancient Core Hound"]="Uralter Kernhund",
 ["Ancient Equine Spirit"]="Der uralte Pferdegeist",
-["Ancient Gurubashi Idol"]="Uralter Götze der Gurubashi",
 ["Ancient Sinew Wrapped Lamina"]="Uraltes in Sehnen eingewickeltes Laminablatt",
 ["Ancient Spirit"]="Alter Geist",
 ["Ancient Stone Keeper"]="Uralter Steinbewahrer",
@@ -4030,7 +4029,6 @@ FLT.NAME_LOCALES.deDE = function() return {
 ["Reclaiming Goods"]="Waren-Wiederbeschaffung",
 ["Reclaiming the Charred Vale"]="Die Rückeroberung des verbrannten Tals",
 ["Recover 10 Plagued Flesh Samples from Stratholme and return them to Betina Bigglezink. You suspect that any creature in Stratholme would have said flesh sample."]="Sammelt 20 verseuchte Fleischproben in Stratholme und bringt sie zu Betina Bigglezink zurück. Ihr vermutet, dass Ihr besagte Fleischproben bei jeder Kreatur in Stratholme finden könnt.",
-["Recover an Ancient Gurubashi Idol from the Drowned City."]="Bergt einen uralten Götzen der Gurubashi aus der <name>sunkenen Stadt.",
 ["Recover the Key!"]="Erlangt den Schlüssel!",
 ["Red Dragonspawn"]="Rotdrachenbrut",
 ["Red Firework"]="Rotes Feuerwerk",
@@ -4860,7 +4858,6 @@ FLT.NAME_LOCALES.deDE = function() return {
 ["Spaulders of a Lost Age"]="Schiftung eines Verlorenen Zeitalters",
 ["Spawn of Hakkar"]="Brut von Hakkar",
 ["Spawn of Mar'li"]="Brut von Mar'li",
-["Speak to Je'neu Sancrea in Ashenvale."]="Sprecht in Ashenvale mit Je'neu Sancrea.",
 ["Speak with Alchemist Arbington at Chillwind Point, Western Plaguelands."]="Sprecht mit Alchimist Arbington an der Chillwindspitze, Westliche Pestländer.",
 ["Speak with Apothecary Dithers at the Bulwark, Western Plaguelands."]="Sprecht mit Apotheker Dithers am Bollwerk, Westliche Pestländer.",
 ["Speak with Caitlin Grassman in Menethil Harbor."]="Sprecht mit Caitlin Grassman im Hafen von Menethil.",
