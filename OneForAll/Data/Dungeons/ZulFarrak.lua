@@ -96,6 +96,30 @@ FLT.DUNGEON_REGISTRY["Zul'Farrak"] = {
             objective = "Bring the First and Second Mosh'aru Tablets to Yeh'kinya in Tanaris.",
             turnin = "Yeh'kinya, Tanaris",
         },
+        {
+            level = 46,
+            id = 2769,
+            name = "The Brassbolts Brothers",
+            requires = 40,
+            faction = "Alliance",
+            pickup = "Klockmort Spannerspan, Ironforge (67.9, 46.1)",
+            objective = "Speak with Wizzle Brassbolts in the Shimmering Flats.",
+            turnin = "Wizzle Brassbolts, Thousand Needles",
+            rewardItems = {
+            },
+        },
+        {
+            level = 46,
+            id = 2861,
+            name = "Tabetha's Task",
+            requires = 40,
+            faction = "Both",
+            pickup = "Anastasia Hartwell, Undercity (85.1, 10.0)",
+            objective = "Speak with Tabetha in Dustwallow Marsh.",
+            turnin = "Tabetha, Dustwallow Marsh",
+            rewardItems = {
+            },
+        },
     },
     bosses = {
         {

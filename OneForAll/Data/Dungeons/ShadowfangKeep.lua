@@ -97,6 +97,18 @@ FLT.DUNGEON_REGISTRY["Shadowfang Keep"] = {
                 {6953, "Verigan's Fist", 3},
             },
         },
+        {
+            level = 23,
+            id = 78307,
+            name = "The Horn of Xelthos",
+            requires = 1,
+            faction = "Both",
+            class = "ROGUE",
+            objective = "Log",
+            turnin = "Dead Drop, Silverpine Forest",
+            rewardItems = {
+            },
+        },
     },
     bosses = {
         {

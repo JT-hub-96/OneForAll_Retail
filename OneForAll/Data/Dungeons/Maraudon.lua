@@ -142,6 +142,28 @@ FLT.DUNGEON_REGISTRY["Maraudon"] = {
             turnin = "Keeper Remulos, Moonglade (36.2, 41.8)",
             note = "Zaetar's Spirit appears after Princess Theradras dies.",
         },
+        {
+            level = 51,
+            id = 96776,
+            name = "An'she's Radiance",
+            requires = 43,
+            faction = "Horde",
+            pickup = "Olana Brighthoof, Mulgore (32.7, 24.2)",
+            objective = "Recover the crystal known as An'she's Radiance from Maraudon.",
+            rewardItems = {
+            },
+        },
+        {
+            level = 49,
+            id = 93404,
+            name = "Rot and Regret",
+            faction = "Both",
+            objective = "Venture to Maraudon and recover a Vial of Earth Song Water and return it to Woodwyrd at the Forlorn Gardens in Desolace.",
+            turnin = "Woodwyrd, Desolace",
+            rewardItems = {
+            },
+            note = "Still being discovered: who gives this quest and its rewards are not known yet.",
+        },
     },
     bosses = {
         {

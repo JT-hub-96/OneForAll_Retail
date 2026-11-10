@@ -1321,7 +1321,11 @@ local function createDungeonPanel(parent)
     if filter~="Alliance" and filter~="Horde" then filter="Alliance" end
     questFactionFilter[d.key]=filter
 
-    local viewKey="quests:"..d.key..":"..filter
+    -- quests of other classes are hidden unless the eye is open (6.2.4, user 10.11.: "quests die ich als priester gar nicht
+    -- annehmen kann ... ausblenden"; a quest in the log always shows); the choice is kept per character
+    local showAll=type(OneForAllCharDB)=="table" and OneForAllCharDB.dqShowAll or false
+    local myClass=select(2,UnitClass("player"))
+    local viewKey="quests:"..d.key..":"..filter..(showAll and ":all" or "")
     local view=showView(viewKey)
     if view then
       -- Quest states (completed / in log / level) can change while the view
@@ -1333,17 +1337,28 @@ local function createDungeonPanel(parent)
     view=newView(viewKey)
 
     local quests={}
-    for _,q in ipairs(allQuests) do if q.side=="Both" or q.side=="Neutral" or q.side==filter then quests[#quests+1]=q end end
+    local hidden=0
+    for _,q in ipairs(allQuests) do
+      if q.side=="Both" or q.side=="Neutral" or q.side==filter then
+        if showAll or not q.class or q.class==myClass or (q.id and C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetLogIndexForQuestID(q.id)) then
+          quests[#quests+1]=q
+        else hidden=hidden+1 end
+      end
+    end
     local idx=questSelection[d.key] or 1; if idx>#quests then idx=1 end; if idx<1 then idx=1 end; questSelection[d.key]=idx
 
     local left=dynFrame("Frame"); left:SetPoint("TOPLEFT",0,0); left:SetPoint("BOTTOMLEFT",0,0); left:SetWidth(390)
     framedPanel(left,7)
     listBand(left)
-    local lh=dynText(left,"GameFontNormalLarge"); lh:SetPoint("TOPLEFT",16,-14); lh:SetText(L["Quests"].."  |  "..#quests); lh:SetTextColor(FLT.SkinC(1,0.82,0.20))
+    local lh=dynText(left,"GameFontNormalLarge"); lh:SetPoint("TOPLEFT",16,-14); lh:SetText(L["Quests"].." | "..#quests); lh:SetTextColor(FLT.SkinC(1,0.82,0.20))
+    local shareBtn
     -- "Share all Quests" right of the count (6.0.2, user 31.10.: own bent arrow, works anywhere in a group)
     do
       -- a button plate like the title bar buttons (bug, chat, close) with the share arrow (user 31.10.)
-      local sh=UI.GoldButton(left,"",30,24,ASSET_ROOT.."icon_share",11); sh:SetPoint("LEFT",lh,"RIGHT",12,0)
+      -- 22 high and on the line of the faction buttons (6.2.4, user 10.11.: it sat higher than the others)
+      local sh=UI.GoldButton(left,"",30,22,ASSET_ROOT.."icon_share",11); sh:SetPoint("TOPLEFT",left,"TOPLEFT",16+math.ceil(lh:GetStringWidth() or 90)+10,-10)
+      shareBtn=sh
+      sh.iconGap=0
       if sh.icon then sh.icon:ClearAllPoints(); sh.icon:SetSize(16,16); sh.icon:SetPoint("CENTER",0,0) end
       sh:SetScript("OnClick",function() if FLT.ShareAllQuests then FLT.ShareAllQuests(d) end end)
       sh:SetScript("OnEnter",function(self)
@@ -1360,8 +1375,28 @@ local function createDungeonPanel(parent)
       end)
       sh:SetScript("OnLeave",function() GameTooltip:Hide() end)
     end
-    local allianceBtn=UI.GoldButton(left,L["Alliance"],92,22,nil,12); allianceBtn:SetPoint("TOPRIGHT",-108,-10)
-    local hordeBtn=UI.GoldButton(left,L["Horde"],92,22,nil,12); hordeBtn:SetPoint("TOPRIGHT",-12,-10)
+    -- 80 wide (were 92), so the count, share and eye fit before them in every language (6.2.4)
+    local allianceBtn=UI.GoldButton(left,L["Alliance"],80,22,nil,12); allianceBtn:SetPoint("TOPRIGHT",-98,-10)
+    local hordeBtn=UI.GoldButton(left,L["Horde"],80,22,nil,12); hordeBtn:SetPoint("TOPRIGHT",-12,-10)
+    do -- the eye: closed = quests of other classes hidden, open = all (Assets/eye.tga: open | closed)
+      -- right of the share button (user 10.11.: with "16" quests the eye lay over it)
+      local eye=UI.GoldButton(left,"",30,22,ASSET_ROOT.."eye",11); eye:SetPoint("LEFT",shareBtn,"RIGHT",6,0)
+      eye.iconGap=0 -- no text: the plate centres the icon on every redraw (else it moved left after a click)
+      if eye.icon then eye.icon:ClearAllPoints(); eye.icon:SetSize(18,18); eye.icon:SetPoint("CENTER",0,0); eye.icon:SetTexCoord(showAll and 0 or 0.5,showAll and 0.5 or 1,0,1) end
+      eye:SetActive(showAll)
+      do local m=UI.NewMark(eye,L["New in this version."]); m:SetPoint("CENTER",eye,"TOPRIGHT",-2,-2) end -- 6.2.x (TODO.md "Neu-Markierungen")
+      eye:SetScript("OnClick",function()
+        if type(OneForAllCharDB)=="table" then OneForAllCharDB.dqShowAll=not showAll or nil end
+        questSelection[d.key]=1; GameTooltip:Hide(); renderQuests(d)
+      end)
+      eye:SetScript("OnEnter",function(self)
+        GameTooltip:SetOwner(self,"ANCHOR_RIGHT")
+        GameTooltip:AddLine(showAll and L["Hide quests for other classes"] or L["Show all quests"],1,0.82,0)
+        if hidden>0 then GameTooltip:AddLine(string.format(L["%d quests for other classes are hidden."],hidden),0.75,0.75,0.75,true) end
+        GameTooltip:Show()
+      end)
+      eye:SetScript("OnLeave",function() GameTooltip:Hide() end)
+    end
     allianceBtn:SetActive(filter=="Alliance"); hordeBtn:SetActive(filter=="Horde")
     allianceBtn:SetScript("OnClick",function() questFactionFilter[d.key]="Alliance"; questSelection[d.key]=1; renderQuests(d) end)
     hordeBtn:SetScript("OnClick",function() questFactionFilter[d.key]="Horde"; questSelection[d.key]=1; renderQuests(d) end)
@@ -1392,7 +1427,7 @@ local function createDungeonPanel(parent)
         local questStatus=getDungeonQuestStatus(d, quest)
         row.status=questStatus
         local req=quest.required or quest.level or "?"; local m=string.format(L["Req. %s"],tostring(req)).."  |  "..L[quest.side or "Both"]
-        if quest.class then m=m.." / "..quest.class end
+        if quest.class then m=m.." / "..((type(LOCALIZED_CLASS_NAMES_MALE)=="table" and LOCALIZED_CLASS_NAMES_MALE[quest.class]) or quest.class) end -- the class name, not "PRIEST" (6.2.4)
         m=m.."  |  "..L[QUEST_STATUS_LABELS[questStatus] or questStatus]
         if quest.id and FLT.QUEST_PREREQ_CHAINS and FLT.QUEST_PREREQ_CHAINS[quest.id] then
           local stepIdx, stepTotal = getChainProgress(quest)
@@ -1489,7 +1524,7 @@ local function createDungeonPanel(parent)
       local ry=-4
       local statusValue
       do
-        local loc=q.id and FLT.QUEST_START_MAPS and FLT.QUEST_START_MAPS[q.id]
+        local loc=FLT.QuestLoc and FLT:QuestLoc(q.id,q.starts)
         local yStart=ry
         ry=infoRow(rchild,ry,N"Starts at",q.starts and PT(q.starts) or L["Unknown"],loc and 250 or 330)
         if loc then
@@ -1536,7 +1571,8 @@ local function createDungeonPanel(parent)
           local row=dframe("Button",rchild); row:SetSize(424,26); row:SetPoint("TOPLEFT",16,ry); ry=ry-28
           local isCurrent=step.id==q.id
           local bg=cardBg(row,0.055,0.067,0.080,0.82)
-          local stepLoc=step.id and FLT.QUEST_START_MAPS and FLT.QUEST_START_MAPS[step.id]
+          local detail=step.id and FLT.QUEST_PREREQ_DETAILS and FLT.QUEST_PREREQ_DETAILS[step.id]
+          local stepLoc=FLT.QuestLoc and FLT:QuestLoc(step.id,detail and detail.pickup or (isCurrent and q.starts) or nil)
           local nm=FLT.NewFS(row, nil,"OVERLAY","GameFontHighlightSmall"); nm:SetPoint("LEFT",8,0); nm:SetWidth(stepLoc and 214 or 280); nm:SetJustifyH("LEFT"); nm:SetText(tostring(ci)..".  "..(NM(step.name) or (L["Quest"].." "..tostring(step.id or "?"))))
           if stepLoc then
             local stepMapBtn=UI.GoldButton(row,L["Map"],54,18,ASSET_ROOT.."icon_map",11)
@@ -1554,7 +1590,6 @@ local function createDungeonPanel(parent)
           local stp=FLT.NewFS(row, nil,"OVERLAY","GameFontDisableSmall"); stp:SetPoint("RIGHT",-8,0); stp:SetWidth(stepLoc and 82 or 110); stp:SetJustifyH("RIGHT")
           local stepLog=questLogButton(row); stepLog:SetPoint("RIGHT",stp,"RIGHT",-(stp:GetWidth()+4),0); stepLog:SetQuest(step.id,step.name)
           chainRows[#chainRows+1]={id=step.id,isCurrent=isCurrent,optional=step.optional,bg=bg,name=nm,state=stp,logBtn=stepLog}
-          local detail=step.id and FLT.QUEST_PREREQ_DETAILS and FLT.QUEST_PREREQ_DETAILS[step.id]
           row:SetScript("OnEnter",function(self)
             GameTooltip:SetOwner(self,"ANCHOR_RIGHT")
             GameTooltip:SetText(NM(step.name) or (L["Quest"].." "..tostring(step.id or "?")),1,0.82,0.20)
@@ -1665,7 +1700,8 @@ local function createDungeonPanel(parent)
   local function stepStatus(step)
     if step.quest then
       if FLT.IsQuestDone and FLT:IsQuestDone(step.quest) then return "completed" end
-      if getQuestLogInfo({id=step.quest,name=step.name}) then return "inlog" end
+      local inLog,ready=getQuestLogInfo({id=step.quest,name=step.name})
+      if inLog then return ready and "ready" or "inlog" end
     end
     return "open"
   end
@@ -1710,7 +1746,7 @@ local function createDungeonPanel(parent)
       hordeBtn:SetScript("OnClick",function() keyFactionFilter[d.key]="Horde"; keySelection[d.key]=1; renderKey(d) end)
     end
     local legend=dynText(left,"GameFontDisableSmall"); legend:SetPoint("TOPLEFT",14,-48)
-    legend:SetText(string.format(L["Steps for %s  |  green = done, yellow = in quest log"],faction and L[faction] or L["both factions"]))
+    legend:SetText(string.format(L["Steps for %s  |  green row = done, green text = in quest log"],faction and L[faction] or L["both factions"]))
 
     local ksf=dynFrame("ScrollFrame",left,"UIPanelScrollFrameTemplate"); ksf:SetPoint("TOPLEFT",10,-66); ksf:SetPoint("BOTTOMRIGHT",-3,8); tidyScroll(ksf,left)
     local kchild=dynFrame("Frame",ksf); kchild:SetSize(LAYOUT.QUEST_LIST_WIDTH,1); ksf:SetScrollChild(kchild)
@@ -1735,7 +1771,7 @@ local function createDungeonPanel(parent)
         if not step.faction or not faction or step.faction==faction then
           n=n+1
           local srow=dynFrame("Button",kchild); srow:SetSize(LAYOUT.QUEST_ROW_WIDTH-16,40); srow:SetPoint("TOPLEFT",16,ky); ky=ky-42
-          local sbg=cardBg(srow,0.068,0.070,0.080,0.95)
+          local sbg=cardBg(srow,0.068,0.070,0.080,0.95); sbg.plateOff=true -- the quest list's look (6.2.4, user 10.11.)
           local hi=makeTexture(srow,"HIGHLIGHT",0.62,0.44,0.16,0.045); hi:SetPoint("TOPLEFT",1,-1); hi:SetPoint("BOTTOMRIGHT",-1,1)
           local num=FLT.NewFS(srow,nil,"OVERLAY","GameFontNormal"); num:SetPoint("TOPLEFT",8,-4); num:SetText(n..".")
           local sn=FLT.NewFS(srow,nil,"OVERLAY","GameFontNormal"); sn:SetPoint("TOPLEFT",30,-4); sn:SetWidth(280); sn:SetJustifyH("LEFT"); sn:SetText(NM(step.name))
@@ -1758,7 +1794,7 @@ local function createDungeonPanel(parent)
           local s=stepStatus(e.step)
           e.status=s
           local m=e.step.quest and (e.step.level and string.format(L["Quest, level %s"],e.step.level) or L["Quest"]) or L["No quest"]
-          if s=="completed" then m=m.."  |  |cff66f080"..L["Done"].."|r" elseif s=="inlog" then m=m.."  |  |cffffd200"..L["In quest log"].."|r" end
+          if QUEST_STATUS_LABELS[s] then m=m.."  |  "..L[QUEST_STATUS_LABELS[s]] end
           e.meta:SetText(m)
         end
       end
@@ -1773,6 +1809,7 @@ local function createDungeonPanel(parent)
       local host=dynFrame("Frame",right); host:SetPoint("TOPLEFT",0,0); host:SetPoint("BOTTOMRIGHT",0,0)
       local k=e.key
       local step=e.step
+      local stepStatusRow
       local t=dynText(host,"GameFontNormalLarge"); t:SetPoint("TOPLEFT",18,-16); t:SetWidth(475); t:SetJustifyH("LEFT")
       t:SetText(NM(step and step.name or k.name)); t:SetTextColor(FLT.SkinC(1,0.82,0.20))
       -- chips
@@ -1803,7 +1840,23 @@ local function createDungeonPanel(parent)
           end
         end
         if step.turnin then y=infoRow(c,y,N"Turn in",PT(step.turnin)) end
+        if step.loot then
+          -- an item the step needs and where it lies, with its own Map button (6.2.4, user 10.11.: the Grimy Key in
+          -- "Key to the City")
+          local yStart=y
+          y=infoRow(c,y,N"Loot",NM(step.loot.name)..": "..PT(step.loot.place),step.loot.map and 250 or 330)
+          if step.loot.map then
+            local lb=UI.GoldButton(c,L["Map"],62,20,ASSET_ROOT.."icon_map",11); lb:SetPoint("TOPRIGHT",c,"TOPLEFT",446,yStart+3)
+            lb:SetScript("OnClick",function() FLT:ShowOnMap({mapID=step.loot.map.mapID,x=step.loot.map.x,y=step.loot.map.y,name=step.loot.name}) end)
+          end
+        end
         if step.level then y=infoRow(c,y,N"Quest level",tostring(step.level)) end
+        if step.quest then
+          -- status with the quest log scroll, like the dungeon quests (6.2.4, user 10.11.)
+          local sv; y,sv=infoRow(c,y,N"Status","")
+          local slog=questLogButton(c); slog:SetQuest(step.quest,step.name)
+          stepStatusRow={value=sv,log=slog}
+        end
         local sdv=c:CreateTexture(nil,"ARTWORK"); FLT.SetTex(sdv, ASSET_ROOT.."divider_ornate"); sdv:SetPoint("TOPLEFT",4,y+2); sdv:SetPoint("TOPRIGHT",c,"TOPLEFT",448,y+2); sdv:SetHeight(14)
         y=y-16
         if step.objective then
@@ -1812,9 +1865,10 @@ local function createDungeonPanel(parent)
           y=close(cy-math.max(14,ob:GetStringHeight() or 14))
         end
       end
-      -- key box: icon, name, whether you carry it, what it is for
+      -- key box: icon, name, whether you carry it, what it is for - only on the key's own page (6.2.4, user 10.11.:
+      -- not on every step)
       local keyStatus
-      do
+      if not step then
         local box,cy,close=openBox(c,y,d.raid and N"Attunement" or N"Key")
         local kic=box:CreateTexture(nil,"ARTWORK"); kic:SetSize(32,32); kic:SetPoint("TOPLEFT",10,-28)
         FLT.SetTex(kic, dungeonItemIcon({id=k.item,name=k.name}))
@@ -1835,11 +1889,18 @@ local function createDungeonPanel(parent)
       local pane={host=host}
       function pane.update()
         local have=hasKeyItem(k.item)
-        keyStatus:SetText(have and ("|cff66f080"..L["You have it"].."|r") or ("|cffff5a4a"..L["Not in your bags"].."|r"))
+        if keyStatus then keyStatus:SetText(have and ("|cff66f080"..L["You have it"].."|r") or ("|cffff5a4a"..L["Not in your bags"].."|r")) end
         if step then
           local st=stepStatus(step)
-          local label=L[(st=="completed" and N"Done") or (st=="inlog" and N"In quest log") or N"Open"]
-          statusChip:Set(label,STATUS_COLOR[st] or STATUS_COLOR.open)
+          local label=L[QUEST_STATUS_LABELS[st] or N"Open"]
+          local col=STATUS_COLOR[st] or STATUS_COLOR.open
+          statusChip:Set(label,col)
+          if stepStatusRow then
+            local sv=stepStatusRow.value
+            sv:SetText(label); sv:SetTextColor(FLT.SkinC(col[1],col[2],col[3]))
+            stepStatusRow.log:ClearAllPoints(); stepStatusRow.log:SetPoint("LEFT",sv,"LEFT",(sv:GetStringWidth() or 40)+8,0)
+            stepStatusRow.log:SetShown(st=="inlog" or st=="ready")
+          end
         else
           statusChip:Set(L[have and N"You have it" or N"Missing"],have and STATUS_COLOR.completed or {1,0.36,0.30})
         end
@@ -1853,16 +1914,18 @@ local function createDungeonPanel(parent)
       keySelection[d.key]=i
       for j,e in ipairs(entries) do
         local on=(j==i)
-        if on then e.bg:SetColorTexture(FLT.SkinC(0.22,0.155,0.055,0.98,true))
-        elseif e.step then e.bg:SetColorTexture(FLT.SkinC(0.068,0.070,0.080,0.95))
-        else e.bg:SetColorTexture(FLT.SkinC(0.090,0.078,0.050,0.96)) end
         if e.step then
+          -- the steps look like the dungeon quest list (6.2.4, user 10.11.: "genau so wie bei quests"): done = green
+          -- row, ready = green to the middle, in the log = green text; the selection is the gold frame
           local s=e.status
-          if on then e.name:SetTextColor(FLT.SkinC(1,0.82,0.20))
-          elseif s=="completed" then e.name:SetTextColor(FLT.SkinC(0.40,0.94,0.50))
-          elseif s=="inlog" then e.name:SetTextColor(FLT.SkinC(1,0.82,0.20))
+          e.bg:SetFill(s=="completed" and 0.10 or nil,0.34,0.12,0.42)
+          e.bg:SetHalfFill(s=="ready" and 0.10 or nil,0.34,0.12,0.42)
+          e.bg:SetColorTexture(FLT.SkinC(0.068,0.070,0.080,0.95))
+          if s=="completed" or s=="inlog" or s=="ready" then e.name:SetTextColor(FLT.SkinC(0.25,1,0.35))
           else e.name:SetTextColor(FLT.SkinC(0.92,0.90,0.84)) end
-        end
+          if on then e.bg:SetColorTexture(FLT.SkinC(0.22,0.155,0.055,0.98,true)) end
+        elseif on then e.bg:SetColorTexture(FLT.SkinC(0.22,0.155,0.055,0.98,true))
+        else e.bg:SetColorTexture(FLT.SkinC(0.090,0.078,0.050,0.96)) end
       end
       for _,p in pairs(panes) do p.host:Hide() end
       local p=panes[i]; if not p then p=makePane(entries[i]); panes[i]=p end

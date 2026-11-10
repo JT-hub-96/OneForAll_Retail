@@ -9,6 +9,17 @@ FLT.DUNGEON_REGISTRY["Alcaz Prison"] = {
     description = "New Forever dungeon: a Defias prison on Alcaz Island where nobles were held for ransom, and rumour says Varian Wrynn was one of them. Now the Defias fight the naga inside. Its loot is still being discovered.",
     icon = "Interface\\Icons\\Spell_Frost_ChainsOfIce",
     quests = {
+        {
+            level = 53,
+            id = 96772,
+            name = "The Dragon's Journal",
+            requires = 46,
+            faction = "Alliance",
+            pickup = "Archmage Lan'dalock, Alterac Mountains (15.9, 73.1)",
+            objective = "Recover Zarla's Journal from the depths of Alcaz Prison.",
+            rewardItems = {
+            },
+        },
     },
     bosses = {
         {

@@ -164,6 +164,19 @@ FLT.DUNGEON_REGISTRY["Scholomance"] = {
             turnin = "Sagorne Creststrider, Orgrimmar",
             rewardItems = {{20134, "Skyfury Helm", 4}},
         },
+        {
+            level = 60,
+            id = 7668,
+            name = "The Darkreaver Menace",
+            requires = 58,
+            faction = "Horde",
+            class = "SHAMAN",
+            pickup = "Sagorne Creststrider, Orgrimmar (38.7, 35.9)",
+            objective = "Bring Darkreaver's Head to Sagorne Creststrider in the Valley of Wisdom, Orgrimmar.",
+            turnin = "Sagorne Creststrider, Orgrimmar",
+            rewardItems = {
+            },
+        },
     },
     bosses = {
         {

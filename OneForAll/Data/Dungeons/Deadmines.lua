@@ -54,7 +54,7 @@ FLT.DUNGEON_REGISTRY["The Deadmines"] = {
             name = "Destruction in Deadmines",
             requires = 9,
             faction = "Alliance",
-            pickup = "Alba Fairmoon, Westfall",
+            pickup = "Alba Fairmoon, Westfall (52.5, 53.0)",
             objective = "Find the forge hidden in the Deadmines, and plant the Extra-Destructive Explosives nearby. Then, meet up with Alba Fairmoon at the Deadmines exit.",
             turnin = "Alba Fairmoon, Westfall",
             rewardItems = {},
@@ -133,6 +133,19 @@ FLT.DUNGEON_REGISTRY["The Deadmines"] = {
             rewardItems = {},
             rewardSummary = "2,050 XP · 7s · +50 Stormwind",
             note = "Leads on to Bazil Thredd and the Stockade.",
+        },
+        {
+            level = 26,
+            id = 95140,
+            name = "Old Fire-Eye",
+            requires = 20,
+            faction = "Horde",
+            class = "PALADIN",
+            pickup = "Lumina Windsinger, Silverpine Forest (43.4, 41.0)",
+            objective = "Use the Moonsilver Blade to destroy Old-Fire Eye in Silverpine Forest.",
+            turnin = "Lumina Windsinger, Silverpine Forest",
+            rewardItems = {
+            },
         },
     },
     bosses = {

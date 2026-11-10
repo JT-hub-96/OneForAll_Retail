@@ -94,6 +94,42 @@ FLT.DUNGEON_REGISTRY["City of Dalaran"] = {
             rewardSummary = "9,400 XP",
             note = "Two reward choices; item names not known yet.",
         },
+        {
+            level = 33,
+            id = 92457,
+            name = "Starving Arcane",
+            requires = 24,
+            faction = "Alliance",
+            pickup = "Image of Archmage Modera, Alterac Mountains (14.3, 59.6)",
+            objective = "Defeat 8 Seeking Remnants, 8 Saturated Remnants, and 8 Mana Echoes inside the City of Dalaran for Archmage Modera outside of Dalaran.",
+            turnin = "Image of Archmage Modera, Alterac Mountains",
+            rewardItems = {
+            },
+        },
+        {
+            level = 33,
+            id = 92458,
+            name = "Heart of Disruption",
+            requires = 24,
+            faction = "Alliance",
+            pickup = "Image of Archmage Modera, Alterac Mountains (14.3, 59.6)",
+            objective = "Collect the Arcane Mote for the Image of Archmage Modera near the City of Dalaran.",
+            turnin = "Image of Archmage Modera, Alterac Mountains",
+            rewardItems = {
+            },
+        },
+        {
+            level = 33,
+            id = 96984,
+            name = "Heart of Disruption",
+            requires = 24,
+            faction = "Horde",
+            pickup = "Image of Archmage Modera, Alterac Mountains (14.3, 59.6)",
+            objective = "Collect the Arcane Mote in the City of Dalaran for Magus Wordeen Voidglare in Tarren Mill.",
+            turnin = "Magus Wordeen Voidglare, Hillsbrad Foothills",
+            rewardItems = {
+            },
+        },
     },
     bosses = {
         {

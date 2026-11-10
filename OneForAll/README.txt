@@ -70,6 +70,25 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 Changelog (newest first)
 ========================
 
+6.2.4 - All dungeon quests, Dalaran Sewer Key, Map buttons
+===========================================================
+- Dungeons & Raids: 70 missing dungeon quests added with their prerequisite chains - City of Dalaran now has its 4
+  quests per faction with the quest chain before them, the new Forever dungeons (Krol'dok Stronghold, Blackmaw Hold,
+  The Drowned City, Alcaz Prison, Shaper's Terrace) got their quests, plus the Dire Maul books and librams, Sunken
+  Temple class quests and more.
+- City of Dalaran: new key page "Dalaran Sewer Key" - it comes with Heart of Disruption from the Image of Archmage
+  Modera; the Alliance lead-in and the Horde quests in Tarren Mill, with the Grimy Key as a loot line with its own
+  Map button.
+- Every quest and chain step whose start has coordinates has a Map button (also in Riverglades, Silithus, Mount Hyjal,
+  Zephras Isle, Deadwind Pass, Shen'dralas); missing quest givers and coordinates filled in from QuestieDB.
+- Quest list: quests for other classes are hidden; the new eye button shows them all. Class quests show the class
+  name in your language.
+- Key / attunement pages: the steps look like the dungeon quest list (done = green row, in log = green text), the
+  step page shows the status with the quest log scroll, the key box only on the key itself.
+- Razorfen Kraul: "An Unholy Alliance" is the Small Scroll step; the follow-up (Ambassador Malcin) is only in Razorfen
+  Downs - it showed "In log" in Razorfen Kraul after both were done.
+- Quest list header: the share and eye buttons sit side by side and on one line with the faction buttons.
+
 6.2.3 - Gear Planner "All slots", dungeon quests on the map, symbols
 ======================================================================
 - Gear Planner, Suggested: new button "All slots" - the 3 best upgrades of every slot at once, grouped under small

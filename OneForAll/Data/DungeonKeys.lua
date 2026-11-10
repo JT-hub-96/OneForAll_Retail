@@ -147,4 +147,26 @@ FLT.DUNGEON_KEYS = {
       },
     },
   },
+  -- City of Dalaran (6.2.4, user 10.11.): quests, givers, items and spawns from QuestieDB Forever (Heart of Disruption
+  -- gives item 277507 Dalaran Sewer Key on accepting, Key to the City needs item 279469 Grimy Key); names of the items
+  -- from the Wowhead tooltip API; the footlocker at the Lordamere Internment Camp: 16.3, 89.3 (the user in the game, 10.11.).
+  ["City of Dalaran"] = {
+    {
+      item = 277507,
+      name = "Dalaran Sewer Key",
+      required = true,
+      summary = "Opens the sewer entrance into Dalaran by the Lordamere Lake. It comes with the quest Heart of Disruption from the Image of Archmage Modera; the Alliance gets there with one lead-in quest, the Horde with Magus Wordeen Voidglare's quests in Tarren Mill.",
+      steps = {
+        { quest = 92432, name = "An Alarming Request", level = 33, requires = 30, faction = "Alliance", pickup = "Emissary Jacques, Hillsbrad Foothills (48.3, 60.0)", objective = "Report to the Image of Archmage Modera near the City of Dalaran.", turnin = "Image of Archmage Modera, Alterac Mountains (14.3, 59.6)", map = {mapID=1424, x=48.3, y=60.0} },
+        { quest = 92458, name = "Heart of Disruption", level = 33, requires = 24, faction = "Alliance", pickup = "Image of Archmage Modera, Alterac Mountains (14.3, 59.6)", objective = "Accept this quest: the Dalaran Sewer Key comes with it.", turnin = "Image of Archmage Modera, Alterac Mountains", map = {mapID=1416, x=14.3, y=59.6} },
+        { quest = 544, name = "Prison Break In", level = 33, requires = 30, faction = "Horde", pickup = "Magus Wordeen Voidglare, Hillsbrad Foothills (61.6, 20.9)", objective = "Find the traitors and recover their artifacts, then return to Magus Voidglare in Tarren Mill.", turnin = "Magus Wordeen Voidglare, Hillsbrad Foothills (61.6, 20.9)", map = {mapID=1424, x=61.6, y=20.9} },
+        { quest = 93680, name = "Key to the City", level = 33, requires = 30, faction = "Horde", pickup = "Magus Wordeen Voidglare, Hillsbrad Foothills (61.6, 20.9)", objective = "Loot the Grimy Key from a Warden's Footlocker upstairs in a house of the Lordamere Internment Camp (guarded by Warden Belamoore) and bring it to Magus Wordeen Voidglare in Tarren Mill.", turnin = "Magus Wordeen Voidglare, Hillsbrad Foothills (61.6, 20.9)", map = {mapID=1424, x=61.6, y=20.9},
+          -- where the Grimy Key lies: the user stood on the footlocker (10.11.: 16.3, 89.3)
+          loot = { name = "Grimy Key", item = 279469, place = "Warden's Footlocker, Alterac Mountains (16.3, 89.3)", map = {mapID=1416, x=16.3, y=89.3} } },
+        { quest = 545, name = "Dalaran Patrols", level = 35, requires = 30, faction = "Horde", pickup = "Magus Wordeen Voidglare, Hillsbrad Foothills (61.6, 20.9)", objective = "Kill 6 Dalaran Summoners and 12 Elemental Slaves, then return to Magus Voidglare in Tarren Mill.", turnin = "Magus Wordeen Voidglare, Hillsbrad Foothills (61.6, 20.9)", map = {mapID=1424, x=61.6, y=20.9} },
+        { quest = 92434, name = "Blood in the Streets", level = 34, requires = 30, faction = "Horde", pickup = "Magus Wordeen Voidglare, Hillsbrad Foothills (61.6, 20.9)", objective = "Find a way into Dalaran along the Lordamere Lake.", turnin = "Image of Archmage Modera, Alterac Mountains (14.3, 59.6)", map = {mapID=1424, x=61.6, y=20.9} },
+        { quest = 96984, name = "Heart of Disruption", level = 33, requires = 24, faction = "Horde", pickup = "Image of Archmage Modera, Alterac Mountains (14.3, 59.6)", objective = "Accept this quest: the Dalaran Sewer Key comes with it.", turnin = "Magus Wordeen Voidglare, Hillsbrad Foothills", map = {mapID=1416, x=14.3, y=59.6} },
+      },
+    },
+  },
 }

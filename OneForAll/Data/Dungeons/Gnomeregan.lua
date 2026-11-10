@@ -195,6 +195,44 @@ FLT.DUNGEON_REGISTRY["Gnomeregan"] = {
             },
             note = "Needs Chief Engineer Scooty (from Sovik in Orgrimmar). With the Goblin Transponder you can use the teleporter in Gnomeregan to get back to Booty Bay.",
         },
+        {
+            level = 30,
+            id = 2951,
+            name = "The Sparklematic 5200!",
+            requires = 25,
+            faction = "Both",
+            pickup = "The Sparklematic 5200, inside Gnomeregan",
+            objective = "Insert a Grime-Encrusted Item into the Sparklematic 5200, and be sure to have three silver coins to start the machine.",
+            turnin = "The Sparklematic 5200, inside Gnomeregan",
+            rewardItems = {
+            },
+        },
+        {
+            level = 35,
+            id = 2948,
+            name = "Gnome Improvement",
+            requires = 28,
+            faction = "Alliance",
+            pickup = "Talvash del Kissel, Ironforge (36.4, 3.6)",
+            objective = "Bring the Brilliant Gold Ring, a Silver Bar, a Moss Agate, and 30 silver coins to Talvash del Kissel in Ironforge.",
+            turnin = "Talvash del Kissel, Ironforge",
+            rewardItems = {
+                {9538, "Talvash's Gold Ring", 3},
+            },
+        },
+        {
+            level = 35,
+            id = 2950,
+            name = "Nogg's Ring Redo",
+            requires = 28,
+            faction = "Horde",
+            pickup = "Nogg, Orgrimmar (76.0, 25.4)",
+            objective = "Bring the Brilliant Gold Ring, a Silver Bar, a Moss Agate, and 30 silver coins to Nogg in Orgrimmar.",
+            turnin = "Nogg, Orgrimmar",
+            rewardItems = {
+                {9588, "Nogg's Gold Ring", 3},
+            },
+        },
     },
     bosses = {
         {
