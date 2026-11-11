@@ -27,6 +27,7 @@ Commands
 /oneforall cheapest     Show the cheapest item in your bags
 /oneforall buttons      List the minimap buttons the button collector holds
 /oneforall trainer      Show what the last class trainer visit read
+/oneforall gv           How the Gear Value of the item under the mouse comes about (or /ofa gv [item link])
 /oneforall errors       Show errors OneForAll caught (for bug reports); "errors clear" empties the list
 /oneforall mem          Show how much memory OneForAll uses right now
 /oneforall thanks       Show the last buffs seen by "Thanks for buffs"
@@ -69,6 +70,45 @@ and add the file to OneForAll.toc before UI\MainFrame.lua.
 
 Changelog (newest first)
 ========================
+
+6.2.5 - Special Quests, movable info bar, Gear Planner values
+=============================================================
+- Armory: new list "Special Quests" - quest chains with an unusual reward, for now the Cozy Sleeping Bag (both
+  factions, the first steps on your faction's side of the map) and Wolfsbane for Horde paladins: rewards, every step
+  with its quest giver and a map button, and a check for the quests you have done. More to come.
+- Gear Planner / item tooltips: the Upgrade / Downgrade % is now of your whole gear's Value, not of the replaced item
+  (a weak worn item made every small gain look huge, e.g. "+68%" for a slightly better dagger). With one decimal.
+- One-handers for dual wield: the item goes to the hand where it gains the most Value (before: the most % of that
+  slot, so a strong main hand was often compared with the weak off hand).
+- Protection warriors and paladins no longer get two-handers suggested while wearing a one-hander and a shield.
+- Assassination rogues level on Gear Judge's dagger curve (it was the general rogue curve).
+- Custom weights: weapon DPS and speed per hand (main hand, off hand, ranged / wand), health, health per 5 sec. and
+  mana are in the editor now - before, hidden values from the copied spec counted and the shown "Weapon DPS" did
+  nothing on melee weapons. Only what the editor shows counts; a negative weapon speed = faster weapons are better.
+  Older custom weights keep their melee DPS.
+- /ofa gv: shows how the Gear Value of the item under the mouse comes about (weights, worn Value per slot, the
+  replaced item, change, whole gear, result). Also /ofa gv with a shift-clicked item link.
+- Info bar: Shift-drag moves it along the screen edge; drop it in the lower half of the screen and it sits at the bottom
+  (upside down, it slides in from below). Right-click menu: "At the bottom of the screen" and "Back to the middle";
+  Quality of Life > Interface > Info bar: "Bar position" Reset puts it back at the top middle.
+- Info bar gold: alts no longer show 0 gold (the money read at logout was 0).
+- Characters with the same first name (WoW Forever surnames) are no longer mixed up: the gold list of the info bar,
+  "Twinks:" in recipe tooltips and the alt stock of the Crafting List keep them apart (with the class after the name).
+  Each character shows up again after its next login.
+- Guild members on the map: guild members who share their position with the addon OpenMap show too (OpenMap
+  compatibility, thanks to CaptainBritish).
+- Class trainer list: many spells were missing because the game has their learn level in another field - Dash (druid),
+  Redemption and Turn Undead (paladin), the Shaman weapon imbues, Water Breathing / Walking, Far Sight, Astral Recall,
+  Unending Breath, Eye of Kilrogg, Sense Demons, Detect Invisibility, Shadow Ward (warlock), Scare Beast, Eagle Eye,
+  Beast Lore, Aspect of the Beast, Call / Dismiss / Feed Pet (hunter) and more.
+- Druids can use polearms in WoW Forever (from level 20), rogues one-handed axes: the Armory offers them now.
+- Hunter Pets: Furious Howl ranks show the right attack power (13 / 31-38 / 68 / 84).
+- Auto turn-in / accept leaves repeatable quests alone (Mangletooth's Blood Shard quests were turned in again and again).
+- Minimap button collector: TomTom's waypoint pins stay on the minimap.
+- With Leatrix Plus the OneForAll minimap button is a LibDBIcon button, so Leatrix's button bag can take it.
+- Short green stats: also "Block Value" (capital letters), threat (+1% Threat) and feral attack power lines.
+- Data: game client 1.60.1.70888 (new enchants, trainer spells), QuestieDB update (quest givers and turn-ins, the new
+  Riverglades profession trainers), talents of 10 Nov.
 
 6.2.4 - All dungeon quests, Dalaran Sewer Key, Map buttons
 ===========================================================

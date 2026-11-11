@@ -184,7 +184,7 @@ FLT.GEAR_WEIGHTS = {
   },
   ROGUE = {
     specs = {
-      { name = "Assassination", raid = {agi=3.05,ap=1.5,crit=36.1,dps=12.2,dpsoh=6.5,hit=25.6,str=1.65,wskill=2}, curve = "Leveling" },
+      { name = "Assassination", raid = {agi=3.05,ap=1.5,crit=36.1,dps=12.2,dpsoh=6.5,hit=25.6,str=1.65,wskill=2}, curve = "Leveling_Dagger" },
       { name = "Combat", raid = {agi=2.83,ap=1.5,crit=30.5,dps=15.4,dpsoh=4.6,hit=30.8,str=1.65,wskill=2}, curve = "Leveling" },
       { name = "Subtlety", raid = {agi=2.83,ap=1.5,crit=30.5,dps=15.4,dpsoh=4.6,hit=30.8,str=1.65,wskill=2}, curve = "Leveling_Hemo" },
     },
@@ -202,6 +202,19 @@ FLT.GEAR_WEIGHTS = {
         {50,{agi=1.953,ap=1,armor=0.035,crit=14.054,def=0.46,dodge=2.88,dps=0.5,dpsmelee=9.7,dpsoh=2.8,hit=15.925,hp5=5.07,hp=0.038,parry=2.88,speed=14.2,spi=1.35,sta=0.38,str=1}},
         {55,{agi=1.9218,ap=1,crit=17.9587,def=0.215,dodge=1.35,dps=0.4167,dpsmelee=9.9333,dpsoh=2.8833,hit=19.2297,hp5=2.565,parry=1.35,speed=7.35,spi=0.57,sta=0.165,str=1.05,wskill=0.6667}},
         {59,{agi=1.8938,ap=1,crit=19.9562,def=0.046,dodge=0.288,dps=0.35,dpsmelee=10.2,dpsoh=3.03,hit=20.394,hp5=0.509,parry=0.288,speed=1.54,spi=0.096,sta=0.029,str=1.09,wskill=1.2}},
+      },
+      Leveling_Dagger = {
+        {10,{agi=2.041,ap=1,armor=0.025,crit=2.726,def=0.08,dodge=0.5,dps=0.5,dpsmelee=9.9,dpsoh=3.3,hit=3.142,hp5=3.76,hp=0.092,parry=0.5,spi=1.2,sta=0.92,str=1}},
+        {15,{agi=2.053,ap=1,armor=0.032,crit=3.624,def=0.16,dodge=1,dps=0.5,dpsmelee=9.8,dpsoh=3,hit=4.229,hp5=4.45,hp=0.087,parry=1,spi=1.54,sta=0.87,str=1}},
+        {20,{agi=1.973,ap=1,armor=0.041,crit=4.642,def=0.25,dodge=1.6,dps=0.5,dpsmelee=10,dpsoh=2.9,hit=5.458,hp5=4.47,hp=0.072,parry=1.6,spi=1.57,sta=0.72,str=1}},
+        {25,{agi=1.902,ap=1,armor=0.041,crit=5.751,def=0.3,dodge=1.9,dps=0.5,dpsmelee=10,dpsoh=3,hit=6.674,hp5=4.44,hp=0.06,parry=1.9,spi=1.54,sta=0.6,str=1}},
+        {30,{agi=1.912,ap=1,armor=0.041,crit=7.169,def=0.34,dodge=2.1,dps=0.5,dpsmelee=9.6,dpsoh=3,hit=8.396,hp5=4.98,hp=0.053,parry=2.1,spi=1.76,sta=0.53,str=1}},
+        {35,{agi=1.953,ap=1,armor=0.041,crit=8.611,def=0.38,dodge=2.4,dps=0.5,dpsmelee=9.2,dpsoh=3,hit=10.695,hp5=5.67,hp=0.051,parry=2.4,spi=1.98,sta=0.51,str=1}},
+        {40,{agi=2.015,ap=1,armor=0.039,crit=10.083,def=0.42,dodge=2.6,dps=0.5,dpsmelee=8.6,dpsoh=2.9,hit=13.271,hp5=6.06,hp=0.059,parry=2.6,spi=2,sta=0.59,str=1}},
+        {45,{agi=2.09,ap=1,armor=0.043,crit=12.222,def=0.5,dodge=3.1,dps=0.5,dpsmelee=8.2,dpsoh=2.9,hit=15.893,hp5=5.92,hp=0.067,parry=3.1,spi=1.78,sta=0.67,str=1}},
+        {50,{agi=2.165,ap=1,armor=0.041,crit=15.657,def=0.53,dodge=3.3,dps=0.5,dpsmelee=7.4,dpsoh=3.4,hit=19.176,hp5=5.87,hp=0.059,parry=3.3,spi=1.58,sta=0.59,str=1}},
+        {55,{agi=2.1377,ap=1,crit=21.8458,def=0.245,dodge=1.55,dps=0.4167,dpsmelee=7.3167,dpsoh=4.3167,hit=19.9093,hp5=3.15,hp=0.02,parry=1.55,spi=0.75,sta=0.2,str=1.05,wskill=0.6667}},
+        {59,{agi=2.0607,ap=1,crit=23.8931,def=0.053,dodge=0.33,dps=0.35,dpsmelee=7.92,dpsoh=4.37,hit=17.8512,hp5=0.676,parry=0.33,spi=0.145,sta=0.03,str=1.09,wskill=1.2}},
       },
       Leveling_Hemo = {
         {10,{agi=2.07,ap=1,armor=0.025,crit=2.891,def=0.08,dodge=0.5,dps=0.5,dpsmelee=9.8,dpsoh=3.4,hit=3.25,hp5=3.97,hp=0.099,parry=0.5,spi=1.26,sta=0.99,str=1}},
