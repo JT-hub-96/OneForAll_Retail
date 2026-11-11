@@ -27,10 +27,7 @@ local function db(key)
   return OneForAllDB[key]
 end
 local function list() return db("craftList") end
-local function charKey()
-  local n = UnitName and UnitName("player")
-  return n and (n .. "-" .. (GetRealmName and GetRealmName() or "")) or nil
-end
+local function charKey() return FLT.CharKey and FLT.CharKey() end -- GUID (6.2.5, Core.lua)
 
 -- Recipe index ----------------------------------------------------------------------
 local bySpell, byItem, reagent -- spell -> {r, prof}; crafted item -> list of {r, prof}; reagent / crafted ids
@@ -65,12 +62,12 @@ function CL.ICanCraft(prof, r)
 end
 -- who of my characters knows a recipe (OneForAllDB.altRecipes, kept by QoL.lua; this character live)
 local function knownBy(prof, spell)
-  local me = charKey()
   local x = bySpell and bySpell[spell]
   if x and CL.ICanCraft(prof, x.r) then return UnitName("player") end
-  for key, data in pairs(type(OneForAllDB) == "table" and OneForAllDB.altRecipes or {}) do
-    if key ~= me and type(data) == "table" and type(data[prof]) == "table" and data[prof][spell] then
-      return key:match("^([^%-]+)") or key
+  local all = type(OneForAllDB) == "table" and OneForAllDB.altRecipes or {}
+  for key, data in pairs(all) do
+    if not FLT.IsMyChar(key) and type(data) == "table" and type(data[prof]) == "table" and data[prof][spell] then
+      return FLT.CharLabel(all, key, data)
     end
   end
 end
@@ -103,7 +100,12 @@ local function me()
   local key = charKey(); if not key then return nil end
   local inv = db("craftInv")
   local c = inv[key]
-  if not c then c = { bags = {}, bank = {} }; inv[key] = c end
+  if not c then
+    -- 6.2.5: take over the entry under the old "Name-Realm" key (bank as last seen), then drop that key
+    local oldK = (UnitName("player") or "?") .. "-" .. (GetRealmName and GetRealmName() or "")
+    c = type(inv[oldK]) == "table" and inv[oldK] or { bags = {}, bank = {} }
+    FLT.CharSave(inv, c)
+  end
   c.faction = UnitFactionGroup and UnitFactionGroup("player") or c.faction
   return c
 end
@@ -129,17 +131,19 @@ local function stock(id)
   local total = bags + bank
   if bags > 0 then places[#places + 1] = L["Bags"] .. " " .. bags end
   if bank > 0 then places[#places + 1] = L["Bank"] .. " " .. bank end
-  local realm = key and key:match("%-(.*)$")
+  local inv = db("craftInv")
+  local realm = GetRealmName and GetRealmName() or ""
   local fac = c and c.faction
-  for k, o in pairs(db("craftInv")) do
-    if k ~= key and k:match("%-(.*)$") == realm and (not fac or not o.faction or o.faction == fac) then
+  for k, o in pairs(inv) do
+    local _, r = FLT.CharOf(k, o)
+    if not FLT.IsMyChar(k) and r == realm and type(o) == "table" and (not fac or not o.faction or o.faction == fac) then
       local b, k2 = o.bags and o.bags[id] or 0, o.bank and o.bank[id] or 0
       if b + k2 > 0 then
         total = total + b + k2
         local parts = {}
         if b > 0 then parts[#parts + 1] = string.format(L["%d bags"], b) end
         if k2 > 0 then parts[#parts + 1] = string.format(L["%d bank"], k2) end
-        places[#places + 1] = (k:match("^([^%-]+)") or k) .. ": " .. table.concat(parts, ", ")
+        places[#places + 1] = FLT.CharLabel(inv, k, o) .. ": " .. table.concat(parts, ", ")
       end
     end
   end

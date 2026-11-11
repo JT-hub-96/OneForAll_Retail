@@ -152,7 +152,50 @@ function FLT:CreateMinimapButton()
   if Minimap.HookScript then Minimap:HookScript("OnSizeChanged", FLT.PositionMinimapButton) end
   if C_Timer and C_Timer.After then C_Timer.After(3, FLT.PositionMinimapButton) end
   button:Show()
+  FLT.RegisterLDBIcon()
   if FLT.MinimapCollectorRefresh then FLT.MinimapCollectorRefresh() end
+end
+
+-- Leatrix Plus gathers only LibDBIcon buttons in its button bag (6.2.5, Discord vkinglouie 11.11.: our button stayed at
+-- the minimap). With Leatrix Plus loaded and its LibDBIcon / LibDataBroker there, OneForAll registers a LibDBIcon button
+-- of the same use and hides its own; MinimapCollectorRefresh shows / hides it like our button.
+function FLT.RegisterLDBIcon()
+  if FLT.ldbIcon ~= nil then return FLT.ldbIcon end
+  FLT.ldbIcon = false
+  local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+  if not (loaded and loaded("Leatrix_Plus")) or type(LibStub) ~= "table" then return false end
+  local LDB, LDBI = LibStub("LibDataBroker-1.1", true), LibStub("LibDBIcon-1.0", true)
+  if not (LDB and LDBI and LDB.NewDataObject and LDBI.Register) then return false end
+  local obj = LDB:NewDataObject("OneForAll", {
+    type = "launcher", icon = "Interface\\AddOns\\OneForAll\\Assets\\minimap_icon",
+    OnClick = function(_, mouse)
+      if mouse == "RightButton" then
+        if IsShiftKeyDown and IsShiftKeyDown() and FLT.CraftList then FLT.CraftList.Toggle() end
+      elseif FLT.ToggleUI then FLT:ToggleUI() end
+    end,
+    OnTooltipShow = function(tt)
+      tt:AddLine(FLT.DISPLAY_NAME or "OneForAll", 1, 0.82, 0)
+      tt:AddLine(L["Left-click: Open / close"], 1, 1, 1)
+      tt:AddLine(L["Shift-right-click: Crafting List"], 1, 1, 1)
+    end,
+  })
+  if not obj then return false end
+  if type(OneForAllDB) ~= "table" then return false end
+  OneForAllDB.ldbIcon = OneForAllDB.ldbIcon or {}
+  if not pcall(LDBI.Register, LDBI, "OneForAll", obj, OneForAllDB.ldbIcon) then return false end
+  FLT.ldbIcon = LDBI
+  return LDBI
+end
+-- registered as early as possible (when our saved variables are there), so Leatrix Plus finds the button when it gathers
+-- them; Leatrix_Plus loads before OneForAll (alphabetical), its libraries are there by then
+do
+  local f = CreateFrame("Frame")
+  f:RegisterEvent("ADDON_LOADED")
+  f:SetScript("OnEvent", function(self, _, name)
+    if name ~= "OneForAll" then return end
+    self:UnregisterAllEvents()
+    pcall(FLT.RegisterLDBIcon)
+  end)
 end
 
 -- QoL "mmSquare" (5.7.3, user 25.10., off by default): a square minimap with a thin black frame. The round border,

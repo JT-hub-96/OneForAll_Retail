@@ -18,7 +18,7 @@ FLT.PROFESSION_RECIPES["Blacksmithing"] = {
   {s=1230171, i=279944, n="Sharpening Wheel", q=1, cat="Camping", req=20, rw=true, y=20, g=22, gr=25, r={{2835,1,"Rough Stone"}, {2840,1,"Copper Bar"}}},
   {s=3116, i=3240, n="Coarse Weightstone", q=1, lv=5, cat="Weapon Stones", req=40, rw=true, y=40, g=47, gr=55, r={{2836,1,"Coarse Stone"}}},
   {s=3320, i=3470, n="Rough Grinding Stone", q=1, cat="Reagents", req=25, rw=true, y=45, g=65, gr=85, r={{2835,2,"Rough Stone"}}},
-  {s=3326, i=3478, n="Coarse Grinding Stone", q=1, cat="Reagents", req=50, rw=true, y=50, g=62, gr=75, r={{2836,2,"Coarse Stone"}}},
+  {s=3326, i=3478, n="Coarse Grinding Stone", q=1, cat="Reagents", req=50, rw=true, y=50, g=70, gr=90, r={{2836,2,"Coarse Stone"}}},
   {s=2737, i=2844, n="Copper Mace", q=1, lv=4, cat="One-Handed Maces", req=15, rw=true, y=55, g=75, gr=95, r={{2840,6,"Copper Bar"}, {2880,1,"Weak Flux"}, {2589,2,"Linen Cloth"}}},
   {s=2738, i=2845, n="Copper Axe", q=1, lv=4, cat="One-Handed Axes", req=20, rw=true, y=60, g=80, gr=100, r={{2840,6,"Copper Bar"}, {2880,1,"Weak Flux"}, {2589,2,"Linen Cloth"}}},
   {s=3319, i=3469, n="Copper Chain Boots", q=2, lv=4, cat="Mail Boots", req=20, rw=true, y=60, g=80, gr=100, r={{2840,8,"Copper Bar"}}},

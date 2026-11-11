@@ -460,6 +460,12 @@ local function createQoLPanel(parent)
       for _, fn in ipairs(refreshers) do pcall(fn) end
     end)
   end
+  do -- 6.2.5 (user 11.11.): the bar can be moved (Shift-drag) - this puts it back when it got lost somewhere
+    local r = row(g, N"Bar position", N"Back to the top middle of the screen.", nil, 24)
+    button(r, N"Reset", 60, N"For when the bar was moved somewhere you can't reach it.", function()
+      if FLT.InfoBar and FLT.InfoBar.ResetPosition then FLT.InfoBar.ResetPosition() end
+    end)
+  end
   check(g, N"Hide error messages", N"Hides the red messages in the middle of the screen.", N"Messages like \"Out of range\" or \"Not enough rage\" are no longer shown. Still shown: inventory or bags full, quest log full, not enough money, carrying too many of an item.", "hideErrors")
   g = group(c, N"Windows")
   do
@@ -653,7 +659,7 @@ local function createQoLPanel(parent)
   -- GUILD (own category, user 09.11.: "eventuell kommt ja noch mehr dazu")
   c = category("guild", N"Guild", "Interface\\Icons\\INV_Shirt_GuildTabard_01", N"What you share with your guild members who also use OneForAll.")
   g = group(c, N"World Map")
-  check(g, N"Guild members on the map", N"Guild members with OneForAll as dots in their class colour - and you on their map.", N"Only guild members who also use OneForAll and have this switched on. Switched off, your position is not sent any more and you see nobody else either. Inside a dungeon or raid only which one is sent: a green guild flag on its entrance, the names in its tooltip. Members in your group are left out, the game shows them already. Also on the continent map, a little smaller.", "guildMap")
+  check(g, N"Guild members on the map", N"Guild members with OneForAll as dots in their class colour - and you on their map.", N"Only guild members who also use OneForAll and have this switched on. Switched off, your position is not sent any more and you see nobody else either. Inside a dungeon or raid only which one is sent: a green guild flag on its entrance, the names in its tooltip. Members in your group are left out, the game shows them already. Also on the continent map, a little smaller. Guild members who share their position with the addon OpenMap are shown too.", "guildMap")
 
   -- WORLD MAP
   c = category("map", N"World Map", "Interface\\Icons\\INV_Misc_Map_01", N"Icons on the world map.")

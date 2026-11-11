@@ -378,21 +378,38 @@ end
 local function questComplete()
   if not QoL.Get("autoTurnIn") or paused() or not GetQuestReward then return end
   local n = GetNumQuestChoices and GetNumQuestChoices() or 0
-  if n <= 1 then GetQuestReward(n) end -- reward choices stay manual
+  if n <= 1 then
+    local title = GetTitleText and GetTitleText()
+    if title and GetTime then QoL.recentTurnIn[title] = GetTime() end
+    GetQuestReward(n)
+  end -- reward choices stay manual
+end
+-- repeatable quests are left alone (6.2.5, Discord kersey 11.11.: Mangletooth's repeatable Blood Shard quests were turned
+-- in again and again, the other quests never). Gossip and the available list say "repeatable"; for the active list of a
+-- quest greeting the quest log is asked, and a quest turned in a moment ago is not picked again (the loop's safety net)
+-- (table fields, not locals: the file is at 200 locals)
+QoL.recentTurnIn = {} -- [title] = GetTime() of the automatic turn-in
+function QoL.RepeatableID(id)
+  return id and C_QuestLog and C_QuestLog.IsRepeatableQuest and C_QuestLog.IsRepeatableQuest(id) or false
+end
+function QoL.JustTurnedIn(title)
+  local t = title and QoL.recentTurnIn[title]
+  return t and GetTime and GetTime() - t < 60 or false
 end
 local function questGreeting()
   if paused() then return end
   if QoL.Get("autoTurnIn") and GetNumActiveQuests then
     for i = 1, GetNumActiveQuests() or 0 do
-      local _, complete = GetActiveTitle(i)
-      if complete then SelectActiveQuest(i); return end
+      local title, complete = GetActiveTitle(i)
+      local id = GetActiveQuestID and GetActiveQuestID(i)
+      if complete and not QoL.RepeatableID(id) and not QoL.JustTurnedIn(title) then SelectActiveQuest(i); return end
     end
   end
   if QoL.Get("autoAccept") and GetNumAvailableQuests then
     for i = 1, GetNumAvailableQuests() or 0 do
-      local trivial, _, _, _, id = nil, nil, nil, nil, nil
-      if GetAvailableQuestInfo then trivial, _, _, _, id = GetAvailableQuestInfo(i) end
-      if not grey(id, nil, trivial) then SelectAvailableQuest(i); return end
+      local trivial, _, rep, _, id
+      if GetAvailableQuestInfo then trivial, _, rep, _, id = GetAvailableQuestInfo(i) end
+      if not rep and not grey(id, nil, trivial) then SelectAvailableQuest(i); return end
     end
   end
 end
@@ -414,12 +431,15 @@ local function gossipShow()
   end
   if QoL.Get("autoTurnIn") and C_GossipInfo.GetActiveQuests then
     for _, q in ipairs(C_GossipInfo.GetActiveQuests() or {}) do
-      if q.isComplete and q.questID then C_GossipInfo.SelectActiveQuest(q.questID); return end
+      if q.isComplete and q.questID and not q.repeatable and (q.frequency or 0) == 0 and not QoL.RepeatableID(q.questID)
+        and not QoL.JustTurnedIn(q.title) then C_GossipInfo.SelectActiveQuest(q.questID); return end
     end
   end
   if QoL.Get("autoAccept") and C_GossipInfo.GetAvailableQuests then
     for _, q in ipairs(C_GossipInfo.GetAvailableQuests() or {}) do
-      if q.questID and not grey(q.questID, q.questLevel, q.isTrivial) then C_GossipInfo.SelectAvailableQuest(q.questID); return end
+      if q.questID and not q.repeatable and (q.frequency or 0) == 0 and not grey(q.questID, q.questLevel, q.isTrivial) then
+        C_GossipInfo.SelectAvailableQuest(q.questID); return
+      end
     end
   end
 end
@@ -1951,20 +1971,13 @@ local function recipeByItem(id)
   return recipeIndex[id]
 end
 
-local function charKey()
-  local n = UnitName and UnitName("player")
-  local realm = GetRealmName and GetRealmName() or ""
-  return n and (n .. "-" .. realm) or nil
-end
--- Copy this character's known recipes to the account (for "Twinks: ...").
+-- Copy this character's known recipes to the account (for "Twinks: ..."; key FLT.CharKey, 6.2.5).
 function QoL.SnapshotRecipes()
-  if type(OneForAllDB) ~= "table" or type(OneForAllCharDB) ~= "table" then return end
-  local key = charKey(); if not key then return end
+  if type(OneForAllDB) ~= "table" or type(OneForAllCharDB) ~= "table" or not FLT.CharKey then return end
   local profs = OneForAllCharDB.professions
   if type(profs) ~= "table" then return end
   OneForAllDB.altRecipes = OneForAllDB.altRecipes or {}
-  local _, cls = UnitClass("player")
-  local snap = { class = cls }
+  local snap = {}
   for prof, p in pairs(profs) do
     if type(p) == "table" and type(p.known) == "table" then
       local t = {}
@@ -1972,13 +1985,13 @@ function QoL.SnapshotRecipes()
       snap[prof] = t
     end
   end
-  OneForAllDB.altRecipes[key] = snap
+  FLT.CharSave(OneForAllDB.altRecipes, snap)
 end
 local function twinksKnowing(prof, s)
-  local out, me = {}, charKey()
-  for key, data in pairs(type(OneForAllDB) == "table" and OneForAllDB.altRecipes or {}) do
-    if key ~= me and type(data) == "table" and type(data[prof]) == "table" and data[prof][s] then
-      out[#out + 1] = short(key)
+  local out, all = {}, type(OneForAllDB) == "table" and OneForAllDB.altRecipes or {}
+  for key, data in pairs(all) do
+    if not FLT.IsMyChar(key) and type(data) == "table" and type(data[prof]) == "table" and data[prof][s] then
+      out[#out + 1] = FLT.CharLabel(all, key, data)
     end
   end
   table.sort(out)
@@ -2069,7 +2082,13 @@ local SHORT = { -- { pattern, result } in this order; %1 %2 = captures (percent 
   { "^Increases your chance to dodge an attack by ([%d%.]+)%%%.$", "+%1%% Dodge" },
   { "^Increases your chance to parry an attack by ([%d%.]+)%%%.$", "+%1%% Parry" },
   { "^Increases your chance to block attacks with a shield by ([%d%.]+)%%%.$", "+%1%% Block" },
-  { "^Increases the block value of your shield by (%d+)%.$", "+%1 Block Value" },
+  { "^Increases the [Bb]lock [Vv]alue of your shield by (%d+)%.$", "+%1 Block Value" }, -- "Block Value" (Discord 11.11.)
+  -- 6.2.5 (Discord vkinglouie 11.11.: lines left long), checked against all equip spells of the Forever client
+  { "^Increases all threat generated by ([%d%.]+)%%%.$", "+%1%% Threat" },
+  { "^Decreases all threat generated by ([%d%.]+)%%%.$", "-%1%% Threat" },
+  { "^%+(%d+) Attack Power in Cat, Bear, and Dire Bear forms only%.$", "+%1 Feral Attack Power" },
+  { "^Increases melee and ranged attack power by (%d+)%.$", "+%1 Attack Power" },
+  { "^%+(%d+) (%a+)%.$", "+%1 %2" }, -- "+5 Spirit."
   { "^Decreases the magical resistances of your spell targets by (%d+)%.$", "+%1 Spell Penetration" },
   { "^Increases your attack speed by ([%d%.]+)%%%.$", "+%1%% Attack Speed" },
   { "^Increased ([%a%- ]+) %+(%d+)%.$", "+%2 %1" }, -- weapon skills ("Increased Daggers +3.")
