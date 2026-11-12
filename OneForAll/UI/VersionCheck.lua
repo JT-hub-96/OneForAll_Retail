@@ -49,7 +49,7 @@ local function announce(v)
   if told[v] then return end
   told[v] = true
   if FLT.Msg then
-    FLT.Msg("|cffffd100" .. string.format(L["A newer version (%s) is available on CurseForge. You are using %s."], v, myVersion()) .. "|r")
+    FLT.Msg("|cffffd100" .. string.format("A newer version of OneForAll Retail (%s) is available. You are using %s.", v, myVersion()) .. "|r")
   end
 end
 

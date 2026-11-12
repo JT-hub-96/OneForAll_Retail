@@ -326,7 +326,7 @@ local function createSettingsPanel(parent)
   local bottom = math.min(colY[1], colY[2])
   local footer = FLT.NewFS(page, nil, "OVERLAY", "GameFontDisableSmall")
   footer:SetPoint("TOPLEFT", 14, bottom - 2); footer:SetWidth(COL_X[2] + COL_W - 24); footer:SetJustifyH("LEFT") -- wraps (German was cut off)
-  footer:SetText(L["Like OneForAll or have an idea? Post on our Discord (bug button in the title bar) - feedback and suggestions are always welcome."])
+  footer:SetText("OneForAll Retail - a Retail fork of OneForAll by Smoergi (GPL-3.0). Please do not send reports about this fork to the original author.")
   page:SetHeight(-bottom + 12 + math.max(12, footer:GetStringHeight() or 12))
 
   panel:SetScript("OnShow", function() for _, f in ipairs(refreshers) do f() end end)

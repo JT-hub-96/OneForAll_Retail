@@ -12,7 +12,7 @@ Checks: `tools/check.sh` (needs Lua 5.1 and luacheck) verifies that every file i
 
 ---
 
-The original README follows.
+The original README (features of the WoW Forever version) follows; its download and Discord links were removed.
 
 # OneForAll
 
@@ -30,17 +30,10 @@ All-in-one companion addon for **WoW Forever**. No other addons required.
 - **Look** – one gold modern style that can be made see-through, and a logo in five colors
 - **Languages** – English, German, French and Spanish (Settings > General > Language); in a German, French or Spanish game client quest, NPC, item and zone names come in that language too
 
-## Download
+## Bug reports
 
-Get the latest release on **CurseForge** and install it with the CurseForge app, or copy the `OneForAll` folder into the `Interface/AddOns` folder of your WoW Forever installation.
-
-Open the addon with `/ofa` or the minimap button. All commands are listed in `OneForAll/README.txt`.
-
-## Bug reports and ideas
-
-Please post bugs and ideas in our [Discord](https://discord.gg/bQhjSpdA3S) (#bug-reports or #suggestions) with a short description and, if possible, a screenshot.
-The bug button in the addon's title bar shows the link and your recent errors to copy.
-`/ofa where` prints your current map and coordinates, which helps with wrong map pins.
+This is an unofficial fork. **Please do not report bugs of OneForAll Retail to the original author** (his Discord, CurseForge or GitHub) -
+use this repository's issues instead.
 
 ## License
 

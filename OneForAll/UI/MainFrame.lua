@@ -526,28 +526,10 @@ local function decorateWindow()
   bugBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText(L["Report a bug"])
-    GameTooltip:AddLine(L["Where to report bugs and ideas (our Discord), with your last errors to copy."], 1, 1, 1)
+    GameTooltip:AddLine("Your version and last caught errors to copy.", 1, 1, 1)
     GameTooltip:Show()
   end)
   bugBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
-  -- Discord left of the bug button (5.7.3, user 24.10.): a speech bubble (own art), opens the invite link to copy
-  local dcBtn = UI.GoldButton(frame, "", 30, 26, UI.ASSET_ROOT .. "icon_chat", 11)
-  dcBtn:SetPoint("RIGHT", bugBtn, "LEFT", -6, 0)
-  dcBtn:SetFrameLevel(frame:GetFrameLevel() + 25)
-  if dcBtn.icon then
-    dcBtn.icon:ClearAllPoints(); dcBtn.icon:SetSize(14, 14); dcBtn.icon:SetPoint("CENTER", 0, 0)
-    dcBtn.icon:SetVertexColor(FLT.SkinC(1, 0.80, 0.30))
-  end
-  dcBtn:SetScript("OnMouseDown", nil); dcBtn:SetScript("OnMouseUp", nil)
-  dcBtn:SetScript("OnClick", function() GameTooltip:Hide(); UI.ShowDiscord() end)
-  dcBtn:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Discord")
-    GameTooltip:AddLine(L["Join the OneForAll Discord: news, questions and ideas."], 1, 1, 1)
-    GameTooltip:Show()
-  end)
-  dcBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
 local function createUI()
