@@ -1,3 +1,19 @@
+# OneForAll Retail
+
+**A Retail (12.x, Midnight) fork of [OneForAll](https://github.com/smoergi/OneForAll_Forever) by Smoergi**, the all-in-one companion addon for WoW Forever.
+All credit for the original addon, its code and art goes to **Smoergi**. This fork is licensed like the original under the **GNU General Public License v3.0 or later**.
+
+Status: the Quality of Life helpers, info bar, minimap button collector, chat and window tools, profiles and settings work on Retail.
+Dungeons & raids, the Armory, talent planner, professions, gear planner, hunter pets and the world map features use WoW Forever data
+and are switched off (`FLT.Features` in `OneForAll/Core.lua`) until they are rebuilt on the Retail APIs.
+Settings are saved in their own SavedVariables (`OneForAllRetailDB` / `OneForAllRetailCharDB`), separate from the Forever version.
+
+Checks: `tools/check.sh` (needs Lua 5.1 and luacheck) verifies that every file in the `.toc` exists, compiles and passes luacheck.
+
+---
+
+The original README follows.
+
 # OneForAll
 
 All-in-one companion addon for **WoW Forever**. No other addons required.
