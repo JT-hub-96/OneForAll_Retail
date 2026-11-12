@@ -17,10 +17,7 @@ local openDropDown -- below
 -- (5.8.0) starts (TODO.md "Neu-Markierungen").
 local NEW_TAGS = { -- the 6.1.x marks removed when 6.2.0 started (rule: marks stay one minor line)
   infoBar = "6.2.2",
-  npcQuestTip = "6.2.2",
   questXPTracked = "6.2.2",
-  guildMap = "6.2.2",
-  quiverAmmo = "6.2.2",
 }
 -- placed left of the checkbox (or of the label when there is none), user 16.10.
 local function newTag(parent, anchor, key, dx)
@@ -390,7 +387,6 @@ local function createQoLPanel(parent)
   local g = group(c, N"General")
   check(g, N"Farther camera zoom", N"Lets you zoom the camera out further.", nil, "cameraZoom")
   check(g, N"Free bag slots on the backpack", N"Shows the number of free slots on your backpack.", N"Counts all normal bags (quivers, ammo and profession bags are not counted).", "bagSlots")
-  check(g, N"All ammo on the quiver", N"Your quiver or ammo pouch shows all arrows / bullets in your bags.", N"Instead of only what it holds; the game shows \"*\" for more than 999. On by default for hunters.", "quiverAmmo")
   check(g, N"Info bar", N"A band at the top of the screen with the information you choose.", N"Starts empty: right-click the band to add elements (gold, bags, durability, experience, location, clock, FPS, new trainer spells, Library Books, hearthstone, class reagent, guild, friends, mail, Value spec, the tabs of the OneForAll window) or to pin it. Pinned it stays open; else it folds up to a small tab 3 seconds after the mouse left it and opens while the mouse is on it. Click an element to open what belongs to it.", "infoBar")
   do -- size of the info bar (user 08.11.)
     local r = row(g, N"Size", N"How large the info bar is.", nil, 24)
@@ -609,25 +605,17 @@ local function createQoLPanel(parent)
   check(g, N"Quest XP on the experience bar", N"Shows the XP of your finished quests on the experience bar.", N"Marks on the experience bar how much XP your finished quests give when you turn them in. The amount is also shown in the bar's tooltip.", "questXP")
   check(g, N"Only tracked quests", N"Counts only the finished quests you track.", N"Quests you do not track (e.g. ones for later or in a dungeon) are left out.", "questXPTracked", 24)
   g = group(c, N"In the world")
-  check(g, N"Best sell price on rewards", N"A gold coin on the quest reward choice that sells for the most.", N"In the quest log and when you turn in a quest with two or more rewards to choose from: the one with the highest vendor price (times the count) gets a gold coin at its top right. The green upgrade arrow stays at the top left, so an item can have both.", "questSellCoin")
   check(g, N"Quest loot sparkles", N"Quest items in the world sparkle again.", N"The game's loot glow. Changes only this one game setting - your outline settings stay as they are. After switching it off, restart the game.", "questSparkles")
-  check(g, N"Quest marks on nameplates", N"A sword or a bag with your progress on mobs you need for a quest.", N"Sword: you must kill it for a quest. Bag: it drops a quest item. With the progress (3/10); nothing once that part is done. Uses the quest lines the game shows in the mob's tooltip. Not inside dungeons yet.", "questMarks")
-  choice(g, N"Mark position", N"Where the mark sits on the nameplate.", nil, "questMarkPos", FLT.QuestMarks and FLT.QuestMarks.POS_OPTIONS or { { key = "left", label = N"Left" } }, nil, 24) -- no own switch (user 31.10.)
 
   -- TOOLTIPS
   c = category("tips", N"Tooltips", "Interface\\Icons\\INV_Misc_Spyglass_03", N"Extra lines in item and unit tooltips.")
   g = group(c, N"Items")
-  check(g, N"Boss drops", N"Shows which dungeon boss drops an item.", nil, "bossDrops")
-  check(g, N"Gear Value", N"Upgrade or downgrade in % against what you wear.", N"On gear you can use: how much better (green) or worse (red) it is than what you wear, weighted for your talent spec like Armory > Gear Planner. Also a green arrow on upgrades in your bags, the loot roll window and quest rewards, and a gold star for wishlist items (/ofa rolltest shows an example).", "gearValue")
-  check(g, N"Arrow color by armor type", N"Yellow arrow for upgrades in a lighter armor type.", N"The green arrow stays for upgrades in the best armor type of your class. Upgrades in a lighter type get a yellow arrow: warriors and paladins wear plate from level 40 (mail before), hunters and shamans mail from 40 (leather before), rogues and druids leather. Cloaks, jewelry, shields and weapons are not affected. Needs \"Gear Value\".", "arrowTiers", 24)
   check(g, N"Short green stats", N"Long \"Equip:\" lines as short stats, e.g. \"+1% Hit\".", N"\"Equip: Improves your chance to hit by 1%.\" becomes \"+1% Hit\", spell damage and healing get a line each, and \"Enchanted:\" lines put the number first. Lines it does not know stay as they are. Hover the item again after switching.", "shortStats")
   check(g, N"Hide \"appearance not collected\"", N"No more blue \"You haven't collected this appearance\" line on items.", N"Also hides \"You've collected this appearance, but not from this item\". Hover the item again after switching.", "hideAppearance")
-  check(g, N"Recipes: who knows it", N"Whether you, an alt or a guild member knows a recipe.", nil, "recipeTip")
   check(g, N"Disable automatic compare tooltip", N"Hold Shift to see your equipped item next to the tooltip.", N"Item tooltips no longer show your equipped item next to them automatically.", nil, nil,
     function() return Q.GetCompareShift() end, function(v) Q.SetCompareShift(v) end)
   g = group(c, N"Units")
   check(g, N"Target of players", N"Shows who a player or NPC under your mouse is targeting.", N"\"You\" when it is you.", "unitTarget")
-  check(g, N"Quests on NPCs", N"Quests you can take (!) or turn in (?) at the NPC under your mouse.", N"The same quests as the quest icons on the world map: for your level, side, race and class, pre-quests done. Off while Questie is loaded (it shows its own).", "npcQuestTip")
 
   -- SOCIAL
   c = category("social", N"Social", "Interface\\Icons\\INV_Letter_15", N"Group invites, duels, recipe sharing and thanks.")
@@ -646,66 +634,13 @@ local function createQoLPanel(parent)
   end
   g = group(c, N"Duels")
   choice(g, N"Allow duels from", N"Duel requests from everyone else are declined.", N"Off: OneForAll does nothing with duels.", "duelMode", Q.DUEL_OPTIONS, "duelOn")
-  if not FLT.RecipeChannelOff then -- 6.1.4: the channel search is off
-  g = group(c, N"Recipes")
-  check(g, N"Share recipes with other OneForAll users", N"Finds OneForAll users outside your guild who know a recipe.",
-    N"The Search button of a recipe in Professions > All recipes asks the other OneForAll users who know it (blue marker); only a few of them answer, so it stays fast with many players. When off, you are not asked and do not search either. Guild members are always shared. Moved here from Settings in 6.1.0.",
-    nil, nil, function() return FLT.IsRecipeShareEnabled and FLT.IsRecipeShareEnabled() end,
-    function(v) if FLT.SetRecipeShareEnabled then FLT.SetRecipeShareEnabled(v) end end)
-  end
   g = group(c, N"Buffs")
   check(g, N"Thank players who buff you", N"Sends a /thank to players outside your group who buff you.", N"For buffs that last longer than 2 minutes. It comes 1 second later, not in combat, at most once every 5 minutes per player. Your target is not changed. /ofa thanks shows the last buffs.", "thanksBuff")
 
-  -- GUILD (own category, user 09.11.: "eventuell kommt ja noch mehr dazu")
-  c = category("guild", N"Guild", "Interface\\Icons\\INV_Shirt_GuildTabard_01", N"What you share with your guild members who also use OneForAll.")
-  g = group(c, N"World Map")
-  check(g, N"Guild members on the map", N"Guild members with OneForAll as dots in their class colour - and you on their map.", N"Only guild members who also use OneForAll and have this switched on. Switched off, your position is not sent any more and you see nobody else either. Inside a dungeon or raid only which one is sent: a green guild flag on its entrance, the names in its tooltip. Members in your group are left out, the game shows them already. Also on the continent map, a little smaller. Guild members who share their position with the addon OpenMap are shown too.", "guildMap")
-
-  -- WORLD MAP
+  -- WORLD MAP (Retail fork: landmarks, quest icons, fog and zone levels need the Forever data - phase 6)
   c = category("map", N"World Map", "Interface\\Icons\\INV_Misc_Map_01", N"Icons on the world map.")
-  g = group(c, N"Map Landmarks")
-  check(g, N"Map Landmarks", N"Dungeon entrances, flight masters, ships, the tram and Library Books on the map.", N"Your faction and neutral ones. Click an entrance to open that dungeon in OneForAll. Zeppelins, ships, the tram and flight masters show where they go.", "mapLandmarks")
-  check2(g, { N"Dungeon & raid entrances", N"Click to open the dungeon in OneForAll.", nil, "lmDungeons" },
-    { N"Flight masters", N"Shows where they fly to.", nil, "lmFlight" }, 24)
-  check2(g, { N"Zeppelins, ships & tram", N"Shows where they go.", nil, "lmTransport" },
-    { N"Zone transitions", N"A signpost where a road leads into the next zone.", N"The tooltip names the other zone; a click shows it on the map. Places from the addon Carbonite (GPL).", "lmTransitions" }, 24)
-  check2(g, { N"Library Books", N"A book icon where each Library Book you still need lies.", N"Books in your bags or bank, turned in or marked by you are not shown. Click a book to see it in the Library Books tab.", "mapBooks" },
-    { N"Skyborne: Ley Lines & Convergences", N"For Skyborne: where to charge your racial for an hour.", N"High Order (Alliance) see the Ley Lines for Read Leyline (Attuned: 100% regeneration for 1 hour), Windshapers (Horde) the Elemental Convergences for Skysight (Charged: 30% movement speed for 1 hour). On by default for Skyborne; other races see the spots of their faction when they switch it on. Locations from the addon \"Skyborne Leyline & Convergence Marker\" by tr0tsky.", "lmSkyborne" }, 24)
-  g = group(c, N"Quests")
-  check(g, N"Quest icons", N"A yellow ! at quest givers with quests for your level, a ? where you turn in finished quests.", N"Only quests you can take now: your level (no grey ones, none too high), your side and class, pre-quests done. Hover an icon for the quests and their levels. Hidden while Questie is loaded, it shows its own. Quest data from QuestieDB (GPL); the new Forever zones are not in it yet.", "mapQuests")
-  -- 6.1.9 (user 07.11.: our ? lay over the game's own one): the ! and the ? each on their own
-  check2(g, { N"Quest givers (!)", N"A yellow ! where you can take a quest.", nil, "mapQuestGivers" },
-    { N"Turn-ins (?)", N"A yellow ? where you turn in a finished quest.", N"Switch it off when the game's own ? already shows on the map.", "mapQuestTurnins" }, 24)
-  check(g, N"Also on the continent map", N"The quest icons also when you zoom out of a zone.", N"All zones of the continent at once, a little smaller, without the routes of walking quest givers. Needs \"Quest icons\".", "mapQuestsContinent", 24)
-  g = group(c, N"Map button")
-  check(g, N"OneForAll button on the map", N"A logo at the top left of the world map with all these switches.", N"Click it for a quick list: Map Landmarks and its parts, Remove Fog and the dungeon map. It sits below other addons' buttons there (RareScanner ...).", "mapButton")
-  g = group(c, N"Exploration")
-  do -- with a slider for how visible the unexplored parts are (user 01.11.)
-    local r = check(g, N"Remove Fog", N"Shows the parts of a zone you have not explored yet.", N"The world map normally hides the areas you have not visited. With this the whole zone map is shown. The slider sets how visible the unexplored parts are (0 % hidden, 100 % fully shown).", "mapFog")
-    local val = FLT.NewFS(r, nil, "OVERLAY", "GameFontHighlight"); val:SetTextColor(FLT.SkinC(1, 0.82, 0.2))
-    val:SetWidth(40); val:SetJustifyH("RIGHT"); place(r, val)
-    local sl = UI.Slider(r, 130, 0, 100, 5, function(v)
-      val:SetText(v .. " %")
-      if Q.Get("mapFogAlpha") ~= v then Q.Set("mapFogAlpha", v) end
-    end)
-    place(r, sl, 10)
-    hint(sl, N"Unexplored areas", N"How visible the parts you have not explored yet are: 0 % hidden, 100 % fully shown. Mouse wheel or drag.")
-    local function show()
-      local v = Q.Get("mapFogAlpha") or 100; sl:SetValue(v); val:SetText(v .. " %")
-      local on = Q.Get("mapFog") and true or false; sl:SetAlpha(on and 1 or 0.4); sl:EnableMouse(on); sl:EnableMouseWheel(on)
-    end
-    refreshers[#refreshers + 1] = show
-    r.cb:HookScript("OnClick", show) -- greyed out while Remove Fog is off
-  end
-  check(g, N"Zone level range", N"The zone's level range at the top right of the world map and when you hover a zone.", N"At the top right of a zone map, and behind the zone name when you hover a zone on the continent map. Gold: your level, red: still too low, grey: you are above it.", "mapZoneLevel")
   g = group(c, N"Flights")
-  check2(g, { N"Open flight map at once", N"At a flight master, straight to the flight map.", N"Not when the flight master also has quests for you. Hold Shift to talk normally.", "flightMapNow" },
-    { N"Flight times", N"A bar with the time left while you fly.", N"The time also shows in the tooltip of the destinations on the flight map. OneForAll measures your flights; routes you never flew are estimated (\"about\").", "flightTimes" })
-  g = group(c, N"Dungeons")
-  -- moved from Settings (5.6.8, user 22.10.); on by default: only an explicit "off" turns it off
-  check(g, N"Dungeon map on M", N"Inside a dungeon, M opens OneForAll's dungeon map.", N"Inside a dungeon that has a map, the world map key (M) opens OneForAll's dungeon map instead of the world map. Press it again to close. Takes effect outside combat.", nil, nil,
-    function() return type(OneForAllDB) == "table" and OneForAllDB.dungeonMapKey ~= false end,
-    function(v) if type(OneForAllDB) == "table" then OneForAllDB.dungeonMapKey = v and true or false end; if FLT.ApplyDungeonMapKey then FLT.ApplyDungeonMapKey() end end)
+  check(g, N"Open flight map at once", N"At a flight master, straight to the flight map.", N"Not when the flight master also has quests for you. Hold Shift to talk normally.", "flightMapNow")
 
   -- UNIT FRAMES
   c = category("frames", N"Unit Frames", "Interface\\Icons\\INV_Misc_Head_Human_01", N"Colors and bars of the unit and raid frames.")
@@ -718,32 +653,6 @@ local function createQoLPanel(parent)
   check(g, N"Power bars: raid frames", N"Mana, rage and energy bars in the raid frames.", N"A game setting.", nil, nil,
     function() return Q.GetCVarSwitch("raidPowerBars") end, function(v) Q.SetCVarSwitch("raidPowerBars", v) end)
 
-  -- SPELLS
-  c = category("spells", N"Spells", "Interface\\Icons\\INV_Misc_Book_11", N"Your action bars and the spellbook.")
-  g = group(c, N"Action bars")
-  do
-    local LR = FLT.LowRank
-    local r = check(g, N"Check low spell ranks", N"Offers the highest rank for spells on your bars.", N"Looks for spells on your action bars that use a lower rank than one you already know, and offers to put the highest rank there. After a trainer visit it waits until you close the trainer window. Macros are not checked.", "lowRank")
-    button(r, N"Check now", 90, N"Checks your action bars right away.", function() if LR then LR.Check("button") end end)
-    r = row(g, N"Kept ranks", N"Ranks you keep on purpose (Keep in the popup).", N"Click one to have it reported again.", 24)
-    local b = dropButton(r, 110)
-    local function show() local n = LR and #LR.GetKept() or 0; b:SetLabel(n == 1 and L["1 spell"] or string.format(L["%d spells"], n)) end
-    b:SetScript("OnClick", function(self)
-      if not LR then return end
-      local opts = LR.GetKept()
-      for _, e in ipairs(opts) do e.remove = true end -- a click removes it: red cross
-      if #opts == 0 then opts = { { key = "__none", label = "|cff9d9d9d" .. L["Nothing kept"] .. "|r" } }
-      else opts[#opts + 1] = { key = "__all", label = FLT.SkinHex("ffd35a") .. L["Remove all"] .. "|r" } end
-      openDropDown(self, opts, nil, function(k)
-        if k == "__all" then LR.ClearKept() elseif k ~= "__none" then LR.RemoveKept(k) end
-        show()
-      end, 260)
-    end)
-    refreshers[#refreshers + 1] = show
-  end
-  g = group(c, N"Spellbook")
-  check(g, N"Trainer button in the spellbook", N"A book button in the spellbook (P) opens the trainer window.", N"Shows the spells and ranks your class trainer teaches that you do not know yet, next to the spellbook.", "spellbookTrainer",
-    nil, nil, function(v) Q.Set("spellbookTrainer", v); local psf = rawget(_G, "PlayerSpellsFrame"); local b = type(psf) == "table" and psf.ofaTrainerButton; if b then b:SetShown(v) end end)
   -- POPUPS & ALERTS (moved from Settings, 5.6.8, user 22.10.)
   c = category("alerts", N"Popups & Alerts", "Interface\\Icons\\INV_Misc_Bell_01", N"Popups that come up on their own while you play.")
   g = group(c, N"Buff reminder")
@@ -836,15 +745,6 @@ local function createQoLPanel(parent)
   end
   g = group(c, N"Popups")
   check(g, N"Durability warning", N"Warns when your gear drops to 20% durability.", nil, "durability")
-  check(g, N"Nearby Library Book alerts", N"Popup when you are close to a missing library book.", nil, nil, nil,
-    function() return FLT.IsNearbyAlertsEnabled and FLT:IsNearbyAlertsEnabled() and true or false end,
-    function(v) if FLT.SetNearbyAlertsEnabled then FLT:SetNearbyAlertsEnabled(v) end end)
-  check(g, N"Pet ability alerts (Hunter)", N"Popup when a beast nearby teaches a higher ability rank your pets can learn.", nil, nil, nil,
-    function() return FLT.IsPetTeachAlertsEnabled and FLT:IsPetTeachAlertsEnabled() and true or false end,
-    function(v) if FLT.SetPetTeachAlertsEnabled then FLT:SetPetTeachAlertsEnabled(v) end end)
-  check(g, N"Quest share popup in dungeons", N"Opens when a group member can still accept one of your dungeon quests.", nil, nil, nil,
-    function() return not (type(OneForAllDB) == "table" and type(OneForAllDB.questShare) == "table" and OneForAllDB.questShare.popup == false) end,
-    function(v) if type(OneForAllDB) == "table" then OneForAllDB.questShare = OneForAllDB.questShare or {}; OneForAllDB.questShare.popup = v and true or false end end)
   ---------------------------------------------------------------------------------------------------
 
   -- left: one button per group with "on / switches"

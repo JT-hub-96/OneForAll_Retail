@@ -2,14 +2,14 @@ local _, FLT = ...
 local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
 
 -- New version notice, shown only right after logging in.
--- About 20 s after login the addon asks the guild, the group and the hidden
--- recipe-sharing channel which version they run ("Q" + own version). Players
--- with a newer version answer once ("V" + their version). A newer version is
--- confirmed by one guild/group member or by two different channel players.
+-- About 20 s after login the addon asks the guild and the group which version
+-- they run ("Q" + own version). Players with a newer version answer once
+-- ("V" + their version). A newer version is confirmed by one guild/group member.
+-- Retail fork: own prefix, so it never talks to the WoW Forever version.
 -- The yellow note is printed during the first minutes after login only; a
 -- newer version seen later is remembered and shown at the next login.
 
-local PREFIX = "OFAVER"
+local PREFIX = "OFARetail"
 local LOGIN_WINDOW = 180 -- seconds after login in which the note may appear
 
 local function myVersion()
@@ -42,7 +42,7 @@ local loginTime
 
 local function now() return GetTime and GetTime() or 0 end
 local function enabled()
-  return not (type(OneForAllDB) == "table" and OneForAllDB.versionNotice == false)
+  return not (type(OneForAllRetailDB) == "table" and OneForAllRetailDB.versionNotice == false)
 end
 
 local function announce(v)
@@ -57,11 +57,11 @@ local function confirmed(v)
   if not enabled() then return end
   if loginTime and now() - loginTime <= LOGIN_WINDOW then
     announce(v)
-  elseif type(OneForAllDB) == "table" then
+  elseif type(OneForAllRetailDB) == "table" then
     -- too late in the session: remember it for the next login
-    local old = parse(OneForAllDB.pendingNewVersion, false)
+    local old = parse(OneForAllRetailDB.pendingNewVersion, false)
     local t = parse(v, false)
-    if not old or newer(t, old) then OneForAllDB.pendingNewVersion = v end
+    if not old or newer(t, old) then OneForAllRetailDB.pendingNewVersion = v end
   end
 end
 
@@ -81,18 +81,10 @@ local function send(msg, dist, target)
   pcall(C_ChatInfo.SendAddonMessage, PREFIX, msg, dist, target)
 end
 
-local function channelID()
-  if FLT.RecipeChannelOff then return end -- 6.1.4: no channel any more
-  local id = GetChannelName and GetChannelName(FLT.RecipeChannelName and FLT.RecipeChannelName() or "OFAShare3")
-  if id and id > 0 then return id end
-end
-
 local function ask()
   local q = "Q\t" .. myVersion()
   if IsInGuild and IsInGuild() then send(q, "GUILD") end
   if IsInRaid and IsInRaid() then send(q, "RAID") elseif IsInGroup and IsInGroup() then send(q, "PARTY") end
-  local id = channelID()
-  if id then send(q, "CHANNEL", id) end
 end
 
 -- Answer someone with an older version once (random delay, skipped if another
@@ -106,12 +98,7 @@ local function answer(dist)
   if not parse(v, false) then return end -- test builds never answer
   local function go()
     if answeredBy[v] and now() - answeredBy[v] < 30 then return end
-    if dist == "CHANNEL" then
-      local id = channelID()
-      if id then send("V\t" .. v, "CHANNEL", id) end
-    else
-      send("V\t" .. v, dist)
-    end
+    send("V\t" .. v, dist)
   end
   if C_Timer and C_Timer.After then C_Timer.After(1 + math.random() * 5, go) else go() end
 end
@@ -125,19 +112,19 @@ ev:SetScript("OnEvent", function(_, event, prefix, msg, channel, sender)
     if C_Timer and C_Timer.After then
       -- a newer version seen in an earlier session
       C_Timer.After(8, function()
-        if type(OneForAllDB) ~= "table" then return end
-        local p = OneForAllDB.pendingNewVersion
-        OneForAllDB.pendingNewVersion = nil
+        if type(OneForAllRetailDB) ~= "table" then return end
+        local p = OneForAllRetailDB.pendingNewVersion
+        OneForAllRetailDB.pendingNewVersion = nil
         local t = parse(p, false)
         if t and newer(t, mine) and enabled() then announce(p) end
       end)
-      -- after the recipe-sharing channel is joined (about 12 s after login)
       C_Timer.After(20, ask)
     end
-  elseif event == "CHAT_MSG_ADDON" and prefix == PREFIX and type(msg) == "string" then
+  elseif event == "CHAT_MSG_ADDON" and not FLT.IsSecret(prefix, msg, channel) and prefix == PREFIX and type(msg) == "string" then
     local kind, v = msg:match("^(%a)\t(.+)$")
     if not kind then return end
-    local trusted = channel == "GUILD" or channel == "PARTY" or channel == "RAID"
+    local trusted = channel == "GUILD" or channel == "PARTY" or channel == "RAID" or channel == "INSTANCE_CHAT"
+    if not trusted then return end
     if kind == "V" then
       answeredBy[v] = now()
       onVersion(v, sender, trusted)

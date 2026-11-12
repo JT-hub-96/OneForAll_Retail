@@ -14,8 +14,8 @@ local COL_W = 488
 local COL_X = {8, 508}
 
 local function db()
-  if type(OneForAllDB) ~= "table" then return {} end
-  return OneForAllDB
+  if type(OneForAllRetailDB) ~= "table" then return {} end
+  return OneForAllRetailDB
 end
 
 local function createSettingsPanel(parent)
@@ -153,47 +153,49 @@ local function createSettingsPanel(parent)
   refreshers[#refreshers + 1] = refreshCells
   tabs:finish()
 
-  -- Dungeon list brackets, one per row
-  local function browseCfg()
-    local d = db()
-    d.dungeonBrowse = d.dungeonBrowse or {}
-    d.dungeonBrowse.hiddenBrackets = d.dungeonBrowse.hiddenBrackets or {}
-    return d.dungeonBrowse
-  end
-  local used = {}
-  for _, d in ipairs(FLT.DUNGEONS or {}) do
+  if FLT.HasFeature("dungeons") then -- Retail fork: back with the Encounter Journal dungeons (phase 2)
+    -- Dungeon list brackets, one per row
+    local function browseCfg()
+      local d = db()
+      d.dungeonBrowse = d.dungeonBrowse or {}
+      d.dungeonBrowse.hiddenBrackets = d.dungeonBrowse.hiddenBrackets or {}
+      return d.dungeonBrowse
+    end
+    local used = {}
+    for _, d in ipairs(FLT.DUNGEONS or {}) do
+      for _, br in ipairs(UI.DUNGEON_BRACKETS or {}) do
+        if (d.minLevel or 0) >= br.min and (d.minLevel or 0) <= br.max then used[br.id] = true end
+      end
+    end
+    local dun = section(1, L["Dungeons | Raids"], "Interface\\Icons\\INV_Misc_Map_01")
+    -- Left: the level brackets one below the other. Right: the other switches.
+    local left, right = {}, {}
     for _, br in ipairs(UI.DUNGEON_BRACKETS or {}) do
-      if (d.minLevel or 0) >= br.min and (d.minLevel or 0) <= br.max then used[br.id] = true end
+      if used[br.id] then
+        local id = br.id
+        left[#left + 1] = { L[br.label], L["Hide a bracket you no longer need, e.g. once you have outleveled it."],
+          function() return not browseCfg().hiddenBrackets[id] end,
+          function(v) browseCfg().hiddenBrackets[id] = (not v) or nil; if UI.RefreshDungeonList then UI.RefreshDungeonList() end end }
+      end
     end
-  end
-  local dun = section(1, L["Dungeons | Raids"], "Interface\\Icons\\INV_Misc_Map_01")
-  -- Left: the level brackets one below the other. Right: the other switches.
-  local left, right = {}, {}
-  for _, br in ipairs(UI.DUNGEON_BRACKETS or {}) do
-    if used[br.id] then
-      local id = br.id
-      left[#left + 1] = { L[br.label], L["Hide a bracket you no longer need, e.g. once you have outleveled it."],
-        function() return not browseCfg().hiddenBrackets[id] end,
-        function(v) browseCfg().hiddenBrackets[id] = (not v) or nil; if UI.RefreshDungeonList then UI.RefreshDungeonList() end end }
+    right[#right + 1] = { L["Only dungeons for my level"], L["Hides dungeons that are more than 3 levels above you or that you have clearly outleveled."],
+      function() return browseCfg().onlyFit and true or false end,
+      function(v) browseCfg().onlyFit = v or nil; if UI.RefreshDungeonList then UI.RefreshDungeonList() end end }
+    right[#right + 1] = { L["Highest levels first"], L["Shows the high-level brackets at the top of the dungeon list and sorts the dungeons from the highest level down."],
+      function() return browseCfg().highFirst and true or false end,
+      function(v) browseCfg().highFirst = v or nil; if UI.RefreshDungeonList then UI.RefreshDungeonList() end end }
+    right[#right + 1] = { L["Show recipe drops in boss loot"], L["Lists the recipes a boss can drop below its loot, with the same markers as in Professions."],
+      function() return db().dungeonRecipes ~= false end,
+      function(v) db().dungeonRecipes = v end }
+    -- "Dungeon map on M" moved to Quality of Life > World Map (5.6.8, user 22.10.)
+    for i = 1, math.max(#left, #right) do
+      local l, r = left[i], right[i]
+      if l then dun:check(l[1], l[2], l[3], l[4], 0, true) end
+      if r then dun:check(r[1], r[2], r[3], r[4], 220, true) end
+      dun:nextRow()
     end
+    dun:finish()
   end
-  right[#right + 1] = { L["Only dungeons for my level"], L["Hides dungeons that are more than 3 levels above you or that you have clearly outleveled."],
-    function() return browseCfg().onlyFit and true or false end,
-    function(v) browseCfg().onlyFit = v or nil; if UI.RefreshDungeonList then UI.RefreshDungeonList() end end }
-  right[#right + 1] = { L["Highest levels first"], L["Shows the high-level brackets at the top of the dungeon list and sorts the dungeons from the highest level down."],
-    function() return browseCfg().highFirst and true or false end,
-    function(v) browseCfg().highFirst = v or nil; if UI.RefreshDungeonList then UI.RefreshDungeonList() end end }
-  right[#right + 1] = { L["Show recipe drops in boss loot"], L["Lists the recipes a boss can drop below its loot, with the same markers as in Professions."],
-    function() return db().dungeonRecipes ~= false end,
-    function(v) db().dungeonRecipes = v end }
-  -- "Dungeon map on M" moved to Quality of Life > World Map (5.6.8, user 22.10.)
-  for i = 1, math.max(#left, #right) do
-    local l, r = left[i], right[i]
-    if l then dun:check(l[1], l[2], l[3], l[4], 0, true) end
-    if r then dun:check(r[1], r[2], r[3], r[4], 220, true) end
-    dun:nextRow()
-  end
-  dun:finish()
 
   -- RIGHT COLUMN ---------------------------------------------------------------
   local gen = section(2, L["General"], "Interface\\Icons\\INV_Misc_Gear_01")
@@ -331,5 +333,22 @@ local function createSettingsPanel(parent)
   panel:Hide()
   return panel
 end
+
+-- Retail: an entry in the game's options (Esc > Options > AddOns) that opens the OneForAll window
+local function registerBlizzardCategory()
+  if not (Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory) then return end
+  local f = CreateFrame("Frame")
+  local t = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalLarge"); t:SetPoint("TOPLEFT", 16, -16); t:SetText(UI.DISPLAY_NAME)
+  local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate"); b:SetSize(200, 26); b:SetPoint("TOPLEFT", t, "BOTTOMLEFT", 0, -12)
+  b:SetText(L["Settings"] .. " (/ofa)")
+  b:SetScript("OnClick", function()
+    if HideUIPanel and SettingsPanel then HideUIPanel(SettingsPanel) end
+    if FLT.OpenPanel then FLT:OpenPanel("settings") end
+  end)
+  local cat = Settings.RegisterCanvasLayoutCategory(f, UI.DISPLAY_NAME)
+  Settings.RegisterAddOnCategory(cat)
+  FLT.SettingsCategory = cat
+end
+FLT.SafeCall("SettingsCategory", registerBlizzardCategory)
 
 UI.RegisterPanel({ key="settings", label=N"Settings", order=0, tabWidth=27, icon="Interface\\Icons\\INV_Misc_Gear_01", create=createSettingsPanel, combatLock=true })

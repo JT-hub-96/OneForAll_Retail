@@ -10,27 +10,17 @@ local makeTexture, makeButton = UI.makeTexture, UI.makeButton
 -- 6.0.2 (user 01.11.): World Map, dungeon quests, Gear Planner filters, talent import - not shown automatically.
 
 local NEWS_AUTO = true -- set true (and a new NEWS_ID) for the next release with news
--- 6.1.6 (agreed with the user 06.11.): more reagent sources and more quest "!" on the world map, not shown automatically.
--- 6.2.0 (user 07.11.): only the languages, shown automatically once.
--- 6.2.2 (user 09.11.): the info bar and guild members on the world map, shown automatically once.
-local NEWS_ID = "6.2.2"
+-- Retail fork 1.0.0: what the fork is, shown automatically once.
+local NEWS_ID = "retail-1.0.0"
 
 -- images (optional): pictures in a row under the lines, each { tex, shown width, shown height, texcoord right,
--- texcoord bottom } (made by tools/art/proc_news.py from the user's screenshots in source_images/news)
--- qol = the Quality of Life group the button opens; shot = a screenshot behind a "Show me" button (user 09.11.):
--- { texture, shown width, shown height, texcoord right, texcoord bottom } (tools/art/proc_news.py)
+-- texcoord bottom }; qol = the Quality of Life group the button opens; shot = a screenshot behind a "Show me" button
 local NEWS = {
-  { icon = "Interface\\Icons\\INV_Misc_PocketWatch_01", title = N"Info bar", tab = "qol", qol = "iface", button = N"Open Quality of Life",
-    shot = { "news_infobar", 1024, 84, 1, 0.65625 },
+  { icon = "Interface\\Icons\\INV_Misc_Gear_01", title = N"OneForAll Retail", tab = "qol", qol = "iface", button = N"Open Quality of Life",
     lines = {
-      N"A band at the top of the screen with what you choose: gold, bags, durability, experience, clock, guild, friends, the game's windows and more.",
-      N"Switch it on in Quality of Life > Interface, then right-click the band to add elements. Size, colour and opacity are set there too.",
-    } },
-  { icon = "Interface\\Icons\\INV_Shirt_GuildTabard_01", title = N"Guild members on the world map", tab = "qol", qol = "guild", button = N"Open Quality of Life",
-    lines = {
-      N"Guild members who also use OneForAll show as dots in their class colour on the zone and continent map.",
-      N"Inside a dungeon or raid a green guild flag sits on its entrance, and its tooltip names who is inside.",
-      N"One switch in Quality of Life > Guild for both ways: switched off, nobody sees you and you see nobody.",
+      N"OneForAll for the Retail game: a fork of OneForAll by Smoergi (made for WoW Forever), GPL-3.0.",
+      N"In this first version: the Quality of Life helpers, the info bar, the minimap button collector, chat and window tools, profiles.",
+      N"Dungeons & raids, talents, professions and the gear planner are being rebuilt for Retail and come back in later versions.",
     } },
 }
 
@@ -148,16 +138,16 @@ end
 function FLT.ShowNews()
   if not frame then frame = create() end
   frame:Show()
-  if type(OneForAllDB) == "table" then OneForAllDB.newsSeen = NEWS_ID end
+  if type(OneForAllRetailDB) == "table" then OneForAllRetailDB.newsSeen = NEWS_ID end
 end
 
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_LOGIN")
 ev:SetScript("OnEvent", function()
   if not NEWS_AUTO then return end -- 6.0.0: no news popup, a clean start; only the welcome setup (user 27.10.)
-  if type(OneForAllDB) ~= "table" then return end
+  if type(OneForAllRetailDB) ~= "table" then return end
   if FLT.WelcomeDue and FLT.WelcomeDue() then return end -- the welcome setup first; the news come with the next login
-  local seen = OneForAllDB.newsSeen
+  local seen = OneForAllRetailDB.newsSeen
   if type(seen) == "string" and (seen == NEWS_ID or seen:sub(1, #NEWS_ID + 1) == NEWS_ID .. ".") then return end
   if C_Timer and C_Timer.After then C_Timer.After(6, FLT.ShowNews) else FLT.ShowNews() end
 end)
