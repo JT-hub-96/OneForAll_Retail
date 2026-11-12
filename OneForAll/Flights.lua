@@ -3,18 +3,18 @@ local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -
 
 -- Flight times (6.1.5, user 05.11.): from the length of the flight paths in the client data (Data/FlightPaths.lua,
 -- yards / taxi speed, summed over the stops of the route), corrected by the flights you take: per route "From>To" the
--- measured time is kept in OneForAllDB.flightTimes and used first; the ratio measured / computed
--- (OneForAllDB.flightFactor) corrects the other routes. Without path data: an estimate from the straight distance on
--- the flight map (OneForAllDB.flightPace), marked "about".
+-- measured time is kept in OneForAllRetailDB.flightTimes and used first; the ratio measured / computed
+-- (OneForAllRetailDB.flightFactor) corrects the other routes. Without path data: an estimate from the straight distance on
+-- the flight map (OneForAllRetailDB.flightPace), marked "about".
 -- Shows: a small bar with the destination and the time left while flying, and the time in the tooltip of the
 -- destinations on the flight map. Option "Flight times" (QoL > World Map). A 1 s ticker runs only while flying.
 
 local Q = FLT.QoL
 local function on() return Q and Q.Get and Q.Get("flightTimes") end
 local function db()
-  if type(OneForAllDB) ~= "table" then return nil end
-  OneForAllDB.flightTimes = OneForAllDB.flightTimes or {}
-  return OneForAllDB
+  if type(OneForAllRetailDB) ~= "table" then return nil end
+  OneForAllRetailDB.flightTimes = OneForAllRetailDB.flightTimes or {}
+  return OneForAllRetailDB
 end
 
 -- the flight map: name and position of the node you stand at, and of node i
@@ -99,7 +99,7 @@ end
 if hooksecurefunc and TakeTaxiNode then hooksecurefunc("TakeTaxiNode", function(i) FLT.SafeCall("Flights", onTake, i) end) end
 
 -- the small window while flying (user 05.11.): the flight master icon and the time left; drag to move (kept in
--- OneForAllDB.qol.flightPos), the destination in its tooltip
+-- OneForAllRetailDB.qol.flightPos), the destination in its tooltip
 local bar
 local function makeBar()
   local UI = FLT.UI

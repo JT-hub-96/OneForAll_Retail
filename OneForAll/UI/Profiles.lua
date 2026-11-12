@@ -4,7 +4,7 @@ local UI = FLT.UI
 
 -- Profiles (6.0.1, user 31.10.2026): a profile holds the Settings options, the Quality of Life options and the
 -- shown tabs + their order - not the window size / position and no collected data.
--- Saved account-wide in OneForAllDB.profiles[name]; each character picks one (OneForAllCharDB.profile, new
+-- Saved account-wide in OneForAllRetailDB.profiles[name]; each character picks one (OneForAllRetailCharDB.profile, new
 -- characters "Default"). The live tables stay where they are: at ADDON_LOADED the character's profile is copied
 -- into them, at PLAYER_LOGOUT (also on /reload) they are copied back into that profile. Switching copies the new
 -- profile in and reloads via the secure "/reload" button of UI.Confirm (ReloadUI is protected in Forever).
@@ -26,13 +26,13 @@ local function copy(v)
 end
 
 local function store()
-  OneForAllDB.profiles = OneForAllDB.profiles or {}
-  return OneForAllDB.profiles
+  OneForAllRetailDB.profiles = OneForAllRetailDB.profiles or {}
+  return OneForAllRetailDB.profiles
 end
 
 -- live settings -> profile table
 local function snapshot()
-  local d, c = OneForAllDB, OneForAllCharDB or {}
+  local d, c = OneForAllRetailDB, OneForAllRetailCharDB or {}
   local p = { qol = copy(d.qol), tabs = copy(c.tabs), tabOrder = copy(c.tabOrder),
     windowAlpha = type(d.window) == "table" and d.window.alpha or nil }
   for _, k in ipairs(SCALARS) do p[k] = d[k] end
@@ -45,7 +45,7 @@ end
 
 -- profile table -> live settings (an empty profile = the defaults)
 local function apply(p)
-  local d, c = OneForAllDB, OneForAllCharDB
+  local d, c = OneForAllRetailDB, OneForAllRetailCharDB
   d.qol = copy(p.qol)
   for _, k in ipairs(SCALARS) do d[k] = p[k] end
   d.dungeonBrowse = d.dungeonBrowse or {}
@@ -56,7 +56,7 @@ end
 
 -- renamed profiles: other characters still hold the old name (their CharDB cannot be reached from here)
 local function resolve(name)
-  local list, ren = store(), OneForAllDB.profileRenames
+  local list, ren = store(), OneForAllRetailDB.profileRenames
   for _ = 1, 8 do
     if list[name] or type(ren) ~= "table" or not ren[name] then break end
     name = ren[name]
@@ -65,20 +65,20 @@ local function resolve(name)
 end
 
 function P.Active()
-  return type(OneForAllCharDB) == "table" and OneForAllCharDB.profile or DEFAULT
+  return type(OneForAllRetailCharDB) == "table" and OneForAllRetailCharDB.profile or DEFAULT
 end
 
 -- Core.lua, ADDON_LOADED (before the first-start defaults, so an empty profile gets them)
 function P.Load()
   local list = store()
   if not list[DEFAULT] then list[DEFAULT] = snapshot() end -- first start with profiles: the current settings
-  local name = resolve(OneForAllCharDB.profile or DEFAULT)
-  OneForAllCharDB.profile = name
+  local name = resolve(OneForAllRetailCharDB.profile or DEFAULT)
+  OneForAllRetailCharDB.profile = name
   apply(list[name])
 end
 
 function P.Save()
-  if type(OneForAllDB) ~= "table" or type(OneForAllCharDB) ~= "table" then return end
+  if type(OneForAllRetailDB) ~= "table" or type(OneForAllRetailCharDB) ~= "table" then return end
   store()[P.Active()] = snapshot()
 end
 
@@ -105,7 +105,7 @@ function P.Switch(name)
   if not store()[name] or name == P.Active() then return end
   UI.Confirm(string.format(L["Switch this character to the profile %s?\nThe interface reloads."], "|cffffd100" .. name .. "|r"), function()
     P.Save()
-    OneForAllCharDB.profile = name
+    OneForAllRetailCharDB.profile = name
     apply(store()[name])
   end, L["Reload"], "/reload")
 end
@@ -115,7 +115,7 @@ local function offerSwitch(name, what)
   if InCombatLockdown and InCombatLockdown() then FLT.Msg(what .. " " .. L["Switch to it in Settings > Profiles."]); return end
   UI.Confirm(what .. "\n" .. L["Switch this character to it now? The interface reloads."], function()
     P.Save()
-    OneForAllCharDB.profile = name
+    OneForAllRetailCharDB.profile = name
     apply(store()[name])
   end, L["Switch"], "/reload")
 end
@@ -225,17 +225,17 @@ end
 
 -- Sending (addon messages) -------------------------------------------------------
 -- Only to single players (no guild, user 31.10.). The receiver must have "Receive shared profiles" on
--- (OneForAllDB.profileReceive, account-wide, default OFF - user 31.10.):
+-- (OneForAllRetailDB.profileReceive, account-wide, default OFF - user 31.10.):
 --   sender "Q:<id>"  ->  receiver "A:<id>" (allowed) or "N:<id>" (switched off)  ->  sender "<id>:<i>:<n>:<part>" ...
 -- Parts are only taken from a sender the receiver said yes to; no answer within 5 s = offline / no OneForAll.
-local PREFIX, CHUNK = "OFAProfile", 230
+local PREFIX, CHUNK = "OFARetailProf", 230 -- Retail fork: own prefix
 local sendSerial, incoming, outgoing, allowed = 0, {}, {}, {}
 local function short(name) return (tostring(name or "?"):gsub("%-.*", "")) end
 local function addonSend(msg, target)
   if C_ChatInfo and C_ChatInfo.SendAddonMessage then pcall(C_ChatInfo.SendAddonMessage, PREFIX, msg, "WHISPER", target) end
 end
-function P.ReceiveEnabled() return type(OneForAllDB) == "table" and OneForAllDB.profileReceive == true end
-function P.SetReceive(v) if type(OneForAllDB) == "table" then OneForAllDB.profileReceive = v and true or nil end end
+function P.ReceiveEnabled() return type(OneForAllRetailDB) == "table" and OneForAllRetailDB.profileReceive == true end
+function P.SetReceive(v) if type(OneForAllRetailDB) == "table" then OneForAllRetailDB.profileReceive = v and true or nil end end
 
 function P.Send(name, target)
   if not store()[name] or not target or target == "" then return end
@@ -308,7 +308,7 @@ ev:SetScript("OnEvent", function(_, event, prefix, msg, dist, sender)
   if event == "PLAYER_LOGOUT" then P.Save()
   elseif event == "PLAYER_LOGIN" then
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then pcall(C_ChatInfo.RegisterAddonMessagePrefix, PREFIX) end
-  elseif prefix == PREFIX and dist == "WHISPER" and type(msg) == "string" and type(sender) == "string" then
+  elseif not FLT.IsSecret(prefix, msg, sender) and prefix == PREFIX and dist == "WHISPER" and type(msg) == "string" and type(sender) == "string" then
     onMessage(msg, sender)
   end
 end)
@@ -407,9 +407,9 @@ function P.Rename()
     name = nameOK(name); if not name then return false end
     local list = store()
     list[name], list[old] = list[old], nil
-    OneForAllDB.profileRenames = OneForAllDB.profileRenames or {}
-    OneForAllDB.profileRenames[old] = name
-    OneForAllCharDB.profile = name; changed()
+    OneForAllRetailDB.profileRenames = OneForAllRetailDB.profileRenames or {}
+    OneForAllRetailDB.profileRenames[old] = name
+    OneForAllRetailCharDB.profile = name; changed()
   end })
 end
 function P.Delete()
@@ -418,10 +418,10 @@ function P.Delete()
   if InCombatLockdown and InCombatLockdown() then FLT.Msg(L["Profiles cannot be deleted in combat."]); return end
   UI.Confirm(string.format(L["Delete the profile %s?\nThis character and all others using it go back to Default. The interface reloads."], "|cffffd100" .. name .. "|r"), function()
     store()[name] = nil
-    if OneForAllDB.profileRenames then
-      for k, v in pairs(OneForAllDB.profileRenames) do if v == name then OneForAllDB.profileRenames[k] = nil end end
+    if OneForAllRetailDB.profileRenames then
+      for k, v in pairs(OneForAllRetailDB.profileRenames) do if v == name then OneForAllRetailDB.profileRenames[k] = nil end end
     end
-    OneForAllCharDB.profile = DEFAULT
+    OneForAllRetailCharDB.profile = DEFAULT
     apply(store()[DEFAULT])
   end, L["Delete"], "/reload")
 end

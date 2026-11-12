@@ -7,12 +7,10 @@ local UI = FLT.UI
 -- Life helpers right away. It can be skipped (everything is in the Quality of Life tab); "Recommended settings" ticks
 -- what OneForAll has on by default. /ofa setup and Settings > Window open it again. Built only when shown.
 
-local WELCOME_ID = "6.0.0" -- shown once to everyone with 6.0.0, also to those who saw a 5.7.3 beta (user 27.10.)
--- Blizzard's own "World of Warcraft Forever" logo from the game client (not shipped with the addon)
-local FOREVER_LOGO = 8205333 -- interface/glues/common/glues-wow-foreverlogo.blp
+local WELCOME_ID = "retail-1.0.0" -- shown once with the first Retail version
 
 local Q = FLT.QoL
-local function db() return type(OneForAllDB) == "table" and OneForAllDB or {} end
+local function db() return type(OneForAllRetailDB) == "table" and OneForAllRetailDB or {} end
 local function qset(k) return function(v) Q.Set(k, v) end end
 local function qget(k) return function() return Q.Get(k) and true or false end end
 local function cvar(k) return function() return Q.GetCVarSwitch(k) end, function(v) Q.SetCVarSwitch(k, v) end end
@@ -44,39 +42,14 @@ local PAGES = {
     { N"Quest XP on the experience bar", N"Shows the XP of your finished quests.", "questXP", rec = true },
     { N"Quest loot sparkles", N"Quest items in the world sparkle again.", "questSparkles", rec = true },
     { N"Thank players who buff you", N"Sends a /thank to players outside your group who buff you.", "thanksBuff", rec = true },
-    { N"Quest marks on nameplates", N"A sword or a bag with your progress on mobs you need for a quest.", "questMarks" }, -- 6.0.2 (user 01.11.)
   } },
-  { N"World Map", {
-    { N"Map Landmarks", N"Dungeon entrances, flight masters, ships and more on the map.", "mapLandmarks", rec = true },
-    { N"Dungeon & raid entrances", N"Click to open the dungeon in OneForAll.", "lmDungeons", sub = true, rec = true },
-    { N"Flight masters", N"Shows where they fly to.", "lmFlight", sub = true, rec = true },
-    { N"Zeppelins, ships & tram", N"Shows where they go.", "lmTransport", sub = true, rec = true },
-    { N"Library Books", N"A book icon where each book you still need lies.", "mapBooks", sub = true, rec = true },
-    { N"Remove Fog", N"Shows the parts of a zone you have not explored yet.", "mapFog", rec = true },
-    { N"Dungeon map on M", N"Inside a dungeon, M opens OneForAll's dungeon map.", rec = true,
-      get = function() return db().dungeonMapKey ~= false end,
-      set = function(v) if type(OneForAllDB) == "table" then OneForAllDB.dungeonMapKey = v and true or false end
-        if FLT.ApplyDungeonMapKey then FLT.ApplyDungeonMapKey() end end },
-  } },
-  { N"Unit Frames & Spells", {
+  { N"Unit Frames", {
     { N"Class colors", N"Health bars of players in their class color.", "classColors", rec = true },
     { N"Class colors: raid frames", N"The game's own setting.", cvar = "raidClassColor" },
     { N"Power bars: raid frames", N"Mana, rage and energy bars in the raid frames.", cvar = "raidPowerBars" },
-    { N"Check low spell ranks", N"Offers the highest rank for spells on your bars.", "lowRank", rec = true },
-    { N"Trainer button in the spellbook", N"Opens the trainer window: spells and weapon skills.", "spellbookTrainer", rec = true },
   } },
   { N"Popups & Alerts", {
     { N"Durability warning", N"Warns when your gear drops to 20% durability.", "durability", rec = true },
-    { N"Nearby Library Book alerts", N"Popup when you are close to a missing library book.", rec = true,
-      get = function() return FLT.IsNearbyAlertsEnabled and FLT:IsNearbyAlertsEnabled() and true or false end,
-      set = function(v) if FLT.SetNearbyAlertsEnabled then FLT:SetNearbyAlertsEnabled(v) end end },
-    { N"Pet ability alerts", N"Popup when a beast nearby teaches a higher rank your pets can learn.", rec = true, hunter = true,
-      get = function() return FLT.IsPetTeachAlertsEnabled and FLT:IsPetTeachAlertsEnabled() and true or false end,
-      set = function(v) if FLT.SetPetTeachAlertsEnabled then FLT:SetPetTeachAlertsEnabled(v) end end },
-    { N"Quest share popup in dungeons", N"When a group member can still accept one of your dungeon quests.", rec = true,
-      get = function() local s = db().questShare; return not (type(s) == "table" and s.popup == false) end,
-      set = function(v) if type(OneForAllDB) == "table" then OneForAllDB.questShare = OneForAllDB.questShare or {}
-        OneForAllDB.questShare.popup = v and true or false end end },
   } },
 }
 -- get / set for every switch row
@@ -171,17 +144,17 @@ local function textPage(parent, first)
   local f = CreateFrame("Frame", nil, parent); f:SetAllPoints(); f:Hide()
   local y = -14
   if first then
-    local logo = f:CreateTexture(nil, "ARTWORK"); logo:SetSize(280, 140); logo:SetPoint("TOP", 0, y)
-    -- the client's own picture; without it (other client) only the text shows
-    local ok, res = pcall(logo.SetTexture, logo, FOREVER_LOGO)
-    if ok and res ~= false and logo:GetTexture() then y = y - 150 else logo:Hide() end
+    local logo = f:CreateTexture(nil, "ARTWORK"); logo:SetSize(128, 128); logo:SetPoint("TOP", 0, y)
+    FLT.SetTex(logo, FLT.LogoTexture and FLT.LogoTexture("round") or (UI.ASSET_ROOT .. "minimap_icon")); if FLT.TintLogo then FLT.TintLogo(logo) end
+    y = y - 138
   end
   local h = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalLarge"); h:SetPoint("TOP", 0, y); h:SetTextColor(FLT.SkinC(1, 0.82, 0.20))
   local b = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlight"); b:SetPoint("TOP", h, "BOTTOM", 0, -12); b:SetWidth(W - 120)
   b:SetJustifyH("CENTER"); b:SetSpacing(3)
   if first then
-    h:SetText(L["Welcome to OneForAll"])
-    b:SetText(L["Set up a few Quality of Life helpers now - one page per topic."] .. "\n\n"
+    h:SetText(L["Welcome to OneForAll"] .. " Retail")
+    b:SetText("A Retail fork of OneForAll by Smoergi (GPL-3.0). Dungeons, talents, professions and the gear planner are being rebuilt for Retail." .. "\n\n"
+      .. L["Set up a few Quality of Life helpers now - one page per topic."] .. "\n\n"
       .. string.format(L["%s switches on what OneForAll suggests. You can also skip this: everything can be changed later in OneForAll > Quality of Life."],
         "|cffd9a63a" .. L["Recommended settings"] .. "|r"))
   else
@@ -253,11 +226,11 @@ end
 function FLT.ShowWelcome()
   if not frame then frame = create() end
   page = 1
-  if type(OneForAllDB) == "table" then OneForAllDB.welcomeSeen = WELCOME_ID end
+  if type(OneForAllRetailDB) == "table" then OneForAllRetailDB.welcomeSeen = WELCOME_ID end
   if frame:IsShown() then refresh() else frame:Show() end
 end
 -- the news popup waits a login while this one is due
-function FLT.WelcomeDue() return type(OneForAllDB) == "table" and OneForAllDB.welcomeSeen ~= WELCOME_ID end
+function FLT.WelcomeDue() return type(OneForAllRetailDB) == "table" and OneForAllRetailDB.welcomeSeen ~= WELCOME_ID end
 
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_LOGIN")

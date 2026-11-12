@@ -8,7 +8,7 @@ local unpack = unpack or table.unpack
 -- not tied to the minimap and can be dragged anywhere. Switching it off puts
 -- every button back where it was. Blizzard's own minimap elements (tracking,
 -- mail, calendar, zoom ...) and map pins are left alone.
--- Setting: QoL "mmCollect"; position: OneForAllDB.qol.mmCollectPos.
+-- Setting: QoL "mmCollect"; position: OneForAllRetailDB.qol.mmCollectPos.
 
 local collector, bar
 local collected = {}   -- frame -> saved state while it sits in the bar
@@ -38,9 +38,9 @@ local SKIP_WORD = { "Pin", "Questie", "HandyNotes", "GatherMate", "TomTom", "^TT
 local function qol() return FLT.QoL end
 local function enabled() return qol() and qol().Get("mmCollect") and true or false end
 local function db()
-  if type(OneForAllDB) ~= "table" then return nil end
-  OneForAllDB.qol = OneForAllDB.qol or {}
-  return OneForAllDB.qol
+  if type(OneForAllRetailDB) ~= "table" then return nil end
+  OneForAllRetailDB.qol = OneForAllRetailDB.qol or {}
+  return OneForAllRetailDB.qol
 end
 
 local function isCandidate(f)
@@ -232,7 +232,7 @@ local function create()
     GameTooltip:AddLine(FLT.DISPLAY_NAME or "OneForAll", 1, 0.82, 0)
     GameTooltip:AddLine(L["Left-click: Minimap buttons"], 1, 1, 1)
     GameTooltip:AddLine(L["Right-click: Open / close OneForAll"], 1, 1, 1)
-    GameTooltip:AddLine(L["Shift-right-click: Crafting List"], 1, 1, 1)
+    if FLT.CraftList then GameTooltip:AddLine(L["Shift-right-click: Crafting List"], 1, 1, 1) end
     GameTooltip:AddLine(L["Drag: Move"], 0.75, 0.75, 0.75)
     GameTooltip:Show()
   end)

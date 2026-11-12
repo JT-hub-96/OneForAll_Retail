@@ -33,7 +33,7 @@ local function positionButton(angle)
   button:ClearAllPoints()
   button:SetPoint("CENTER", Minimap, "CENTER", x * radius, y * radius)
 end
-FLT.PositionMinimapButton = function() positionButton(OneForAllDB and OneForAllDB.minimapAngle or 225) end
+FLT.PositionMinimapButton = function() positionButton(OneForAllRetailDB and OneForAllRetailDB.minimapAngle or 225) end
 
 local function stopDragging(self)
   self:SetScript("OnUpdate", nil)
@@ -51,7 +51,7 @@ local function updateDragging(self)
   local angle = math.deg(getAngle(cy - my, cx - mx))
   if angle < 0 then angle = angle + 360 end
 
-  OneForAllDB.minimapAngle = angle
+  OneForAllRetailDB.minimapAngle = angle
   positionButton(angle)
 end
 
@@ -128,13 +128,13 @@ function FLT:CreateMinimapButton()
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine(FLT.DISPLAY_NAME or "OneForAll", 1, 0.82, 0)
     GameTooltip:AddLine(L["Left-click: Open / close"], 1, 1, 1)
-    GameTooltip:AddLine(L["Shift-right-click: Crafting List"], 1, 1, 1)
+    if FLT.CraftList then GameTooltip:AddLine(L["Shift-right-click: Crafting List"], 1, 1, 1) end
     GameTooltip:AddLine(L["Drag: Move around the minimap"], 0.75, 0.75, 0.75)
     GameTooltip:Show()
   end)
   button:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-  positionButton((OneForAllDB and OneForAllDB.minimapAngle) or 225)
+  positionButton((OneForAllRetailDB and OneForAllRetailDB.minimapAngle) or 225)
   -- also in the game's AddOns list at the minimap (with ElvUI or a hidden button it is the way in, user 22.10.)
   if type(AddonCompartmentFrame) == "table" and type(AddonCompartmentFrame.RegisterAddon) == "function" and not FLT.compartmentAdded then
     FLT.compartmentAdded = true
@@ -176,13 +176,13 @@ function FLT.RegisterLDBIcon()
     OnTooltipShow = function(tt)
       tt:AddLine(FLT.DISPLAY_NAME or "OneForAll", 1, 0.82, 0)
       tt:AddLine(L["Left-click: Open / close"], 1, 1, 1)
-      tt:AddLine(L["Shift-right-click: Crafting List"], 1, 1, 1)
+      if FLT.CraftList then tt:AddLine(L["Shift-right-click: Crafting List"], 1, 1, 1) end
     end,
   })
   if not obj then return false end
-  if type(OneForAllDB) ~= "table" then return false end
-  OneForAllDB.ldbIcon = OneForAllDB.ldbIcon or {}
-  if not pcall(LDBI.Register, LDBI, "OneForAll", obj, OneForAllDB.ldbIcon) then return false end
+  if type(OneForAllRetailDB) ~= "table" then return false end
+  OneForAllRetailDB.ldbIcon = OneForAllRetailDB.ldbIcon or {}
+  if not pcall(LDBI.Register, LDBI, "OneForAll", obj, OneForAllRetailDB.ldbIcon) then return false end
   FLT.ldbIcon = LDBI
   return LDBI
 end
@@ -203,31 +203,14 @@ end
 -- Left alone when ElvUI runs or another addon already made the minimap square. Switching off restores everything.
 local square = { on = false }
 local SQUARE_HIDE = { "MinimapBorder", "MinimapCompassTexture", "MinimapNorthTag" }
--- the zoom buttons sit on the round rim; on the square map they go to its corner (user 25.10.; GameTimeFrame is the
--- calendar in Forever, not the sun - left alone): name, anchor point on the Minimap, x, y
--- the frames may also hang under Minimap / MinimapCluster as .ZoomIn / .ZoomOut (newer client code, user 26.10.:
--- the global names moved nothing in Forever)
+-- the zoom buttons sit on the round rim; on the square map they go to its corner (user 25.10.): name, anchor point on
+-- the Minimap, x, y; on Retail they hang under Minimap / MinimapCluster as .ZoomIn / .ZoomOut
 local SQUARE_MOVE = {
   { "MinimapZoomIn", "BOTTOMRIGHT", 12, 34, "ZoomIn" }, -- just outside the edge (user 26.10.)
   { "MinimapZoomOut", "BOTTOMRIGHT", 12, 10, "ZoomOut" },
-  { "dial", "TOPRIGHT", 0, 0 }, -- the day / night moon centred on the top right corner (user 26.10.)
 }
--- Forever's day / night dial (Blizzard_Minimap/Camelot/Diel.lua, user 26.10. via /fstack): an unnamed child of
--- MinimapCluster.MinimapContainer, anchored CENTER to the container, with a .Background texture
-local function findDial()
-  if square.dial then return square.dial end -- once moved it no longer hangs on the container
-  local box = type(MinimapCluster) == "table" and MinimapCluster.MinimapContainer
-  if type(box) ~= "table" or not box.GetChildren then return nil end
-  for _, c in ipairs({ box:GetChildren() }) do
-    if c ~= Minimap and rawget(c, "Background") and c.GetPoint then
-      local p, rel = c:GetPoint(1)
-      if p == "CENTER" and rel == box then square.dial = c; return c end
-    end
-  end
-end
 local function findFrame(m)
-  if m[1] == "dial" then return findDial() end
-  local f = _G[m[1]]
+  local f = rawget(_G, m[1])
   if type(f) ~= "table" and m[5] then
     for _, holder in ipairs({ Minimap, MinimapCluster, MinimapBackdrop }) do
       local c = type(holder) == "table" and rawget(holder, m[5])
@@ -293,7 +276,7 @@ function FLT.ApplySquareMinimap()
     GetMinimapShape = function() return "SQUARE" end -- the usual way addons ask for the shape (LibDBIcon & co.)
   else
     square.on = false
-    -- the round mask by its file ID: the path "Textures\\MinimapMask" left the round map empty in Forever (user 27.10.)
+    -- the round mask by its file ID (the path "Textures\\MinimapMask" left the round map empty on some clients)
     Minimap:SetMaskTexture(186178)
     for _, t in ipairs(square.hidden or {}) do t:Show() end
     square.hidden = nil
@@ -319,7 +302,7 @@ do
       FLT.QoL.On("mmSquare", FLT.ApplySquareMinimap); FLT.QoL.On("logoColor", FLT.ApplyLogoColor)
     end
     if FLT.SafeCall then FLT.SafeCall("SquareMinimap", FLT.ApplySquareMinimap) else pcall(FLT.ApplySquareMinimap) end
-    local q = type(OneForAllDB) == "table" and OneForAllDB.qol
+    local q = type(OneForAllRetailDB) == "table" and OneForAllRetailDB.qol
     if type(q) == "table" then q.mmMove, q.mmPos = nil, nil end
   end)
 end

@@ -5,7 +5,7 @@ local _, FLT = ...
 -- the user per option (DEFAULTS); most are off so they do not clash with other
 -- QoL addons. Holding Shift pauses the automations
 -- (repair, junk, quests, invites, duels).
--- Settings: OneForAllDB.qol[key].
+-- Settings: OneForAllRetailDB.qol[key].
 
 local QoL = {}
 local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
@@ -16,40 +16,23 @@ local DEFAULTS = {
   lootFeedQuality = 1, lootFeedMoney = true,
   inviteMode = "friendsguild", keywordMode = "friendsguild", keyword = "inv", duelMode = "friendsguild",
   durabilityPct = 20, mmDir = "auto", logoColor = "teal", -- logo color: turquoise by default (user 27.10.)
-  lowRank = true, -- on by default (user 15.10.)
-  mapLandmarks = true, lmDungeons = true, lmFlight = true, lmTransport = true, lmTransitions = true, -- transitions: on like all landmarks (user 01.11.) -- Map Landmarks: on with all parts (user 16.10.)
-  gearValue = true, -- Gear Planner Value in item tooltips: on (user 16.10.)
-  spellbookTrainer = true, -- trainer button in the spellbook: on (user 22.10.)
   classBright = true, -- brighter class colors: on (user 22.10.)
-  mapFog = true, -- Remove Fog: on (user 22.10.)
   hideAppearance = false, -- hide "You haven't collected this appearance" in item tooltips: off (user 01.11.)
-  questSellCoin = true, -- gold coin on the quest reward with the best sell price: on (user 02.11.)
   infoBarScale = 100, -- info bar size in % (6.2.2, slider; 100 = as before)
   infoBarAlpha = 100, -- info bar opacity in % (whole bar, 6.2.2-beta43, user 09.11.); infoBarColor { r, g, b } = background, nil = default
   infoBarDelay = 3, -- seconds the info bar stays open after the mouse left it, when not pinned (user 09.11.: default 3)
   buffScale = 100, buffIconOnly = false, -- buff reminder size in % and icon only (6.0.3, user 01.11.)
   flightMapNow = true, -- open the flight map at once at a flight master (6.1.5): on (user 05.11.)
-  flightTimes = true, -- flight times: bar while flying, times on the flight map (6.1.5): on (user 05.11.)
   buffFlash = true, -- buff reminder cards glow (6.1.4, Discord 05.11.): on (user 05.11.)
   buffSnoozeBtn = false, -- "Zz" snooze button on the cards (6.1.4): off (user 05.11.)
-  mapZoneLevel = true, -- level range of the zone on the world map: on (user 01.11.)
-  mapQuests = true, -- quest icons on the world map: on (user 01.11., first off)
-  npcQuestTip = true, -- quests to take / turn in on NPC tooltips (6.2.2): on, off while Questie is loaded (user 08.11.)
-  mapQuestsContinent = true, -- quest icons also on the continent map: on (user 04.11.)
-  mapQuestGivers = true, mapQuestTurnins = true, -- "!" and "?" each on their own: both on (user 07.11.)
-  guildMap = true, -- guild members on the map, sends and shows (MapGuild.lua, 6.2.2): on (user 09.11.)
-  mapFogAlpha = 100, -- how visible the unexplored parts are, 0-100 %; 100 (user 01.11.)
-  mapBooks = true, -- Library Books on the world map: on (user 23.10.)
-  mapButton = true, -- OneForAll button on the world map: on (user 01.11.)
-  questMarkPos = "right", -- quest marks on nameplates: the switch is off, the mark right of the bar (user 01.11.)
   chatHistory = true, -- last sent messages with arrow up / down: on (user 31.10.)
   chatHide = true, chatAutoHide = 0, -- hide chat button: on, "Hide chat after": Never (user 27.10., 6.0.0)
 }
 
 local function db()
-  if type(OneForAllDB) ~= "table" then return nil end
-  OneForAllDB.qol = OneForAllDB.qol or {}
-  return OneForAllDB.qol
+  if type(OneForAllRetailDB) ~= "table" then return nil end
+  OneForAllRetailDB.qol = OneForAllRetailDB.qol or {}
+  return OneForAllRetailDB.qol
 end
 
 -- 5.3: Social got own switches; keep what older settings did
@@ -67,10 +50,6 @@ function QoL.Get(key)
   local d = db()
   local v = d and d[key]
   if v == nil then v = DEFAULTS[key] end
-  -- Skyborne map pins: on by default for Skyborne characters, off for the other races (user 30.10.)
-  if v == nil and key == "lmSkyborne" then v = UnitRace and select(2, UnitRace("player")) == "Skyborne" or false end
-  -- all ammo on the quiver: on by default for hunters, off for the other classes (user 09.11.)
-  if v == nil and key == "quiverAmmo" then v = UnitClass and select(2, UnitClass("player")) == "HUNTER" or false end
   return v
 end
 
@@ -233,12 +212,12 @@ local function autoRepair()
   end
 end
 
--- own junk list (5.7.3, GitHub #22, user 27.10.): item IDs per character (OneForAllCharDB.junkList), sold by
+-- own junk list (5.7.3, GitHub #22, user 27.10.): item IDs per character (OneForAllRetailCharDB.junkList), sold by
 -- "Sell junk" like grey items. Alt+right-click an item in the bags puts it on the list or takes it off.
 local function junkList()
-  if type(OneForAllCharDB) ~= "table" then return {} end
-  OneForAllCharDB.junkList = OneForAllCharDB.junkList or {}
-  return OneForAllCharDB.junkList
+  if type(OneForAllRetailCharDB) ~= "table" then return {} end
+  OneForAllRetailCharDB.junkList = OneForAllRetailCharDB.junkList or {}
+  return OneForAllRetailCharDB.junkList
 end
 function QoL.IsJunk(id) return id and junkList()[id] and true or false end
 function QoL.GetJunkItems()
@@ -289,7 +268,7 @@ local function junkChanged()
 end
 QoL.JunkChanged = junkChanged
 function QoL.RemoveJunk(id) junkList()[id] = nil; junkChanged() end
-function QoL.ClearJunk() if type(OneForAllCharDB) == "table" then OneForAllCharDB.junkList = {} end; junkChanged() end
+function QoL.ClearJunk() if type(OneForAllRetailCharDB) == "table" then OneForAllRetailCharDB.junkList = {} end; junkChanged() end
 function QoL.ToggleJunk(link)
   local id = type(link) == "string" and tonumber(link:match("item:(%d+)"))
   if not id then return end
@@ -492,8 +471,8 @@ QoL.DUEL_OPTIONS = {
 -- game reports again after login, /reload or a loading screen), another player,
 -- not in your group or raid. The emote goes out THANKS_DELAY seconds later, out of
 -- combat, at most once per THANKS_PLAYER_CD per player and one every THANKS_GAP s.
--- The combat log cannot be used: registering COMBAT_LOG_EVENT_UNFILTERED is
--- forbidden in the Forever client (5.5.0-beta11). /ofa thanks shows what happened.
+-- The combat log is not used (COMBAT_LOG_EVENT_UNFILTERED is not registered); nothing runs in combat.
+-- /ofa thanks shows what happened.
 local THANKS_DELAY, THANKS_GAP, THANKS_PLAYER_CD = 1, 3, 300 -- 1 s delay (user 16.10.)
 local THANKS_MIN_DURATION, THANKS_FRESH, THANKS_SETTLE = 120, 3, 6
 local thanked, thanksPending, lastThanks, settleUntil = {}, {}, 0, 0
@@ -645,7 +624,7 @@ do
     return out
   end
   -- icons of buffs that are no spell of yours (Well Fed, flasks, buffs from others; user 05.11.: question mark):
-  -- taken from the aura when it is up, kept in OneForAllDB.qol.buffIcons
+  -- taken from the aura when it is up, kept in OneForAllRetailDB.qol.buffIcons
   local function noteIcon(name, icon)
     if not icon or FLT.IsSecret(icon) then return end
     local d = db(); if not d then return end
@@ -1035,9 +1014,11 @@ do
   QoL._migrateBuffs = migrateBuffs -- tests
   checkBuffs = function()
     buffToken = buffToken + 1 -- an older timer is no longer needed
+    -- Retail fork: no buff reminder in combat (aura data can be secret there); PLAYER_REGEN_ENABLED checks again
+    if inCombat() and testUntil <= now() then return end
     -- the buffs seen on this character are kept over logging out (6.2.1, user 08.11. "A": a buff that ran out while
     -- logged out gives its card right after the login); the session's list joins the saved one once
-    local cdb = OneForAllCharDB
+    local cdb = OneForAllRetailCharDB
     if type(cdb) == "table" and buffSeen ~= cdb.buffSeen then
       cdb.buffSeen = type(cdb.buffSeen) == "table" and cdb.buffSeen or {}
       for n in pairs(buffSeen) do cdb.buffSeen[n] = true end
@@ -1131,7 +1112,8 @@ do
       local any = false
       for name in pairs(buffList()) do if weapon(name) or imbue(name) then any = true; break end end
       if not any then return end
-    end -- also in combat (user 01.11.), debounced
+    end
+    if inCombat() then return end -- Retail fork: not in combat
     buffDebounce = true
     C_Timer.After(0.2, function() buffDebounce = false; checkBuffs() end)
   end
@@ -1220,6 +1202,7 @@ do
   end
   function QoL.BuffCombatStart()
     for _, sb in pairs(secures) do sb:Hide() end
+    if holder and testUntil <= now() then holder:Hide() end -- PLAYER_REGEN_DISABLED: still allowed
     noteRanks()
   end
   -- size / icon only changed: the cards and the cast buttons follow
@@ -1236,15 +1219,16 @@ do
   end
   -- Suggestions for the name box (user 31.10.): the class's usual self buffs first, then the spellbook. As spell IDs
   -- (rank 1), the names come from the client in its language (6.2.0: the English names matched nothing in German)
+  -- Retail spell IDs (spells the client does not know are skipped)
   local PRESETS = {
-    WARLOCK = { 687, 706, 6229 }, -- Demon Skin, Demon Armor, Shadow Ward
-    MAGE = { 168, 7302, 6117, 1459, 11426, 1463, 604, 1008 }, -- Frost / Ice / Mage Armor, Arcane Intellect, Ice Barrier, Mana Shield, Dampen / Amplify Magic
-    PRIEST = { 1243, 588, 14752, 976, 6346 }, -- Power Word: Fortitude, Inner Fire, Divine Spirit, Shadow Protection, Fear Ward
-    DRUID = { 1126, 467, 16864 }, -- Mark of the Wild, Thorns, Omen of Clarity
-    PALADIN = { 25780, 19740, 19742, 20217, 20911 }, -- Righteous Fury, Blessing of Might / Wisdom / Kings / Sanctuary (Light and Salvation removed in Forever, bluepost 02.11.)
-    SHAMAN = { 324 }, -- Lightning Shield
+    MAGE = { 1459 }, -- Arcane Intellect
+    PRIEST = { 21562 }, -- Power Word: Fortitude
+    DRUID = { 1126 }, -- Mark of the Wild
+    PALADIN = { 465 }, -- Devotion Aura
+    SHAMAN = { 192106, 974, 462854 }, -- Lightning Shield, Earth Shield, Skyfury
     WARRIOR = { 6673 }, -- Battle Shout
-    HUNTER = { 19506 }, -- Trueshot Aura
+    EVOKER = { 364342 }, -- Blessing of the Bronze
+    ROGUE = { 315584, 2823, 8679, 3408, 381637, 5761 }, -- Instant / Deadly / Wound / Crippling / Atrophic / Numbing Poison
   }
   -- weapon items suggested even when none is in the bags (main hand; type "(off hand)" for the other weapon); item IDs
   -- named by the client in its language (6.2.0; IDs checked against QuestieDB)
@@ -1502,12 +1486,27 @@ local function setupClassColors()
     hooksecurefunc("HealthBar_OnValueChanged", function(bar) FLT.SafeCall("ClassColors", colorBar, bar) end)
   end
 end
-local COLOR_FRAMES = { "PlayerFrame", "TargetFrame", "TargetFrameToT", "FocusFrame",
-  "PartyMemberFrame1", "PartyMemberFrame2", "PartyMemberFrame3", "PartyMemberFrame4" }
+local COLOR_FRAMES = { "PlayerFrame", "TargetFrame", "TargetFrameToT", "FocusFrame" }
+-- Retail party frames are PartyFrame.MemberFrame1..4; the old PartyMemberFrameN names as fallback
+local function partyFrame(i)
+  local pf = rawget(_G, "PartyFrame")
+  local f = type(pf) == "table" and pf["MemberFrame" .. i]
+  if type(f) == "table" then return f end
+  return rawget(_G, "PartyMemberFrame" .. i)
+end
+local function frameBar(f)
+  if type(f) ~= "table" then return nil end
+  return f.healthbar or f.HealthBar or (type(f.HealthBarContainer) == "table" and f.HealthBarContainer.HealthBar) or nil
+end
 local function refreshClassColors()
   for _, name in ipairs(COLOR_FRAMES) do
-    local f = _G[name]
-    local bar = type(f) == "table" and (f.healthbar or f.HealthBar)
+    local f = rawget(_G, name)
+    local bar = frameBar(f)
+    if bar then colorBar(bar, bar.unit or f.unit) end
+  end
+  for i = 1, 4 do
+    local f = partyFrame(i)
+    local bar = frameBar(f)
     if bar then colorBar(bar, bar.unit or f.unit) end
   end
 end
@@ -1529,7 +1528,6 @@ local MOVABLE = {
   "AddonList", -- the AddOns window (user 02.11.)
   "SettingsPanel", "HelpFrame", "GameMenuFrame", -- Options, Customer Support, Game Menu (user 02.11.)
   "SocialUIFrame", "CalendarFrame", "CatalogShopFrame", -- Social (Friends), Calendar, Shop (Discord Stiandresius 06.11.)
-  "LegacySystemFrame", -- Forever's Legacy System (user 09.11.)
 }
 -- windows whose pages cover them completely: the pages take the mouse, so they are grips as well
 local GRIPS = { LFGParentFrame = { "LFGWhoListFrame", "LFGListingFrame", "LFGBrowseFrame" } }
@@ -1791,10 +1789,9 @@ local xpPending
 -- reputation in one container and the XP in the other, so take the XP bar that is shown
 -- (Discord sparklebeard 09.11.: quest XP gone while a reputation was tracked).
 local function findXPBar()
-  if type(MainMenuExpBar) == "table" then return MainMenuExpBar, MainMenuExpBar end
   local first, firstHolder
   for _, cname in ipairs({ "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer", "StatusTrackingBarManager" }) do
-    local c = _G[cname]
+    local c = rawget(_G, cname)
     if type(c) == "table" and c.GetChildren then
       for _, ch in ipairs({ c:GetChildren() }) do
         if ch.ExhaustionTick or ch.ExhaustionLevelFillBar then
@@ -1807,6 +1804,7 @@ local function findXPBar()
       end
     end
   end
+  if not first and type(rawget(_G, "MainMenuExpBar")) == "table" then return MainMenuExpBar, MainMenuExpBar end -- Classic
   return first, firstHolder
 end
 local function updateXP()
@@ -1910,129 +1908,15 @@ local function updateBagSlots()
   bagText:Show()
 end
 
--- Ammo on the bag bar (beta48/49, user 09.11.): a quiver / ammo pouch slot (and the ammo slot) shows ALL arrows / bullets
--- in the bags, the same number as the info bar's Class reagent ("wie im info panel alle aus den taschen"), not only
--- what the quiver holds, and never the game's "*" (more than 999; above 9999 as "12k"). A hook after
--- SetItemButtonCount: returns at once for item buttons that are not the bag bar / ammo slot.
-function QoL._bagBarCount(btn, count) -- a field, not a local: QoL.lua is at Lua's 200 locals
-  if type(count) ~= "number" or count < 1 then return end
-  local ammoSlot = btn == _G.CharacterAmmoSlot
-  if not (ammoSlot or btn.isBag) or not QoL.Get("quiverAmmo") then return end
-  if not ammoSlot then -- bag slots: only quivers and ammo pouches (item class 11)
-    local GII = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
-    local id = GetInventoryItemID and btn.GetID and GetInventoryItemID("player", btn:GetID())
-    if not (id and GII and select(6, GII(id)) == 11) then return end
-  end
-  local IB = FLT.InfoBar
-  local n = IB and IB.AmmoCount and IB.AmmoCount() or count
-  local fs = btn.Count or (btn.GetName and btn:GetName() and _G[btn:GetName() .. "Count"])
-  if fs and fs.SetText then fs:SetText(n > 9999 and (math.floor(n / 1000) .. "k") or tostring(n)) end
-end
-if hooksecurefunc and type(SetItemButtonCount) == "function" then hooksecurefunc("SetItemButtonCount", QoL._bagBarCount) end
--- switched on or off: the bag slots draw their count again (the game's own number when off)
-function QoL._bagBarRedraw()
-  if type(SetItemButtonCount) ~= "function" or not GetInventoryItemCount then return end
-  for _, n in ipairs({ "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot", "CharacterAmmoSlot" }) do
-    local b = _G[n]
-    if type(b) == "table" and b.GetID then pcall(SetItemButtonCount, b, GetInventoryItemCount("player", b:GetID()) or 0) end
-  end
-end
-
 -- ---------------------------------------------------------------------------
--- Tooltips: sell price, boss drops, who knows a recipe
+-- Tooltips (Retail fork: boss drops, gear value and "who knows a recipe" need the Forever data - phases 2, 4, 5)
 -- ---------------------------------------------------------------------------
-local dropIndex
-local function bossDrops(id)
-  if not dropIndex then
-    dropIndex = {}
-    for _, d in ipairs(FLT.DUNGEONS or {}) do
-      for _, b in ipairs(d.bosses or {}) do
-        for _, it in ipairs(b.loot or {}) do
-          if it.id then
-            dropIndex[it.id] = dropIndex[it.id] or {}
-            -- boss and dungeon in the client's language (6.2.0; the index is built at the first tooltip, after ADDON_LOADED)
-            table.insert(dropIndex[it.id], (FLT.Name and FLT.Name(b.name) or b.name) .. " (" .. (FLT.DungeonName and FLT.DungeonName(d.name) or d.name) .. ")")
-          end
-        end
-      end
-    end
-  end
-  return dropIndex[id]
-end
-
-local recipeIndex
-local function recipeByItem(id)
-  if not recipeIndex then
-    recipeIndex = {}
-    for prof, list in pairs(FLT.PROFESSION_RECIPES or {}) do
-      for _, r in ipairs(list) do if r.ri then recipeIndex[r.ri] = { prof = prof, s = r.s } end end
-    end
-  end
-  return recipeIndex[id]
-end
-
--- Copy this character's known recipes to the account (for "Twinks: ..."; key FLT.CharKey, 6.2.5).
-function QoL.SnapshotRecipes()
-  if type(OneForAllDB) ~= "table" or type(OneForAllCharDB) ~= "table" or not FLT.CharKey then return end
-  local profs = OneForAllCharDB.professions
-  if type(profs) ~= "table" then return end
-  OneForAllDB.altRecipes = OneForAllDB.altRecipes or {}
-  local snap = {}
-  for prof, p in pairs(profs) do
-    if type(p) == "table" and type(p.known) == "table" then
-      local t = {}
-      for s, v in pairs(p.known) do if v then t[s] = true end end
-      snap[prof] = t
-    end
-  end
-  FLT.CharSave(OneForAllDB.altRecipes, snap)
-end
-local function twinksKnowing(prof, s)
-  local out, all = {}, type(OneForAllDB) == "table" and OneForAllDB.altRecipes or {}
-  for key, data in pairs(all) do
-    if not FLT.IsMyChar(key) and type(data) == "table" and type(data[prof]) == "table" and data[prof][s] then
-      out[#out + 1] = FLT.CharLabel(all, key, data)
-    end
-  end
-  table.sort(out)
-  return out
-end
-
-local function nameList(list, max)
-  if #list <= max then return table.concat(list, ", ") end
-  local t = {}
-  for i = 1, max do t[i] = list[i] end
-  return table.concat(t, ", ") .. string.format(" +%d", #list - max)
-end
 
 local function addItemLines(tt, link)
   if type(link) ~= "string" then return end
   local id = tonumber(link:match("item:(%d+)"))
   if not id then return end
-  if QoL.Get("bossDrops") then
-    local drops = bossDrops(id)
-    if drops then tt:AddLine(L["Drops from:"] .. " " .. nameList(drops, 2), 0.95, 0.80, 0.45, true) end
-  end
-  if QoL.Get("gearValue") and FLT.GearValue then FLT.GearValue.TooltipLine(tt, id, link) end
-  -- on the wishlist (Armory > Gear Planner): always, it is the player's own choice (user 03.11.)
-  if FLT.IsOnWishlist and FLT.GearValue and FLT.GearValue.WISH and FLT.IsOnWishlist(id) then tt:AddLine(FLT.GearValue.WISH .. L["Wishlist"], 1, 0.82, 0.25) end
   if QoL.Get("sellJunk") and junkList()[id] then tt:AddLine(L["On your junk list (Alt+right-click to take it off)"], 0.62, 0.62, 0.62) end
-  if FLT.CraftList then FLT.CraftList.TooltipLine(tt, id) end -- only while something is planned
-  if QoL.Get("recipeTip") then
-    local r = recipeByItem(id)
-    if r then
-      local me = FLT.GetProfessionState and FLT.GetProfessionState(r.prof)
-      if me and me.known and me.known[r.s] then tt:AddLine(L["You know this recipe"], 0.45, 1, 0.45) end
-      local tw = twinksKnowing(r.prof, r.s)
-      if #tw > 0 then tt:AddLine(L["Twinks:"] .. " " .. nameList(tw, 4), 0.75, 0.75, 1, true) end
-      local g = FLT.GetGuildRecipeKnowers and FLT.GetGuildRecipeKnowers(r.prof, r.s)
-      if g and #g > 0 then
-        local names = {}
-        for _, k in ipairs(g) do names[#names + 1] = short(k[1]) end
-        tt:AddLine(L["Guild:"] .. " " .. nameList(names, 4), 0.45, 0.85, 0.45, true)
-      end
-    end
-  end
 end
 
 -- "Target: name" in the tooltip of players (and NPCs) under the mouse
@@ -2150,22 +2034,16 @@ local function shortenTooltip(tt)
 end
 QoL.ShortStat = shortStat -- mock tests
 
--- quests you can take / turn in at the NPC (MapQuests.lua, 6.2.2)
-local function addQuestLines(tt)
-  if not QoL.Get("npcQuestTip") or not (FLT.MapQuests and FLT.MapQuests.AddUnitLines) or not tt.GetUnit then return end
-  local _, unit = tt:GetUnit()
-  FLT.MapQuests.AddUnitLines(tt, unit)
-end
 local function setupTooltips()
   if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Unit then
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tt)
-      if tt == GameTooltip then pcall(addTargetLine, tt); pcall(addQuestLines, tt) end
+      if tt == GameTooltip then pcall(addTargetLine, tt) end
     end)
   elseif GameTooltip and GameTooltip.HookScript then
-    pcall(GameTooltip.HookScript, GameTooltip, "OnTooltipSetUnit", function(tt) pcall(addTargetLine, tt); pcall(addQuestLines, tt) end)
+    pcall(GameTooltip.HookScript, GameTooltip, "OnTooltipSetUnit", function(tt) pcall(addTargetLine, tt) end)
   end
   local function handler(tt)
-    if not (QoL.Get("bossDrops") or QoL.Get("recipeTip") or QoL.Get("gearValue")) then return end
+    if not QoL.Get("sellJunk") then return end -- the junk list line is the only item line left
     if not tt or not tt.GetItem then return end
     local _, link = tt:GetItem()
     addItemLines(tt, link)
@@ -2532,14 +2410,6 @@ end
 -- Bags full helper: when loot does not fit, suggest the cheapest item in the
 -- bags (sell value x stack) and destroy it + loot with one click.
 -- ---------------------------------------------------------------------------
-local bookItems
-local function isBookItem(id)
-  if not bookItems then
-    bookItems = {}
-    for _, b in ipairs(FLT.BOOKS or {}) do if b.itemId then bookItems[b.itemId] = true end end
-  end
-  return bookItems[id]
-end
 -- profession tools are never suggested
 local TOOLS = {
   [6218]=true, [6339]=true, [11130]=true, [11145]=true, [16207]=true, -- runed enchanting rods
@@ -2611,7 +2481,7 @@ function QoL.FindCandidates()
       for slot = 1, numSlots(bag) do
         local link, count, quality, noValue, locked, icon = itemInfo(bag, slot)
         local id = link and tonumber(link:match("item:(%d+)"))
-        if id and not noValue and not locked and not never[id] and not isBookItem(id) and not isTool(id, link) and not questInfo(bag, slot) then
+        if id and not noValue and not locked and not never[id] and not isTool(id, link) and not questInfo(bag, slot) then
           local q, classID, setID = itemDetails(link)
           quality = quality or q or 1
           local price = sellPrice(link)
@@ -2946,7 +2816,7 @@ end
 local ev = CreateFrame("Frame")
 
 local EVENTS = {
-  "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "PLAYER_LOGOUT", "ADDON_LOADED",
+  "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "ADDON_LOADED",
   "LOOT_READY", "LOOT_OPENED", "MERCHANT_SHOW",
   "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING", "GOSSIP_SHOW", "QUEST_ACCEPT_CONFIRM",
   "PARTY_INVITE_REQUEST", "CHAT_MSG_WHISPER", "DUEL_REQUESTED",
@@ -2973,7 +2843,6 @@ local function onEventSafe(_, event, ...)
     if QoL.Get("cameraZoom") then applyCamera(true) end
     if QoL.Get("hideErrors") then applyHideErrors(true) end
     if QoL.Get("questSparkles") then applySparkles() end
-    QoL.SnapshotRecipes()
     lastMoney = GetMoney and GetMoney() or 0
     if C_Timer and C_Timer.After then
       C_Timer.After(2, function() applyChatFont(QoL.Get("chatFont")); updateBagSlots(); updateXP(); checkDurability() end)
@@ -2982,8 +2851,6 @@ local function onEventSafe(_, event, ...)
     thanksSettle()
     if QoL.Get("buffReminder") then C_Timer.After(2, checkBuffs) end
     updateBagSlots(); checkDurability()
-  elseif event == "PLAYER_LOGOUT" then
-    QoL.SnapshotRecipes()
   elseif event == "ADDON_LOADED" then
     setupMovable()
   elseif event == "LOOT_READY" or event == "LOOT_OPENED" then
@@ -3072,13 +2939,10 @@ on("resizeWindows", function(v)
   end
 end)
 on("bagSlots", updateBagSlots)
-on("quiverAmmo", QoL._bagBarRedraw)
 on("questXP", updateXP)
 on("questXPTracked", updateXP)
 on("classColors", refreshClassColors)
 on("classBright", refreshClassColors)
-on("mapFog", function() if FLT.RefreshMapFog then FLT.RefreshMapFog() end end)
-on("mapFogAlpha", function() if FLT.RefreshMapFog then FLT.RefreshMapFog() end end)
 on("durability", function() warnedDurability = false; checkDurability() end)
 
 -- Alt+right-click on an item in the bags: on / off the junk list (only while "Sell junk" is on). Bag buttons

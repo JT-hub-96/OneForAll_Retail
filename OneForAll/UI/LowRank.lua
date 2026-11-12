@@ -9,7 +9,7 @@ local UI = FLT.UI
 -- window is closed (you usually learn several spells), otherwise a few seconds
 -- after the last spell was learned. Runs out of combat only.
 -- Spells you keep low on purpose (downranking): "Keep" puts that rank on a
--- list (OneForAllDB.qol.lowRankKeep[spellID] = true), managed in the tab.
+-- list (OneForAllRetailDB.qol.lowRankKeep[spellID] = true), managed in the tab.
 -- Macros are not checked, only spells placed on the bars directly.
 
 local LR = {}
@@ -27,10 +27,10 @@ local function inCombat() return InCombatLockdown and InCombatLockdown() end
 local function msg(text) if FLT.Msg then FLT.Msg(text) end end
 
 local function keepList()
-  if type(OneForAllDB) ~= "table" then return {} end
-  OneForAllDB.qol = OneForAllDB.qol or {}
-  OneForAllDB.qol.lowRankKeep = OneForAllDB.qol.lowRankKeep or {}
-  return OneForAllDB.qol.lowRankKeep
+  if type(OneForAllRetailDB) ~= "table" then return {} end
+  OneForAllRetailDB.qol = OneForAllRetailDB.qol or {}
+  OneForAllRetailDB.qol.lowRankKeep = OneForAllRetailDB.qol.lowRankKeep or {}
+  return OneForAllRetailDB.qol.lowRankKeep
 end
 
 local function rankOf(sub)
@@ -299,7 +299,7 @@ function LR.GetKept()
 end
 function LR.RemoveKept(id) keepList()[id] = nil end
 function LR.ClearKept()
-  if type(OneForAllDB) == "table" and OneForAllDB.qol then OneForAllDB.qol.lowRankKeep = {} end
+  if type(OneForAllRetailDB) == "table" and OneForAllRetailDB.qol then OneForAllRetailDB.qol.lowRankKeep = {} end
 end
 -- test hooks
 LR._bestRanks, LR._update, LR._onEvent = bestRanks, update, onEvent

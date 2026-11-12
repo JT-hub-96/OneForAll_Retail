@@ -278,8 +278,8 @@ if FLT.QoL and FLT.QoL.On then FLT.QoL.On("arrowTiers", function() GM.Refresh() 
 local TEST_ID = 999999
 -- an example: a wishlist item, else an upgrade from the planner's data, else the worn chest
 local function exampleItem()
-  if type(OneForAllCharDB) == "table" and OneForAllCharDB.wishlist then
-    for id in pairs(OneForAllCharDB.wishlist) do return id end
+  if type(OneForAllRetailCharDB) == "table" and OneForAllRetailCharDB.wishlist then
+    for id in pairs(OneForAllRetailCharDB.wishlist) do return id end
   end
   local idx = FLT.GearIndex and FLT.GearIndex() or {}
   for i = 1, math.min(#idx, 3000) do

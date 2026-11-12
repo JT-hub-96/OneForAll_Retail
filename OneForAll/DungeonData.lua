@@ -188,7 +188,7 @@ FLT.DUNGEON_REGISTRY = nil
 
 -- Boss levels (QuestieDB Forever data; Forever dungeons from foreverchanges.pro). Bosses
 -- without an NPC ID are keyed by name. Missing ones (unreleased dungeons)
--- their level is learned in game when you target them (OneForAllDB.bossInfo).
+-- their level is learned in game when you target them (OneForAllRetailDB.bossInfo).
 FLT.BOSS_LEVELS = {
   -- Blackrock Depths
   [9025] = "51", -- Lord Roccor

@@ -35,7 +35,7 @@ local function setPanelTab(tab)
   activeTab = tab or defaultTab()
   ensurePanel(activeTab)
   -- remember the tab per character: the window opens on it next time
-  if activeTab ~= "settings" and type(OneForAllCharDB) == "table" then OneForAllCharDB.lastTab = activeTab end
+  if activeTab ~= "settings" and type(OneForAllRetailCharDB) == "table" then OneForAllRetailCharDB.lastTab = activeTab end
   for key, panel in pairs(panels) do
     if key == activeTab then
       panel:Show()
@@ -51,21 +51,21 @@ end
 
 -- Window scaling: the layout is built for 1040x650 and scaled as a whole
 -- (SetScale), so every tab keeps its proportions. Scale and position are
--- saved account-wide in OneForAllDB.window.
+-- saved account-wide in OneForAllRetailDB.window.
 local BASE_W, BASE_H = 1040, 690
 -- Header test (user 30.10.): banner with logo and name across the top, the tabs under it, then the pages (no title band)
 local HDR = { bannerH = 76, tabTop = 84, tabH = 30, tabGap = 4, iconTabW = 40 }
 UI.HDR = HDR
 local MIN_SCALE, MAX_SCALE = 0.6, 1.4
 -- The height can additionally be stretched (bottom-edge grip) so lists show
--- more rows; stored in OneForAllDB.window.height.
+-- more rows; stored in OneForAllRetailDB.window.height.
 
 local applyHeight -- defined below; used by the scale grip as well
 
 local function windowDB()
-  if type(OneForAllDB) ~= "table" then return {} end
-  OneForAllDB.window = OneForAllDB.window or {}
-  return OneForAllDB.window
+  if type(OneForAllRetailDB) ~= "table" then return {} end
+  OneForAllRetailDB.window = OneForAllRetailDB.window or {}
+  return OneForAllRetailDB.window
 end
 
 local function clampScale(s)
@@ -217,7 +217,7 @@ local function createHeightGrip()
   grip:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
--- Tab visibility is stored per character (OneForAllCharDB.tabs).
+-- Tab visibility is stored per character (OneForAllRetailCharDB.tabs).
 -- Without a saved choice a tab is shown, unless its panel spec lists the
 -- classes it is meant for (spec.classes, e.g. a class-only tab).
 local function playerClass()
@@ -228,7 +228,7 @@ end
 
 function UI.IsTabVisible(key)
   if key == "settings" then return true end
-  local saved = type(OneForAllCharDB) == "table" and OneForAllCharDB.tabs and OneForAllCharDB.tabs[key]
+  local saved = type(OneForAllRetailCharDB) == "table" and OneForAllRetailCharDB.tabs and OneForAllRetailCharDB.tabs[key]
   if saved ~= nil then return saved and true or false end
   for _, spec in ipairs(UI.panels) do
     if spec.key == key and spec.classes then
@@ -241,22 +241,22 @@ function UI.IsTabVisible(key)
 end
 
 function UI.SetTabVisible(key, visible)
-  if key == "settings" or type(OneForAllCharDB) ~= "table" then return end
-  OneForAllCharDB.tabs = OneForAllCharDB.tabs or {}
-  OneForAllCharDB.tabs[key] = visible and true or false
+  if key == "settings" or type(OneForAllRetailCharDB) ~= "table" then return end
+  OneForAllRetailCharDB.tabs = OneForAllRetailCharDB.tabs or {}
+  OneForAllRetailCharDB.tabs[key] = visible and true or false
   UI.LayoutTabs()
 end
 
 function UI.ResetTabs()
-  if type(OneForAllCharDB) == "table" then OneForAllCharDB.tabs = nil end
+  if type(OneForAllRetailCharDB) == "table" then OneForAllRetailCharDB.tabs = nil end
   UI.LayoutTabs()
 end
 
--- Tab order (per character, OneForAllCharDB.tabOrder = list of keys).
+-- Tab order (per character, OneForAllRetailCharDB.tabOrder = list of keys).
 -- Settings is fixed at the right window edge (6.0.1, user 30.10.); the other tabs can be moved.
 local FIXED_TABS = { settings = true }
 function UI.SortableTabs()
-  local saved = type(OneForAllCharDB) == "table" and OneForAllCharDB.tabOrder
+  local saved = type(OneForAllRetailCharDB) == "table" and OneForAllRetailCharDB.tabOrder
   local pos = {}
   if type(saved) == "table" then for i, k in ipairs(saved) do pos[k] = i end end
   local list = {}
@@ -281,7 +281,7 @@ function UI.OrderedPanels()
   return out
 end
 function UI.MoveTab(key, dir)
-  if type(OneForAllCharDB) ~= "table" then return end
+  if type(OneForAllRetailCharDB) ~= "table" then return end
   local list = UI.SortableTabs()
   local idx
   for i, spec in ipairs(list) do if spec.key == key then idx = i end end
@@ -290,17 +290,17 @@ function UI.MoveTab(key, dir)
   list[idx], list[j] = list[j], list[idx]
   local order = {}
   for i, spec in ipairs(list) do order[i] = spec.key end
-  OneForAllCharDB.tabOrder = order
+  OneForAllRetailCharDB.tabOrder = order
   UI.LayoutTabs()
 end
 function UI.ResetTabOrder()
-  if type(OneForAllCharDB) == "table" then OneForAllCharDB.tabOrder = nil end
+  if type(OneForAllRetailCharDB) == "table" then OneForAllRetailCharDB.tabOrder = nil end
   UI.LayoutTabs()
 end
 
 -- Start tab: the last used tab of this character, else the first shown tab.
 function defaultTab()
-  local last = type(OneForAllCharDB) == "table" and OneForAllCharDB.lastTab
+  local last = type(OneForAllRetailCharDB) == "table" and OneForAllRetailCharDB.lastTab
   if type(last) == "string" and last ~= "settings" and UI.IsTabVisible(last) then
     for _, spec in ipairs(UI.panels) do if spec.key == last then return last end end
   end
@@ -526,28 +526,10 @@ local function decorateWindow()
   bugBtn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:SetText(L["Report a bug"])
-    GameTooltip:AddLine(L["Where to report bugs and ideas (our Discord), with your last errors to copy."], 1, 1, 1)
+    GameTooltip:AddLine("Your version and last caught errors to copy.", 1, 1, 1)
     GameTooltip:Show()
   end)
   bugBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
-  -- Discord left of the bug button (5.7.3, user 24.10.): a speech bubble (own art), opens the invite link to copy
-  local dcBtn = UI.GoldButton(frame, "", 30, 26, UI.ASSET_ROOT .. "icon_chat", 11)
-  dcBtn:SetPoint("RIGHT", bugBtn, "LEFT", -6, 0)
-  dcBtn:SetFrameLevel(frame:GetFrameLevel() + 25)
-  if dcBtn.icon then
-    dcBtn.icon:ClearAllPoints(); dcBtn.icon:SetSize(14, 14); dcBtn.icon:SetPoint("CENTER", 0, 0)
-    dcBtn.icon:SetVertexColor(FLT.SkinC(1, 0.80, 0.30))
-  end
-  dcBtn:SetScript("OnMouseDown", nil); dcBtn:SetScript("OnMouseUp", nil)
-  dcBtn:SetScript("OnClick", function() GameTooltip:Hide(); UI.ShowDiscord() end)
-  dcBtn:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText("Discord")
-    GameTooltip:AddLine(L["Join the OneForAll Discord: news, questions and ideas."], 1, 1, 1)
-    GameTooltip:Show()
-  end)
-  dcBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
 local function createUI()
@@ -596,7 +578,7 @@ local function createUI()
     name:SetText(UI.DISPLAY_NAME); name:SetTextColor(FLT.SkinC(1, 0.93, 0.80))
     local sub = FLT.NewFS(frame, nil, "OVERLAY", "GameFontNormalSmall"); sub:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 1, -4)
     do local font, _, flags = sub:GetFont(); if font then sub:SetFont(font, 10, flags) end end
-    sub:SetText("FOREVER COMPANION"); sub:SetTextColor(FLT.SkinC(0.90, 0.68, 0.30))
+    sub:SetText("RETAIL COMPANION"); sub:SetTextColor(FLT.SkinC(0.90, 0.68, 0.30))
     local credit = FLT.NewFS(frame, nil, "OVERLAY", "GameFontDisableSmall"); credit:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 22, 4)
     credit:SetText(L["made by Smoergi"])
     -- the addon version at the bottom right, left of the resize grip (user 05.11.)
@@ -672,7 +654,7 @@ end
 function UI.ResetWindow() FLT:SetWindowScale(nil) end
 
 -- Window opacity (Settings > Window): only the backgrounds (UI.MarkBG), text and pictures stay solid.
--- 70-100 %, saved account-wide in OneForAllDB.window.alpha; not set yet = 95 % (user 15.10.).
+-- 70-100 %, saved account-wide in OneForAllRetailDB.window.alpha; not set yet = 95 % (user 15.10.).
 local MIN_ALPHA, DEFAULT_ALPHA = 0.7, 0.95
 function UI.GetWindowAlpha()
   return math.max(MIN_ALPHA, math.min(1, tonumber(windowDB().alpha) or DEFAULT_ALPHA))

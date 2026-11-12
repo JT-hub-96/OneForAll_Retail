@@ -3,11 +3,11 @@ local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -
 
 -- Recipe sharing for the "All recipes" browser.
 --   * GUILD (prefix OFAPR, unchanged since 5.6): guild members send the recipe spell IDs they know
---     (per profession); shown with a green check. OneForAllDB.guildRecipes[guild][member] = { t, [prof] = {spellID=true} }
+--     (per profession); shown with a green check. OneForAllRetailDB.guildRecipes[guild][member] = { t, [prof] = {spellID=true} }
 --   * other OneForAll users (6.1.0, prefix OFAPR2, hidden channel OFAShare2): no recipe lists any more, only
 --     searches. Opening a recipe asks the channel "who knows it?" in up to four rounds; in each round a share p of
 --     the players that know it answers by whisper (picked from a hash of the search ID and their name, so nobody
---     answers twice; p grows from round to round, estimated from the answers so far, until about 8 were found). Answers are kept per recipe in OneForAllDB.recipeHits[prof][spell][player] = time.
+--     answers twice; p grows from round to round, estimated from the answers so far, until about 8 were found). Answers are kept per recipe in OneForAllRetailDB.recipeHits[prof][spell][player] = time.
 --     A short status (zone, level, class) is sent now and then, so known players show as online (blue check);
 --     its interval grows with the number of players, so every client receives at most ~3 of them per second.
 -- Messages on OFAPR2 (fields split by tabs):
@@ -93,7 +93,7 @@ local function firstName()
   return n and shortName(n) or nil
 end
 local function myName()
-  if type(OneForAllCharDB) == "table" and OneForAllCharDB.fullName then return OneForAllCharDB.fullName end
+  if type(OneForAllRetailCharDB) == "table" and OneForAllRetailCharDB.fullName then return OneForAllRetailCharDB.fullName end
   return nil
 end
 local function isMe(name)
@@ -108,15 +108,15 @@ end
 
 local function shareEnabled()
   if CHANNEL_OFF then return false end
-  return not (type(OneForAllDB) == "table" and OneForAllDB.recipeShareChannel == false)
+  return not (type(OneForAllRetailDB) == "table" and OneForAllRetailDB.recipeShareChannel == false)
 end
 
 local function guildDB(create)
   local g = guildName()
-  if not g or type(OneForAllDB) ~= "table" then return nil end
-  OneForAllDB.guildRecipes = OneForAllDB.guildRecipes or {}
-  local t = OneForAllDB.guildRecipes[g]
-  if not t and create then t = {}; OneForAllDB.guildRecipes[g] = t end
+  if not g or type(OneForAllRetailDB) ~= "table" then return nil end
+  OneForAllRetailDB.guildRecipes = OneForAllRetailDB.guildRecipes or {}
+  local t = OneForAllRetailDB.guildRecipes[g]
+  if not t and create then t = {}; OneForAllRetailDB.guildRecipes[g] = t end
   return t
 end
 
@@ -144,7 +144,7 @@ local function validRecipe(prof, spell)
 end
 
 local function ownKnown(prof, spell)
-  local p = type(OneForAllCharDB) == "table" and type(OneForAllCharDB.professions) == "table" and OneForAllCharDB.professions[prof]
+  local p = type(OneForAllRetailCharDB) == "table" and type(OneForAllRetailCharDB.professions) == "table" and OneForAllRetailCharDB.professions[prof]
   return p and type(p.known) == "table" and p.known[spell] and true or false
 end
 
@@ -193,8 +193,8 @@ local function readRoster()
         local myClass = UnitClass and select(2, UnitClass("player")) -- not "a, b = f and f()": that keeps one value
         mine = f and (short == f or short:sub(1, #f + 1) == f .. " ") and level == (UnitLevel and UnitLevel("player")) and classFile == myClass
       end
-      if mine and type(OneForAllCharDB) == "table" and OneForAllCharDB.fullName ~= short then
-        OneForAllCharDB.fullName = short
+      if mine and type(OneForAllRetailCharDB) == "table" and OneForAllRetailCharDB.fullName ~= short then
+        OneForAllRetailCharDB.fullName = short
         selfIdentified()
       end
       roster[short:lower()] = {online = online and true or false, zone = zone, level = level, class = classFile}
@@ -255,7 +255,7 @@ end
 -- ---------------------------------------------------------------------------
 -- Status of other OneForAll users and the search results
 -- ---------------------------------------------------------------------------
--- [name] = {zone, inst, level, class, t}. Kept in OneForAllDB.shareStatus, so after a /reload
+-- [name] = {zone, inst, level, class, t}. Kept in OneForAllRetailDB.shareStatus, so after a /reload
 -- players heard within the online window still count as online.
 local status = {}
 local statusEvery, onlineWindow = STATUS_MIN, STATUS_MIN + 180
@@ -270,9 +270,9 @@ local function updateIntervals()
 end
 
 local function hitsDB()
-  if type(OneForAllDB) ~= "table" then return nil end
-  OneForAllDB.recipeHits = OneForAllDB.recipeHits or {}
-  return OneForAllDB.recipeHits
+  if type(OneForAllRetailDB) ~= "table" then return nil end
+  OneForAllRetailDB.recipeHits = OneForAllRetailDB.recipeHits or {}
+  return OneForAllRetailDB.recipeHits
 end
 
 local hitCount = 0
@@ -309,7 +309,7 @@ local function addHit(prof, spell, who, t)
   if hitCount > MAX_HITS then trimHits(db, math.floor(MAX_HITS * 0.9)) end
 end
 
--- once per login: drop old entries, count, take over the recipe lists of 6.0 (OneForAllDB.playerRecipes)
+-- once per login: drop old entries, count, take over the recipe lists of 6.0 (OneForAllRetailDB.playerRecipes)
 local function pruneHits()
   local db = hitsDB()
   if not db then return end
@@ -324,9 +324,9 @@ local function pruneHits()
     end
     if not next(spells) then db[prof] = nil end
   end
-  local old = OneForAllDB.playerRecipes
+  local old = OneForAllRetailDB.playerRecipes
   if type(old) == "table" then
-    OneForAllDB.playerRecipes = nil
+    OneForAllRetailDB.playerRecipes = nil
     for player, data in pairs(old) do
       if type(data) == "table" and type(data.t) == "number" and (t - data.t) < HIT_EXPIRE then
         for prof, set in pairs(data) do
@@ -545,8 +545,8 @@ end
 -- Store own known recipes in the guild table (for alts) and return them.
 local function ownRecipes()
   local out = {}
-  if type(OneForAllCharDB) ~= "table" or type(OneForAllCharDB.professions) ~= "table" then return out end
-  for prof, p in pairs(OneForAllCharDB.professions) do
+  if type(OneForAllRetailCharDB) ~= "table" or type(OneForAllRetailCharDB.professions) ~= "table" then return out end
+  for prof, p in pairs(OneForAllRetailCharDB.professions) do
     if FLT.PROFESSION_RECIPES and FLT.PROFESSION_RECIPES[prof] and type(p.known) == "table" and next(p.known) then
       out[prof] = p.known
     end
@@ -568,8 +568,8 @@ end
 -- (the plain number missed a swap of recipes; GPT review 03.11.). Only built after a profession scan.
 local function countKnown()
   local parts = {}
-  if type(OneForAllCharDB) == "table" and type(OneForAllCharDB.professions) == "table" then
-    for prof, p in pairs(OneForAllCharDB.professions) do
+  if type(OneForAllRetailCharDB) == "table" and type(OneForAllRetailCharDB.professions) == "table" then
+    for prof, p in pairs(OneForAllRetailCharDB.professions) do
       if type(p.known) == "table" then
         local ids = {}
         for sp in pairs(p.known) do ids[#ids + 1] = tonumber(sp) or 0 end
@@ -637,8 +637,8 @@ local stopSharing -- forward: drops the own search and everything still waiting 
 -- Settings toggle for the channel sharing.
 function FLT.IsRecipeShareEnabled() return shareEnabled() end
 function FLT.SetRecipeShareEnabled(v)
-  if type(OneForAllDB) ~= "table" then return end
-  OneForAllDB.recipeShareChannel = v and true or false
+  if type(OneForAllRetailDB) ~= "table" then return end
+  OneForAllRetailDB.recipeShareChannel = v and true or false
   if v then joinChannel() else leaveChannel(); stopSharing() end
   refreshBrowser()
 end
@@ -663,10 +663,10 @@ end
 -- us the full name of the current character (also without a guild).
 local SESSION = string.format("%x%x", math.random(0, 0xFFFFFF), math.floor(clock() * 1000) % 0xFFFFFF)
 local function learnOwnName(name)
-  if type(OneForAllCharDB) ~= "table" or not name then return end
+  if type(OneForAllRetailCharDB) ~= "table" or not name then return end
   status[name] = nil
-  if OneForAllCharDB.fullName ~= name then
-    OneForAllCharDB.fullName = name
+  if OneForAllRetailCharDB.fullName ~= name then
+    OneForAllRetailCharDB.fullName = name
     selfIdentified()
   else
     refreshSoon()
@@ -1199,9 +1199,9 @@ ev:SetScript("OnEvent", function(_, event, ...)
       pcall(C_ChatInfo.RegisterAddonMessagePrefix, PREFIX)
       pcall(C_ChatInfo.RegisterAddonMessagePrefix, PREFIX2)
     end
-    if type(OneForAllDB) == "table" then
+    if type(OneForAllRetailDB) == "table" then
       pruneHits()
-      local saved, t = OneForAllDB.shareStatus, now()
+      local saved, t = OneForAllRetailDB.shareStatus, now()
       if type(saved) == "table" then
         -- first everything of the last hour, then the online window from that many players, then filter
         for name, st in pairs(saved) do if type(st) == "table" and (t - (st.t or 0)) < 3600 then status[name] = st end end
@@ -1209,7 +1209,7 @@ ev:SetScript("OnEvent", function(_, event, ...)
         updateIntervals()
         for name, st in pairs(status) do if (t - (st.t or 0)) >= onlineWindow then status[name] = nil end end
       end
-      OneForAllDB.shareStatus = status
+      OneForAllRetailDB.shareStatus = status
     end
     if C_Timer and C_Timer.After then
       -- guild info and channels are only ready a few seconds after login

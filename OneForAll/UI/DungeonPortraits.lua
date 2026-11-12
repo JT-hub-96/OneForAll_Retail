@@ -13,9 +13,9 @@ local UNKNOWN_PORTRAIT = "Interface\\Icons\\INV_Misc_QuestionMark"
 
 -- account-wide store for what we learn about bosses in game
 local function bossStore()
-  if type(OneForAllDB) ~= "table" then return nil end
-  local s = OneForAllDB.bossInfo
-  if type(s) ~= "table" then s = {}; OneForAllDB.bossInfo = s end
+  if type(OneForAllRetailDB) ~= "table" then return nil end
+  local s = OneForAllRetailDB.bossInfo
+  if type(s) ~= "table" then s = {}; OneForAllRetailDB.bossInfo = s end
   return s
 end
 local function learned(npcID, field)

@@ -59,7 +59,7 @@ local function showBookTooltip(row, book)
   local apiDone = FLT:IsQuestDone(book.questId)
   GameTooltip:AddLine(string.format(L["Quest ID: %d   Item ID: %d"], book.questId or 0, book.itemId or 0), 0.65, 0.65, 0.65)
   GameTooltip:AddLine(string.format(L["Server completion flag: %s"], L[apiDone and N"yes" or N"no"]), apiDone and 1 or 0.65, apiDone and 0.55 or 0.65, apiDone and 0.15 or 0.65)
-  if apiDone and not OneForAllCharDB.confirmedDone[book.itemId] then
+  if apiDone and not OneForAllRetailCharDB.confirmedDone[book.itemId] then
     GameTooltip:AddLine(L["Unverified: the server reports this quest completed, but this addon did not observe the turn-in."], 1, 0.55, 0.15, true)
   end
   GameTooltip:AddLine(L["Right-click: toggle a manual ownership/completion note"], 0.7, 0.7, 0.7, true)
@@ -219,7 +219,7 @@ local function createBooksPanel(frame)
   UI.PlaceScrollBar(bookScroll)
   local content = CreateFrame("Frame", nil, bookScroll); content:SetSize(W, 1); bookScroll:SetScrollChild(content)
 
-  OneForAllDB.collapsedSets = OneForAllDB.collapsedSets or {}
+  OneForAllRetailDB.collapsedSets = OneForAllRetailDB.collapsedSets or {}
   local CREST_TC = { Alliance = {0, 0.25}, Horde = {0.25, 0.5}, Contested = {0.5, 0.75} }
   local ROW_BORDER, ROW_BORDER_HI = {0.28, 0.25, 0.20, 0.90}, {0.86, 0.66, 0.26, 1}
 
@@ -228,7 +228,7 @@ local function createBooksPanel(frame)
     if lastSet ~= book.set then
       local setId = book.set
       current = UI.SectionBand(content, setName(book.set), #sections, W, function()
-        OneForAllDB.collapsedSets[setId] = not OneForAllDB.collapsedSets[setId] or nil
+        OneForAllRetailDB.collapsedSets[setId] = not OneForAllRetailDB.collapsedSets[setId] or nil
         if relayout then relayout() end
       end)
       current.id = setId; current.rows = {}
@@ -273,7 +273,7 @@ local function createBooksPanel(frame)
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     row:SetScript("OnClick", function(_, button)
       if button == "RightButton" then
-        OneForAllCharDB.manualDone[book.itemId] = not OneForAllCharDB.manualDone[book.itemId] or nil
+        OneForAllRetailCharDB.manualDone[book.itemId] = not OneForAllRetailCharDB.manualDone[book.itemId] or nil
         FLT:Refresh()
       end
     end)
@@ -290,7 +290,7 @@ local function createBooksPanel(frame)
     do local font, _, flags = b.count:GetFont(); if font then b.count:SetFont(font, 10, flags) end end
     b._label:SetPoint("RIGHT", b.count, "LEFT", -4, 0); b._label:SetWordWrap(false)
     b:SetScript("OnClick", function()
-      if OneForAllDB.collapsedSets[section.id] then OneForAllDB.collapsedSets[section.id] = nil; relayout() end
+      if OneForAllRetailDB.collapsedSets[section.id] then OneForAllRetailDB.collapsedSets[section.id] = nil; relayout() end
       if section.y then
         local range = bookScroll:GetVerticalScrollRange() or 0
         bookScroll:SetVerticalScroll(math.max(0, math.min(range, -section.y - 4)))
@@ -307,7 +307,7 @@ local function createBooksPanel(frame)
       if i > 1 then y = y - 10 end
       section.header:ClearAllPoints(); section.header:SetPoint("TOPLEFT", 0, y); section.header:Show(); section.y = y
       y = y - SECTION_H - 3
-      local collapsed = OneForAllDB.collapsedSets and OneForAllDB.collapsedSets[section.id]
+      local collapsed = OneForAllRetailDB.collapsedSets and OneForAllRetailDB.collapsedSets[section.id]
       section:SetCollapsed(collapsed)
       if collapsed then
         section.box:Hide()
@@ -354,7 +354,7 @@ local function createBooksPanel(frame)
   UI.ShowBook = function(book)
     for _, row in ipairs(rows) do
       if row.book == book then
-        if OneForAllDB.collapsedSets[book.set] then OneForAllDB.collapsedSets[book.set] = nil; relayout() end
+        if OneForAllRetailDB.collapsedSets[book.set] then OneForAllRetailDB.collapsedSets[book.set] = nil; relayout() end
         C_Timer.After(0, function() -- positions are known one frame later
           local top, rt = content:GetTop(), row:GetTop()
           if top and rt then

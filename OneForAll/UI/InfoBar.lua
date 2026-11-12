@@ -6,8 +6,8 @@ local _, FLT = ...
 -- It never moves Blizzard frames (the minimap / Edit Mode trouble of 6.2.0).
 -- Lean: events only for the chosen elements and only while the bar is on; changes are gathered and drawn once (0.2 s);
 -- the one 1 s ticker runs only while the band is open and an element needs it (clock, FPS, location, hearthstone).
--- Settings: OneForAllDB.qol.infoBar (on), .infoBarItems { element keys in order }, .infoBarPinned;
--- gold per character for the gold tooltip: OneForAllDB.infoGold[FLT.CharKey()] = { copper, class token, name =, realm = }
+-- Settings: OneForAllRetailDB.qol.infoBar (on), .infoBarItems { element keys in order }, .infoBarPinned;
+-- gold per character for the gold tooltip: OneForAllRetailDB.infoGold[FLT.CharKey()] = { copper, class token, name =, realm = }
 -- (6.2.5: GUID key, Core.lua; old entries "Realm|Name").
 
 local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -- (tests without Locales)
@@ -18,7 +18,7 @@ local UI = FLT.UI
 local floor, max, fmt = math.floor, math.max, string.format
 local unpack = unpack or table.unpack
 
-local function db() return type(OneForAllDB) == "table" and OneForAllDB.qol or nil end
+local function db() return type(OneForAllRetailDB) == "table" and OneForAllRetailDB.qol or nil end
 local function on() local d = db(); return d and d.infoBar == true end
 -- the look from Quality of Life (6.2.2-beta43, user 09.11.): qol.infoBarColor { r, g, b } tints the background only
 -- (the gold line stays), qol.infoBarAlpha (10 - 100 %) is the whole bar; nil = the defaults
@@ -45,9 +45,6 @@ local function togglePanel(key)
   if PlaySound and type(SOUNDKIT) == "table" and SOUNDKIT.IG_CHARACTER_INFO_TAB then pcall(PlaySound, SOUNDKIT.IG_CHARACTER_INFO_TAB) end
   FLT:OpenPanel(key)
 end
-
--- class reagents (the one each class needs most); hunters: the ammo in the ammo slot
-local REAGENT = { WARLOCK = 6265, MAGE = 17020, PRIEST = 17029, DRUID = 17026, SHAMAN = 17030, ROGUE = 5140, PALADIN = 21177 }
 
 -- Elements -----------------------------------------------------------------------------------------------------------
 -- key, label (N), icon, events, tick (needs the 1 s ticker), text() -> string, tip(tt), click()
@@ -81,9 +78,9 @@ local sessionStart, moneyEvent
 -- 6.2.5 (Discord amalae. 11.11.: every alt had 0 gold): the money read too early after login or at logout can be 0 -
 -- a 0 replaces a stored amount only after a PLAYER_MONEY event (the money really changed); nothing saved at logout
 local function saveGold()
-  if type(OneForAllDB) ~= "table" or not GetMoney or not FLT.CharKey then return end
-  OneForAllDB.infoGold = OneForAllDB.infoGold or {}
-  local t, c = OneForAllDB.infoGold, GetMoney() or 0
+  if type(OneForAllRetailDB) ~= "table" or not GetMoney or not FLT.CharKey then return end
+  OneForAllRetailDB.infoGold = OneForAllRetailDB.infoGold or {}
+  local t, c = OneForAllRetailDB.infoGold, GetMoney() or 0
   local legacy = (GetRealmName and GetRealmName() or "?") .. "|" .. (UnitName("player") or "?")
   local old = t[FLT.CharKey()]
   if c == 0 and not moneyEvent and type(old) == "table" and (old[1] or 0) > 0 then return end
@@ -103,7 +100,7 @@ add({ key = "gold", label = N"Gold", icon = "Interface\\Icons\\INV_Misc_Coin_02"
     tt:AddDoubleLine(L["This session"], (diff < 0 and "-" or "+") .. money(math.abs(diff)), 1, 0.82, 0,
       diff < 0 and 1 or 0.3, diff < 0 and 0.3 or 1, 0.3)
     local all, total, realm = {}, 0, GetRealmName and GetRealmName() or "?"
-    local t = type(OneForAllDB) == "table" and OneForAllDB.infoGold or {}
+    local t = type(OneForAllRetailDB) == "table" and OneForAllRetailDB.infoGold or {}
     for k, v in pairs(t) do
       local _, r, cls = FLT.CharOf(k, v)
       if r == realm and type(v) == "table" then
@@ -206,30 +203,6 @@ add({ key = "location", label = N"Location", icon = "Interface\\Icons\\INV_Misc_
 -- (6.2.2-beta12: the professions element is gone - user 08.11.: "den alten profession raus schmeissen"; the Professions
 -- tab is in "Addon tabs")
 
-add({ key = "trainer", label = N"New trainer spells", icon = "Interface\\Icons\\INV_Misc_Book_11", events = { "PLAYER_LEVEL_UP", "SPELLS_CHANGED" },
-  text = function()
-    local n = FLT.TrainerSpellsDue and FLT.TrainerSpellsDue() or 0
-    return n > 0 and ("|cff40ff40" .. n .. "|r") or grey("0")
-  end,
-  tip = function(tt)
-    local n, list = 0, nil
-    if FLT.TrainerSpellsDue then n, list = FLT.TrainerSpellsDue() end
-    if n == 0 then tt:AddLine(L["Nothing new at your trainer right now."], 0.8, 0.8, 0.8, true) end
-    for i, s in ipairs(list or {}) do
-      if i > 12 then tt:AddLine("...", 0.8, 0.8, 0.8); break end
-      tt:AddDoubleLine(s[3] .. (s[4] and s[4] > 0 and (" " .. fmt(L["Rank %d"], s[4])) or ""), fmt(L["Level %d"], s[1]), 1, 1, 1, 0.8, 0.8, 0.8)
-    end
-  end,
-  click = function() if FLT.ToggleTrainerSpells then FLT.ToggleTrainerSpells() end end })
-
-add({ key = "books", label = N"Library Books", icon = "Interface\\Icons\\INV_Misc_Book_07", events = { "QUEST_TURNED_IN", "BAG_UPDATE_DELAYED" },
-  text = function()
-    if not (FLT.GetCounts and FLT.BOOKS) then return "?" end
-    local done = call(FLT.GetCounts, FLT) or 0
-    return fmt("%d/%d", done, #FLT.BOOKS)
-  end,
-  click = function() togglePanel("books") end })
-
 local HEARTH = 6948
 local function hearthLeft()
   local start, dur = call(C_Container and C_Container.GetItemCooldown or GetItemCooldown, HEARTH)
@@ -242,58 +215,6 @@ add({ key = "hearth", label = N"Hearthstone", icon = "Interface\\Icons\\INV_Misc
     local where = call(GetBindLocation) or "?"
     if left and left > 0 then return fmt("%s  %d:%02d", where, floor(left / 60), floor(left % 60)) end
     return where
-  end })
-
--- hunters: the arrows / bullets they have (beta47, user 09.11.: showed 0 with 200 shots in the bags). The ammo slot
--- first; when it is empty or the client has none: the bags, only the kind the ranged weapon shoots (gun: bullets,
--- bow / crossbow: arrows; no such weapon: both). Returns the count and the item of the biggest pile (tooltip).
-local itemCount = (C_Item and C_Item.GetItemCount) or GetItemCount
-local itemInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
-local function itemClass(id) if id and itemInstant then local _, _, _, _, _, c, s = itemInstant(id); return c, s end end
-local function ammo()
-  local slot = call(GetInventoryItemID, "player", INVSLOT_AMMO or 0)
-  if slot and itemClass(slot) == 6 then return call(itemCount, slot) or 0, slot end
-  local want -- projectile subclass: 2 arrow, 3 bullet
-  local c, s = itemClass(call(GetInventoryItemID, "player", INVSLOT_RANGED or 18))
-  if c == 2 then want = s == 3 and 3 or (s == 2 or s == 18) and 2 or nil end
-  local CC = C_Container
-  local nSlots = (CC and CC.GetContainerNumSlots) or GetContainerNumSlots
-  local n, per, best = 0, {}, nil
-  for bag = 0, NUM_BAG_SLOTS or 4 do
-    for i = 1, nSlots and (call(nSlots, bag) or 0) or 0 do
-      local id, cnt
-      if CC and CC.GetContainerItemInfo then
-        local info = CC.GetContainerItemInfo(bag, i)
-        if info then id, cnt = info.itemID, info.stackCount end
-      elseif GetContainerItemInfo then
-        local _; _, cnt, _, _, _, _, _, _, _, id = GetContainerItemInfo(bag, i)
-      end
-      local pc, ps = itemClass(id)
-      if pc == 6 and (ps == 2 or ps == 3) and (not want or ps == want) then
-        n = n + (cnt or 1); per[id] = (per[id] or 0) + (cnt or 1)
-        if not best or per[id] > per[best] then best = id end
-      end
-    end
-  end
-  return n, best
-end
-
-IB.AmmoCount = function() return (ammo()) end -- the quiver / ammo pouch on the bag bar shows this too (QoL.lua, beta49)
-local reagentId -- the item the text was worked out for (icon and tooltip; beta48, user 09.11.: the icon of the ammo you have)
-add({ key = "reagent", label = N"Class reagent", icon = "Interface\\Icons\\INV_Misc_Dust_02", events = { "BAG_UPDATE_DELAYED", "UNIT_INVENTORY_CHANGED" },
-  text = function()
-    local _, cls = UnitClass("player")
-    local n
-    if cls == "HUNTER" then n, reagentId = ammo()
-    elseif REAGENT[cls] then reagentId = REAGENT[cls]; n = call(itemCount, reagentId) or 0 end
-    if not n then return grey("-") end
-    return n < 10 and ("|cffff4040" .. n .. "|r") or tostring(n)
-  end,
-  iconFn = function() return reagentId and itemInstant and select(5, itemInstant(reagentId)) end,
-  tip = function(tt)
-    local id = reagentId
-    local name = id and call(C_Item and C_Item.GetItemNameByID or GetItemInfo, id)
-    tt:AddLine(name or L["Ammunition"], 1, 1, 1)
   end })
 
 local function guildOnline()
@@ -363,9 +284,9 @@ local function blizz(key, label, icon, micro, fallback)
 end
 blizz("blz:character", N"Character", "Interface\\Icons\\INV_Chest_Cloth_17", "CharacterMicroButton",
   function() if ToggleCharacter then ToggleCharacter("PaperDollFrame") end end)
-blizz("blz:spellbook", N"Spellbook", "Interface\\Icons\\INV_Misc_Book_09", "SpellbookMicroButton",
+blizz("blz:spellbook", N"Spellbook", "Interface\\Icons\\INV_Misc_Book_09", { "PlayerSpellsMicroButton", "SpellbookMicroButton" }, -- Retail: PlayerSpellsMicroButton
   function() if ToggleSpellBook then ToggleSpellBook(BOOKTYPE_SPELL or "spell") end end)
-blizz("blz:talents", N"Talents", "Interface\\Icons\\Ability_Marksmanship", "TalentMicroButton",
+blizz("blz:talents", N"Talents", "Interface\\Icons\\Ability_Marksmanship", { "PlayerSpellsMicroButton", "TalentMicroButton" },
   function() if ToggleTalentFrame then ToggleTalentFrame() end end)
 -- Forever has no WorldMapMicroButton: its quest log button opens the map with the quests (user 09.11.: one "Map / Quests"
 -- entry is enough; the old "blz:map" becomes "blz:quests" in items())
@@ -378,30 +299,18 @@ blizz("blz:lfg", N"Looking for Group", "Interface\\Icons\\INV_Misc_GroupNeedMore
 -- nothing, and opened from our code the menu would be tainted - Esc opens it
 blizz("blz:calendar", N"Calendar", "Interface\\Icons\\INV_Misc_Note_02", "GameTimeFrame",
   function() if ToggleCalendar then ToggleCalendar() end end)
-blizz("blz:legacy", N"Legacy", "Interface\\Icons\\Achievement_General", "LegacyMicroButton", nil)
 blizz("blz:shop", N"Shop", "Interface\\Icons\\INV_Misc_Coin_17", "StoreMicroButton", nil)
+-- Retail windows
+blizz("blz:professions", N"Professions", "Interface\\Icons\\INV_Misc_Note_01", "ProfessionMicroButton", nil)
+blizz("blz:collections", N"Collections", "Interface\\Icons\\INV_Misc_Bag_10", "CollectionsMicroButton",
+  function() if ToggleCollectionsJournal then ToggleCollectionsJournal() end end)
+blizz("blz:journal", N"Adventure Guide", "Interface\\Icons\\INV_Misc_Book_11", "EJMicroButton",
+  function() if ToggleEncounterJournal then ToggleEncounterJournal() end end)
 
 add({ key = "mail", label = N"New mail", icon = "Interface\\Icons\\INV_Letter_01", events = { "UPDATE_PENDING_MAIL", "MAIL_CLOSED" },
   text = function() return call(HasNewMail) and ("|cff40ff40" .. L["New mail"] .. "|r") or grey(L["No mail"]) end,
   tip = function(tt)
     for _, s in ipairs({ call(GetLatestThreeSenders) }) do if s then tt:AddLine(s, 1, 1, 1) end end
-  end })
-
-add({ key = "spec", label = N"Spec for the Value", icon = "Interface\\Icons\\INV_Misc_Gear_01", events = { "CHARACTER_POINTS_CHANGED", "PLAYER_TALENT_UPDATE" },
-  text = function() local s = FLT.GearValue and call(FLT.GearValue.SpecName); return s and L[s] or grey("-") end,
-  tip = function(tt) tt:AddLine(L["The stat weights of this spec are used for the upgrades here, in tooltips, bags and loot rolls. \"Active spec\" follows your talents. \"Edit custom weights...\" sets your own weights."], 0.8, 0.8, 0.8, true) end,
-  -- pick the spec right here (user 08.11.), the same list as in the Gear Planner
-  click = function(c)
-    local GV = FLT.GearValue
-    if not (GV and GV.Specs and UI.OpenDropDown) then return end
-    local specs, pick, auto = GV.Specs()
-    local opts = { { key = 0, label = L["Active spec"] .. (auto and specs[auto] and ("  |cffb0b0b0(" .. L[specs[auto].name] .. ")|r") or "") } }
-    for i, sp in ipairs(specs) do opts[#opts + 1] = { key = i, label = L[sp.name] } end
-    opts[#opts + 1] = { key = "custom", label = L["Custom weights"] }
-    UI.OpenDropDown(c, opts, pick or 0, function(k)
-      GV.SetSpec(k ~= 0 and k or nil)
-      if IB.Refresh then IB.Refresh("spec") end
-    end, 220)
   end })
 
 -- the tabs of the OneForAll window as quick access (user 08.11.: "jeden tab aus dem addon dort quasi als schnell

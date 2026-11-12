@@ -47,10 +47,10 @@ end
 
 -- own weights from before 6.2.5 had no melee / off-hand DPS fields: they count as before (dps; off hand half of it)
 local function migrateCustom(c)
-  if OneForAllCharDB.gearCustomV then return end
+  if OneForAllRetailCharDB.gearCustomV then return end
   if c.dpsmelee == nil then c.dpsmelee = tonumber(c.dps) end
   if c.dpsoh == nil and c.dpsmelee then c.dpsoh = c.dpsmelee * 0.5 end
-  OneForAllCharDB.gearCustomV = 2
+  OneForAllRetailCharDB.gearCustomV = 2
 end
 
 local function buildWeights()
@@ -63,9 +63,9 @@ local function buildWeights()
   for i = 1, 3 do if pts and (pts[i] or 0) > best then tree, best = i, pts[i] end end
   autoTree = tree
   -- chosen in the Gear Planner (per character, user 18.10.); nil = the active spec
-  local pick = type(OneForAllCharDB) == "table" and OneForAllCharDB.gearSpec
-  -- own weights (5.7.3, Discord sparkledooks, user 27.10.): OneForAllCharDB.gearCustom, edited in the planner
-  local custom = pick == "custom" and type(OneForAllCharDB.gearCustom) == "table" and OneForAllCharDB.gearCustom
+  local pick = type(OneForAllRetailCharDB) == "table" and OneForAllRetailCharDB.gearSpec
+  -- own weights (5.7.3, Discord sparkledooks, user 27.10.): OneForAllRetailCharDB.gearCustom, edited in the planner
+  local custom = pick == "custom" and type(OneForAllRetailCharDB.gearCustom) == "table" and OneForAllRetailCharDB.gearCustom
   if custom then
     migrateCustom(custom)
     -- only what the editor shows counts (6.2.5: hidden keys of the copied spec - melee / off-hand weapon DPS, speed,
@@ -95,7 +95,7 @@ end
 function GV.SpecName() if not W then buildWeights() end return specName end
 -- the weights of a spec (nil = the active one) at the player's level, as the Value would use them
 local function specWeights(i)
-  local db = type(OneForAllCharDB) == "table" and OneForAllCharDB
+  local db = type(OneForAllRetailCharDB) == "table" and OneForAllRetailCharDB
   if not db then return {} end
   local keep = db.gearSpec
   db.gearSpec = i; W = nil; buildWeights()
@@ -109,33 +109,33 @@ local function specWeights(i)
 end
 -- own weights: created from the active spec the first time
 function GV.CustomWeights()
-  if type(OneForAllCharDB) ~= "table" then return {} end
-  if type(OneForAllCharDB.gearCustom) ~= "table" then OneForAllCharDB.gearCustom = specWeights(nil); OneForAllCharDB.gearCustomV = 2
-  else migrateCustom(OneForAllCharDB.gearCustom) end
-  return OneForAllCharDB.gearCustom
+  if type(OneForAllRetailCharDB) ~= "table" then return {} end
+  if type(OneForAllRetailCharDB.gearCustom) ~= "table" then OneForAllRetailCharDB.gearCustom = specWeights(nil); OneForAllRetailCharDB.gearCustomV = 2
+  else migrateCustom(OneForAllRetailCharDB.gearCustom) end
+  return OneForAllRetailCharDB.gearCustom
 end
 function GV.SetCustomWeight(k, v)
   local c = GV.CustomWeights()
   v = tonumber(v); c[k] = (v and v ~= 0) and v or nil
-  if OneForAllCharDB.gearSpec == "custom" then GV.SetSpec("custom") end
+  if OneForAllRetailCharDB.gearSpec == "custom" then GV.SetSpec("custom") end
 end
 -- start again from a spec's weights (nil = the active spec)
 function GV.ResetCustom(i)
-  if type(OneForAllCharDB) ~= "table" then return end
-  OneForAllCharDB.gearCustom = specWeights(i); OneForAllCharDB.gearCustomV = 2
-  if OneForAllCharDB.gearSpec == "custom" then GV.SetSpec("custom") end
+  if type(OneForAllRetailCharDB) ~= "table" then return end
+  OneForAllRetailCharDB.gearCustom = specWeights(i); OneForAllRetailCharDB.gearCustomV = 2
+  if OneForAllRetailCharDB.gearSpec == "custom" then GV.SetSpec("custom") end
 end
 -- the planner's spec drop-down: the class's three specs, the one in use (nil = active spec) and the active one
 function GV.Specs()
   if not W then buildWeights() end
   local _, cls = UnitClass("player")
   local data = FLT.GEAR_WEIGHTS and FLT.GEAR_WEIGHTS[cls]
-  local pick = type(OneForAllCharDB) == "table" and OneForAllCharDB.gearSpec or nil
+  local pick = type(OneForAllRetailCharDB) == "table" and OneForAllRetailCharDB.gearSpec or nil
   return data and data.specs or {}, pick, autoTree
 end
 function GV.SetSpec(i)
-  if type(OneForAllCharDB) ~= "table" then return end
-  OneForAllCharDB.gearSpec = i
+  if type(OneForAllRetailCharDB) ~= "table" then return end
+  OneForAllRetailCharDB.gearSpec = i
   W = nil; wipe(values); resetWorn()
   if FLT.GearMarks and FLT.GearMarks.Refresh then FLT.GearMarks.Refresh() end
 end

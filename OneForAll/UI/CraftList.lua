@@ -8,9 +8,9 @@ local L = FLT.L or setmetatable({}, { __index = function(_, k) return k end }) -
 -- recipe; a switch per material says "craft" or "buy" (user's choice c). Reagents a vendor sells are marked (Data/
 -- VendorReagents.lua). The window stays open when OneForAll closes and only closes with its X (not with Escape).
 -- Item tooltips show "Crafting List: N more needed" for missing materials.
--- Saved: OneForAllDB.craftList = { {prof, s = spell, n = items}, ... }, OneForAllDB.craftMode[itemID] = "craft" / "buy",
--- OneForAllDB.craftInv[name-realm] = { faction, bags = {[id] = n}, bank = {[id] = n} } (only reagents of our recipes),
--- OneForAllDB.craftListPos. Known recipes of the other characters: OneForAllDB.altRecipes (QoL.lua).
+-- Saved: OneForAllRetailDB.craftList = { {prof, s = spell, n = items}, ... }, OneForAllRetailDB.craftMode[itemID] = "craft" / "buy",
+-- OneForAllRetailDB.craftInv[name-realm] = { faction, bags = {[id] = n}, bank = {[id] = n} } (only reagents of our recipes),
+-- OneForAllRetailDB.craftListPos. Known recipes of the other characters: OneForAllRetailDB.altRecipes (QoL.lua).
 -- Lean: bags are counted 2 s after the last bag update (one timer), the bank while it is open; the materials are
 -- worked out only when the window is open or a tooltip asks (cached until the next change).
 
@@ -22,9 +22,9 @@ local GetItemInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
 local GetItemIcon = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
 
 local function db(key)
-  if type(OneForAllDB) ~= "table" then return {} end
-  OneForAllDB[key] = OneForAllDB[key] or {}
-  return OneForAllDB[key]
+  if type(OneForAllRetailDB) ~= "table" then return {} end
+  OneForAllRetailDB[key] = OneForAllRetailDB[key] or {}
+  return OneForAllRetailDB[key]
 end
 local function list() return db("craftList") end
 local function charKey() return FLT.CharKey and FLT.CharKey() end -- GUID (6.2.5, Core.lua)
@@ -60,11 +60,11 @@ function CL.ICanCraft(prof, r)
   if skill <= 0 then return false end
   return r.start or (next(p.known) == nil and skill >= (r.req or r.y or 1)) or false
 end
--- who of my characters knows a recipe (OneForAllDB.altRecipes, kept by QoL.lua; this character live)
+-- who of my characters knows a recipe (OneForAllRetailDB.altRecipes, kept by QoL.lua; this character live)
 local function knownBy(prof, spell)
   local x = bySpell and bySpell[spell]
   if x and CL.ICanCraft(prof, x.r) then return UnitName("player") end
-  local all = type(OneForAllDB) == "table" and OneForAllDB.altRecipes or {}
+  local all = type(OneForAllRetailDB) == "table" and OneForAllRetailDB.altRecipes or {}
   for key, data in pairs(all) do
     if not FLT.IsMyChar(key) and type(data) == "table" and type(data[prof]) == "table" and data[prof][spell] then
       return FLT.CharLabel(all, key, data)
@@ -445,16 +445,16 @@ end
 local function create()
   frame = CreateFrame("Frame", "OneForAllCraftList", UIParent)
   -- above the OneForAll window (DIALOG), so it cannot disappear behind it (user 24.10.)
-  local h = OneForAllDB and tonumber(OneForAllDB.craftListH)
+  local h = OneForAllRetailDB and tonumber(OneForAllRetailDB.craftListH)
   frame:SetSize(W, h or 360); frame:SetFrameStrata("FULLSCREEN"); frame:SetClampedToScreen(true)
   frame:SetMovable(true); frame:EnableMouse(true); frame:RegisterForDrag("LeftButton")
-  local pos = OneForAllDB and OneForAllDB.craftListPos
+  local pos = OneForAllRetailDB and OneForAllRetailDB.craftListPos
   if type(pos) == "table" then frame:SetPoint(pos[1], UIParent, pos[2], pos[3], pos[4]) else frame:SetPoint("RIGHT", -60, 0) end
   frame:SetScript("OnDragStart", frame.StartMoving)
   frame:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
     local p, _, rp, x, y = self:GetPoint(1)
-    if type(OneForAllDB) == "table" then OneForAllDB.craftListPos = { p, rp, x, y } end
+    if type(OneForAllRetailDB) == "table" then OneForAllRetailDB.craftListPos = { p, rp, x, y } end
   end)
   UI.FramedPanel(frame)
   for _, t in ipairs(UI.OrnateFrame(frame, frame, 16, 3, "OVERLAY", 4)) do t:SetVertexColor(FLT.SkinC(1, 1, 1, 1)) end
@@ -506,8 +506,8 @@ local function create()
     ov:Show()
   end
   -- like the OneForAll window (user 26.10.): the corner grip scales the whole list, the bottom grip sets its height.
-  -- Scale: OneForAllDB.craftListScale (unset = the OneForAll window's scale), height: OneForAllDB.craftListH.
-  local function cdb() return type(OneForAllDB) == "table" and OneForAllDB or {} end
+  -- Scale: OneForAllRetailDB.craftListScale (unset = the OneForAll window's scale), height: OneForAllRetailDB.craftListH.
+  local function cdb() return type(OneForAllRetailDB) == "table" and OneForAllRetailDB or {} end
   local function setScale(sc)
     sc = math.floor(math.max(0.6, math.min(1.4, sc)) * 100 + 0.5) / 100
     local old, left, top = frame:GetScale() or 1, frame:GetLeft(), frame:GetTop()
@@ -558,7 +558,7 @@ local function create()
     if h ~= math.floor(frame:GetHeight() + 0.5) then frame:SetHeight(h); cdb().craftListH = h end
   end)
   frame:SetScript("OnShow", function(self)
-    local w = type(OneForAllDB) == "table" and OneForAllDB.window
+    local w = type(OneForAllRetailDB) == "table" and OneForAllRetailDB.window
     local sc = tonumber(cdb().craftListScale) or (w and tonumber(w.scale))
     if sc and sc > 0 then self:SetScale(sc) end
     refresh()

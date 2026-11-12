@@ -1125,10 +1125,8 @@ function UI.Confirm(text, onYes, yesLabel, secureMacro)
   f:Show()
 end
 
--- Bug report window: where to report (Discord #bug-reports) in a box that can be copied (WoW cannot open a
--- browser), version / class / level and the last caught errors (OneForAllDB.errors, see FLT.SafeCall) to paste along.
--- GitHub issues are switched off (user 07.11.2026); CurseForge comments too (user 07.11.2026), so Discord only.
-UI.DISCORD_URL = "https://discord.gg/bQhjSpdA3S" -- the invite does not expire (user 24.10.)
+-- Bug report window: version / class / level and the last caught errors (OneForAllRetailDB.errors, see FLT.SafeCall)
+-- in a box to copy. Retail fork: no link to the original author's Discord - reports must not end up there.
 local bugFrame
 -- read-only box: typing puts the text back, a click selects it all
 local function copyBox(parent, w, h, multi)
@@ -1155,7 +1153,7 @@ end
 function UI.ShowBugReport()
   if not bugFrame then
     local f = CreateFrame("Frame", "OneForAllBugReport", UIParent)
-    f:SetSize(440, 302); f:SetPoint("CENTER", 0, 80); f:SetFrameStrata("FULLSCREEN_DIALOG"); f:EnableMouse(true)
+    f:SetSize(440, 262); f:SetPoint("CENTER", 0, 80); f:SetFrameStrata("FULLSCREEN_DIALOG"); f:EnableMouse(true)
     f:SetMovable(true); f:SetClampedToScreen(true); f:RegisterForDrag("LeftButton")
     f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
     UI.FramedPanel(f)
@@ -1165,14 +1163,11 @@ function UI.ShowBugReport()
     title:SetText(L["Report a bug or idea"]); title:SetTextColor(FLT.SkinC(1, 0.82, 0.20))
     local text = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); text:SetPoint("TOP", 0, -44); text:SetWidth(390)
     text:SetJustifyH("CENTER")
-    text:SetText(L["Copy the link (Ctrl+C) and open it in your browser: a post in #bug-reports or #suggestions on our Discord. A screenshot helps a lot."])
+    text:SetText("OneForAll Retail is a fork - please do not report its bugs to the original author. Copy the text below (Ctrl+C) for your own notes or the fork's issue tracker.")
     local function label(t, y)
       local l = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalSmall"); l:SetPoint("TOPLEFT", 28, y); l:SetText(t); l:SetTextColor(FLT.SkinC(0.90, 0.74, 0.42))
     end
-    label("Discord", -80)
-    f.dc = copyBox(f, 300, 20); f.dc:SetPoint("TOPLEFT", 112, -76)
-    label(L["Please add"], -110)
-    f.err = copyBox(f, 384, 116, true); f.err.holder:SetPoint("TOPLEFT", 28, -128)
+    f.err = copyBox(f, 384, 116, true); f.err.holder:SetPoint("TOPLEFT", 28, -88)
     local ok = GoldButton(f, L["Close"], 110, 26, nil, 13); ok:SetPoint("BOTTOM", 0, 16)
     ok:SetScript("OnClick", function() f:Hide() end)
     if UISpecialFrames then table.insert(UISpecialFrames, "OneForAllBugReport") end
@@ -1184,46 +1179,18 @@ function UI.ShowBugReport()
   elseif GetAddOnMetadata then ver = GetAddOnMetadata(ADDON, "Version") end
   local class = UnitClass and UnitClass("player")
   local level = UnitLevel and UnitLevel("player")
-  local lines = { string.format("OneForAll %s | %s | Level %s | %s", tostring(ver or "?"), tostring(class or "?"),
+  local lines = { string.format("OneForAll Retail %s | %s | Level %s | %s", tostring(ver or "?"), tostring(class or "?"),
     tostring(level or "?"), GetLocale and GetLocale() or "?") }
-  local errs = type(OneForAllDB) == "table" and OneForAllDB.errors
+  local errs = type(OneForAllRetailDB) == "table" and OneForAllRetailDB.errors
   if type(errs) == "table" and #errs > 0 then
     lines[#lines + 1] = L["Last caught errors:"]
     for i = 1, math.min(5, #errs) do lines[#lines + 1] = tostring(errs[i]) end
   else
     lines[#lines + 1] = L["No errors caught."]
   end
-  f.dc:SetValue(UI.DISCORD_URL)
   f.err:SetValue(table.concat(lines, "\n"))
   f:Show()
-  f.dc:SetFocus(); f.dc:HighlightText()
-end
-
--- Discord (5.7.3, title bar button): the invite link to copy, built on first use
-local discordFrame
-function UI.ShowDiscord()
-  if not discordFrame then
-    local f = CreateFrame("Frame", "OneForAllDiscord", UIParent)
-    f:SetSize(400, 170); f:SetPoint("CENTER", 0, 80); f:SetFrameStrata("FULLSCREEN_DIALOG"); f:EnableMouse(true)
-    f:SetMovable(true); f:SetClampedToScreen(true); f:RegisterForDrag("LeftButton")
-    f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
-    UI.FramedPanel(f)
-    for _, t in ipairs(OrnateFrame(f, f, 16, 3, "OVERLAY", 4)) do t:SetVertexColor(FLT.SkinC(1, 1, 1, 1)) end
-    local close = UI.CloseButton(f); close:SetPoint("TOPRIGHT", -12, -12)
-    local title = FLT.NewFS(f, nil, "OVERLAY", "GameFontNormalLarge"); title:SetPoint("TOP", 0, -20)
-    title:SetText(L["OneForAll on Discord"]); title:SetTextColor(FLT.SkinC(1, 0.82, 0.20))
-    local text = FLT.NewFS(f, nil, "OVERLAY", "GameFontHighlightSmall"); text:SetPoint("TOP", 0, -46); text:SetWidth(350)
-    text:SetJustifyH("CENTER")
-    text:SetText(L["News, questions and ideas. Copy the link (Ctrl+C) and open it in your browser."])
-    f.link = copyBox(f, 300, 20); f.link:SetPoint("TOP", 0, -84)
-    local ok = GoldButton(f, L["Close"], 110, 26, nil, 13); ok:SetPoint("BOTTOM", 0, 16)
-    ok:SetScript("OnClick", function() f:Hide() end)
-    if UISpecialFrames then table.insert(UISpecialFrames, "OneForAllDiscord") end
-    discordFrame = f
-  end
-  discordFrame.link:SetValue(UI.DISCORD_URL)
-  discordFrame:Show()
-  discordFrame.link:SetFocus(); discordFrame.link:HighlightText()
+  f.err:SetFocus(); f.err:HighlightText()
 end
 
 -- Shared drop-down list (one at a time); a click outside closes it.
