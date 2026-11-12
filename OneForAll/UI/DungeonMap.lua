@@ -271,7 +271,7 @@ function FLT.ApplyDungeonMapKey()
   if type(SetOverrideBindingClick) ~= "function" or type(ClearOverrideBindings) ~= "function" or type(GetBindingKey) ~= "function" then return end
   if InCombatLockdown and InCombatLockdown() then keyButton:RegisterEvent("PLAYER_REGEN_ENABLED"); return end
   keyButton:UnregisterEvent("PLAYER_REGEN_ENABLED")
-  local on = type(OneForAllDB) == "table" and OneForAllDB.dungeonMapKey ~= false and currentMapDungeon() ~= nil
+  local on = type(OneForAllRetailDB) == "table" and OneForAllRetailDB.dungeonMapKey ~= false and currentMapDungeon() ~= nil
   local keys = {}
   if on then for _, k in ipairs({ GetBindingKey("TOGGLEWORLDMAP") }) do if type(k) == "string" then keys[#keys + 1] = k end end end
   local sig = table.concat(keys, "\1")

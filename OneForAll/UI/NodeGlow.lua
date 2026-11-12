@@ -36,9 +36,9 @@ local function getCVar(n) return call(C_CVar and C_CVar.GetCVar or GetCVar, n) e
 -- only when it differs: every change fires CVAR_UPDATE for Blizzard's frames too
 local function setCVar(n, v) local c = getCVar(n); if c ~= nil and c ~= tostring(v) then pcall(C_CVar and C_CVar.SetCVar or SetCVar, n, tostring(v)) end end
 local function saved()
-  if type(OneForAllDB) ~= "table" then return nil end
-  OneForAllDB.qol = OneForAllDB.qol or {}
-  return OneForAllDB.qol
+  if type(OneForAllRetailDB) ~= "table" then return nil end
+  OneForAllRetailDB.qol = OneForAllRetailDB.qol or {}
+  return OneForAllRetailDB.qol
 end
 local pending, gate -- "apply" / "restore" after combat; nameplate switch state (nil = set it again)
 

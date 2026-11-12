@@ -212,7 +212,7 @@ local function createProfessionPanel(parent)
     local count=FLT.NewFS(ph, nil,"OVERLAY","GameFontDisableSmall")
     count:SetPoint("RIGHT",-14,0); count:SetText(string.format(L["%d camping objects"], #(prof.items or {})))
     ph:SetScript("OnClick",function()
-      local expanded=OneForAllDB.campingExpanded
+      local expanded=OneForAllRetailDB.campingExpanded
       expanded[prof.profession]=not expanded[prof.profession] or nil
       layoutCamping()
     end)
@@ -254,10 +254,10 @@ local function createProfessionPanel(parent)
   end
 
   layoutCamping=function()
-    OneForAllDB.campingExpanded = OneForAllDB.campingExpanded or {}
+    OneForAllRetailDB.campingExpanded = OneForAllRetailDB.campingExpanded or {}
     local cy=-2
     for _,group in ipairs(campingGroups) do
-      local expanded=OneForAllDB.campingExpanded[group.prof.profession]==true
+      local expanded=OneForAllRetailDB.campingExpanded[group.prof.profession]==true
       group.header:ClearAllPoints(); group.header:SetPoint("TOPLEFT",0,cy); cy=cy-38
       if expanded then group.toggle:SetTexCoord(0,0.5,0,1) else group.toggle:SetTexCoord(0.5,1,0,1) end
       for _,row in ipairs(group.items) do
@@ -584,8 +584,8 @@ local function createProfessionPanel(parent)
         if not isHeader then add(name,rank,maxRank) end
       end
     end
-    if type(OneForAllCharDB)=="table" and type(OneForAllCharDB.professions)=="table" then
-      for name,p in pairs(OneForAllCharDB.professions) do if p.skill then add(name,p.skill,p.maxSkill) end end
+    if type(OneForAllRetailCharDB)=="table" and type(OneForAllRetailCharDB.professions)=="table" then
+      for name,p in pairs(OneForAllRetailCharDB.professions) do if p.skill then add(name,p.skill,p.maxSkill) end end
     end
     table.sort(out,function(a,b) return a.name<b.name end)
     return out

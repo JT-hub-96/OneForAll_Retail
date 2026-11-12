@@ -324,9 +324,9 @@ end
 
 -- Wishlist (per character) ----------------------------------------------------------
 local function wishlist()
-  if type(OneForAllCharDB) ~= "table" then return {} end
-  OneForAllCharDB.wishlist = OneForAllCharDB.wishlist or {}
-  return OneForAllCharDB.wishlist
+  if type(OneForAllRetailCharDB) ~= "table" then return {} end
+  OneForAllRetailCharDB.wishlist = OneForAllRetailCharDB.wishlist or {}
+  return OneForAllRetailCharDB.wishlist
 end
 function FLT.IsOnWishlist(id) return id and wishlist()[id] and true or false end
 function FLT.ToggleWishlist(id)
@@ -450,7 +450,7 @@ end
 -- The view --------------------------------------------------------------------------
 function UI.CreateGearPlanner(parent)
   local f = CreateFrame("Frame", nil, parent); f:SetAllPoints(); f:Hide()
-  local prefs = (type(OneForAllCharDB) == "table") and OneForAllCharDB or {}
+  local prefs = (type(OneForAllRetailCharDB) == "table") and OneForAllRetailCharDB or {}
   local selected = 1 -- inventory slot
   local allSlots, suggestAllBtn -- "All slots" on Suggested (6.2.3)
   local enchMode = false -- the right side shows the enchants of the selected slot
@@ -818,7 +818,7 @@ function UI.CreateGearPlanner(parent)
   local myProfs = {}
   local function readProfessions()
     wipe(myProfs)
-    local p = type(OneForAllCharDB) == "table" and OneForAllCharDB.professions
+    local p = type(OneForAllRetailCharDB) == "table" and OneForAllRetailCharDB.professions
     if type(p) == "table" then for name in pairs(p) do myProfs[name] = true end end
     if GetNumSkillLines and GetSkillLineInfo then
       for i = 1, tonumber(GetNumSkillLines()) or 0 do

@@ -36,9 +36,9 @@ local lastGroupSize = 0
 local lastShareQuest        -- questID of the last share started from the popup
 
 local function settings()
-  if type(OneForAllDB) ~= "table" then return {} end
-  OneForAllDB.questShare = OneForAllDB.questShare or {}
-  local s = OneForAllDB.questShare
+  if type(OneForAllRetailDB) ~= "table" then return {} end
+  OneForAllRetailDB.questShare = OneForAllRetailDB.questShare or {}
+  local s = OneForAllRetailDB.questShare
   if s.popup == nil then s.popup = true end
   s.emote = nil -- old setting (emote when sharing, removed in 5.6.8)
   return s

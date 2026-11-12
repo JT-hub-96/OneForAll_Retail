@@ -12,7 +12,7 @@ local makeTexture, makeButton = UI.makeTexture, UI.makeButton
 -- "All recipes" browser for the Professions tab (no "(beta)" in the title since 6.2.1, user 08.11.). Data: Data/Professions/*.lua
 -- (extracted from the Forever client database). Known recipes and the current
 -- skill are read from the profession window and stored per character in
--- OneForAllCharDB.professions[profession] = { skill, maxSkill, known = {spellID=true} }.
+-- OneForAllRetailCharDB.professions[profession] = { skill, maxSkill, known = {spellID=true} }.
 
 local GOLD = {1, 0.82, 0.20}
 local DIFF = {
@@ -62,21 +62,21 @@ FLT._reagentText = reagentText -- tests
 local function NM(s) return FLT.Name and FLT.Name(s) or s end -- NPC / object / item names (6.2.0 step 2b)
 local function DN(s) return FLT.DungeonName and FLT.DungeonName(s) or s end
 local function profDB(prof)
-  if type(OneForAllCharDB) ~= "table" then return {known = {}} end
-  OneForAllCharDB.professions = OneForAllCharDB.professions or {}
-  local p = OneForAllCharDB.professions[prof]
-  if not p then p = {known = {}}; OneForAllCharDB.professions[prof] = p end
+  if type(OneForAllRetailCharDB) ~= "table" then return {known = {}} end
+  OneForAllRetailCharDB.professions = OneForAllRetailCharDB.professions or {}
+  local p = OneForAllRetailCharDB.professions[prof]
+  if not p then p = {known = {}}; OneForAllRetailCharDB.professions[prof] = p end
   p.known = p.known or {}
   return p
 end
 FLT.GetProfessionState = profDB
 
--- Favourite recipes (account wide): OneForAllDB.recipeFavorites[prof][spell]
+-- Favourite recipes (account wide): OneForAllRetailDB.recipeFavorites[prof][spell]
 local function favDB(prof, create)
-  if type(OneForAllDB) ~= "table" then return nil end
-  OneForAllDB.recipeFavorites = OneForAllDB.recipeFavorites or {}
-  local t = OneForAllDB.recipeFavorites[prof]
-  if not t and create then t = {}; OneForAllDB.recipeFavorites[prof] = t end
+  if type(OneForAllRetailDB) ~= "table" then return nil end
+  OneForAllRetailDB.recipeFavorites = OneForAllRetailDB.recipeFavorites or {}
+  local t = OneForAllRetailDB.recipeFavorites[prof]
+  if not t and create then t = {}; OneForAllRetailDB.recipeFavorites[prof] = t end
   return t
 end
 local function isFavorite(prof, spell) local t = favDB(prof); return t and t[spell] and true or false end
@@ -166,8 +166,8 @@ end
 -- has (wrong entries written by 4.18.0). Learn level, or yellow - 50.
 local function cleanImplausible(prof)
   local list = FLT.PROFESSION_RECIPES and FLT.PROFESSION_RECIPES[prof]
-  if not list or type(OneForAllCharDB) ~= "table" or type(OneForAllCharDB.professions) ~= "table" then return end
-  local p = OneForAllCharDB.professions[prof]
+  if not list or type(OneForAllRetailCharDB) ~= "table" or type(OneForAllRetailCharDB.professions) ~= "table" then return end
+  local p = OneForAllRetailCharDB.professions[prof]
   if not (p and p.known and p.skill) then return end
   for _, r in ipairs(list) do
     if p.known[r.s] then
@@ -581,11 +581,11 @@ function UI.CreateRecipeBrowser(parent)
   clear:SetScript("OnLeave", function() GameTooltip:Hide() end)
   box:SetScript("OnTextChanged", function(self) search = (self:GetText() or ""):lower(); hint:SetShown(search == ""); clear:SetShown(search ~= ""); f:Refresh() end)
   -- who knows it (6.2.0, user 07.11.: "Meine Rezepte / Gilde / Beides" and back to "Alle"): the funnel like the source
-  -- filter of the Gear Planner; OneForAllDB.recipeKnowFilter = "mine" / "guild" / "both" (you or the guild), nil = all
+  -- filter of the Gear Planner; OneForAllRetailDB.recipeKnowFilter = "mine" / "guild" / "both" (you or the guild), nil = all
   -- "notmine" (6.2.1, user 08.11.): the recipes this character has not learned yet
   local KNOW = { { key = "all", label = N"All recipes" }, { key = "mine", label = N"My recipes" },
     { key = "notmine", label = N"Not learned" }, { key = "guild", label = N"Guild" }, { key = "both", label = N"Mine or guild" } }
-  local function knowFilter() local v = type(OneForAllDB) == "table" and OneForAllDB.recipeKnowFilter; return v ~= "all" and v or nil end
+  local function knowFilter() local v = type(OneForAllRetailDB) == "table" and OneForAllRetailDB.recipeKnowFilter; return v ~= "all" and v or nil end
   local function knowLabel(k) for _, o in ipairs(KNOW) do if o.key == k then return L[o.label] end end end
   local funnel = CreateFrame("Button", nil, f); funnel:SetSize(22, 22); funnel:SetPoint("LEFT", box, "RIGHT", 34, 0)
   funnel.tex = funnel:CreateTexture(nil, "ARTWORK"); funnel.tex:SetAllPoints(); FLT.SetTex(funnel.tex, UI.ASSET_ROOT .. "icon_filter")
@@ -602,7 +602,7 @@ function UI.CreateRecipeBrowser(parent)
     local opts = {}
     for _, o in ipairs(KNOW) do opts[#opts + 1] = { key = o.key, label = L[o.label] } end
     UI.OpenDropDown(self, opts, knowFilter() or "all", function(k)
-      if type(OneForAllDB) == "table" then OneForAllDB.recipeKnowFilter = k ~= "all" and k or nil end
+      if type(OneForAllRetailDB) == "table" then OneForAllRetailDB.recipeKnowFilter = k ~= "all" and k or nil end
       paintFunnel(); f:Refresh()
     end, 180)
   end)
@@ -612,7 +612,7 @@ function UI.CreateRecipeBrowser(parent)
   box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
 
   -- "Show offline": also list guild members / players who are offline (off by default).
-  local function showOffline() return type(OneForAllDB) == "table" and OneForAllDB.recipeShowOffline == true end
+  local function showOffline() return type(OneForAllRetailDB) == "table" and OneForAllRetailDB.recipeShowOffline == true end
 
   -- list (left) and detail (right)
   local left = CreateFrame("Frame", nil, f); left:SetPoint("TOPLEFT", 0, -82); left:SetPoint("BOTTOMLEFT", 0, 0); left:SetWidth(336)
@@ -975,7 +975,7 @@ function UI.CreateRecipeBrowser(parent)
         cb:SetPoint("LEFT", hk, "RIGHT", 14, 0); cb:SetChecked(showOffline())
         local cl = dtext("GameFontHighlightSmall"); cl:SetPoint("LEFT", cb, "RIGHT", 2, 0); cl:SetText(L["Show offline"])
         cb:SetScript("OnClick", function(self)
-          if type(OneForAllDB) == "table" then OneForAllDB.recipeShowOffline = self:GetChecked() and true or false end
+          if type(OneForAllRetailDB) == "table" then OneForAllRetailDB.recipeShowOffline = self:GetChecked() and true or false end
           f:Refresh(true)
         end)
       end

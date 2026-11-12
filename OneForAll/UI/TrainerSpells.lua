@@ -10,7 +10,7 @@ local function N(s) return s end -- marks an English text translated where it is
 -- Spell list: Data/TrainerSpells.lua (generated from the Forever client data).
 -- Known spells are read from your spellbook. Training costs are not in the
 -- client data: they are remembered when you open a class trainer
--- (OneForAllDB.trainerCosts[class]["Name|rank"] = { c = copper, l = level }).
+-- (OneForAllRetailDB.trainerCosts[class]["Name|rank"] = { c = copper, l = level }).
 -- Spells taught by a quest instead of the trainer get a yellow "!".
 
 local CLASS_TEX = "Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES"
@@ -46,10 +46,10 @@ local function classIconCoords(token)
 end
 
 local function costsDB(token)
-  if type(OneForAllDB) ~= "table" or not token then return {} end
-  OneForAllDB.trainerCosts = OneForAllDB.trainerCosts or {}
-  OneForAllDB.trainerCosts[token] = OneForAllDB.trainerCosts[token] or {}
-  return OneForAllDB.trainerCosts[token]
+  if type(OneForAllRetailDB) ~= "table" or not token then return {} end
+  OneForAllRetailDB.trainerCosts = OneForAllRetailDB.trainerCosts or {}
+  OneForAllRetailDB.trainerCosts[token] = OneForAllRetailDB.trainerCosts[token] or {}
+  return OneForAllRetailDB.trainerCosts[token]
 end
 
 local function rankOf(text)
@@ -98,11 +98,11 @@ local function serviceSpellID(i)
   return tonumber(id)
 end
 -- Learn level of recipes (6.1.5, user 05.11.: not in the client data, the trainer knows it): read at a profession
--- trainer, kept in OneForAllDB.recipeLearn[profession][spellID] and filled into the recipe data (r.req) where it is missing
+-- trainer, kept in OneForAllRetailDB.recipeLearn[profession][spellID] and filled into the recipe data (r.req) where it is missing
 local function learnDB()
-  if type(OneForAllDB) ~= "table" then return nil end
-  OneForAllDB.recipeLearn = OneForAllDB.recipeLearn or {}
-  return OneForAllDB.recipeLearn
+  if type(OneForAllRetailDB) ~= "table" then return nil end
+  OneForAllRetailDB.recipeLearn = OneForAllRetailDB.recipeLearn or {}
+  return OneForAllRetailDB.recipeLearn
 end
 function FLT.ApplyRecipeLearnLevels()
   local db, all = learnDB(), FLT.PROFESSION_RECIPES
@@ -778,7 +778,7 @@ function FLT.RefreshTrainerSpells()
   if viewMode == "pet" then
     local own = c.id == myClass
     f.title:SetText(L["Pet training"])
-    f.sub:SetText(own and (type(OneForAllCharDB) == "table" and OneForAllCharDB.petAbilitiesScanned and L["What you can still learn for your pet, and where"]
+    f.sub:SetText(own and (type(OneForAllRetailCharDB) == "table" and OneForAllRetailCharDB.petAbilitiesScanned and L["What you can still learn for your pet, and where"]
       or L["Open Beast Training once so OneForAll knows your ranks"]) or L["What the pet trainers teach, and where (your faction)"])
     f.legend:Hide()
     refreshPet(f, c, own)

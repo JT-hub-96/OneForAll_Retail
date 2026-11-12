@@ -150,7 +150,7 @@ local function createAlertFrame()
   snooze:SetPoint("LEFT", dismiss, "RIGHT", 8, 0)
   snooze:SetText(L["Snooze 30 min"])
   snooze:SetScript("OnClick", function()
-    if type(OneForAllDB) == "table" and time then OneForAllDB.bookAlertSnooze = time() + 30 * 60 end
+    if type(OneForAllRetailDB) == "table" and time then OneForAllRetailDB.bookAlertSnooze = time() + 30 * 60 end
     f:Hide()
   end)
   if FLT.UI and FLT.UI.SkinBlizzButton then FLT.UI.SkinBlizzButton(snooze, 25) end
@@ -306,7 +306,7 @@ function FLT:ShowNearbyBookAlert(book, distance)
 end
 
 function FLT:SetNearbyAlertsEnabled(enabled)
-  OneForAllDB.nearbyAlertsEnabled = enabled and true or false
+  OneForAllRetailDB.nearbyAlertsEnabled = enabled and true or false
   if not enabled then
     wipe(activeNearby)
     if alertFrame then alertFrame:Hide() end
@@ -315,7 +315,7 @@ function FLT:SetNearbyAlertsEnabled(enabled)
 end
 
 function FLT:IsNearbyAlertsEnabled()
-  return OneForAllDB and OneForAllDB.nearbyAlertsEnabled ~= false
+  return OneForAllRetailDB and OneForAllRetailDB.nearbyAlertsEnabled ~= false
 end
 
 -- The check runs once a second, so it avoids creating new tables where it
@@ -354,10 +354,10 @@ end
 
 function FLT:CheckNearbyBooks()
   if not self:IsNearbyAlertsEnabled() then return end
-  local snoozed = OneForAllDB and OneForAllDB.bookAlertSnooze
+  local snoozed = OneForAllRetailDB and OneForAllRetailDB.bookAlertSnooze
   if snoozed then
     if time and time() < snoozed then return end
-    OneForAllDB.bookAlertSnooze = nil
+    OneForAllRetailDB.bookAlertSnooze = nil
   end
   if not C_Map or not C_Map.GetBestMapForUnit then return end
   if IsInInstance and IsInInstance() then return end

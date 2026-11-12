@@ -2,7 +2,7 @@
 -- text itself when there is no translation (so nothing can ever be empty).
 --  * The key is the English text. Placeholders stay in it: string.format(L["%d recipes"], n).
 --  * The language is chosen in Settings > General (a drop-down with every language, in every client; default English,
---    user 07.11.): OneForAllDB.language = "enUS" / "deDE" / ... A change needs a reload (a popup offers it).
+--    user 07.11.): OneForAllRetailDB.language = "enUS" / "deDE" / ... A change needs a reload (a popup offers it).
 --  * Each language file (Locales/deDE.lua ...) only puts a function into FLT.LOCALES; on ADDON_LOADED, when the setting
 --    is known, the chosen one makes its table and the others are let go (the garbage collector frees them).
 --  * Never use L[...] while the files load (in the main chunk of a file): the setting is not known yet then. Translate
@@ -28,7 +28,7 @@ end
 
 -- the chosen language ("enUS" when none or not known); beta1/2 saved "game" / "english"
 function FLT.Language()
-  local v = type(OneForAllDB) == "table" and OneForAllDB.language
+  local v = type(OneForAllRetailDB) == "table" and OneForAllRetailDB.language
   if v == "game" then v = FLT.ClientLocale() end
   for _, l in ipairs(FLT.LANGUAGES) do if l.key == v then return v end end
   return "enUS"

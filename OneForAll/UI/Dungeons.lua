@@ -258,7 +258,7 @@ local function createDungeonPanel(parent)
 
   local fallbackSettings={}
   local function dungeonSettings()
-    local db=OneForAllDB
+    local db=OneForAllRetailDB
     if type(db)~="table" then db=fallbackSettings end
     db.dungeonBrowse = db.dungeonBrowse or {}
     local cfg=db.dungeonBrowse
@@ -1197,7 +1197,7 @@ local function createDungeonPanel(parent)
       end
 
       -- Recipe drops of this boss (Forever's shared recipe pool), collapsible.
-      local showRecipes = not (type(OneForAllDB)=="table" and OneForAllDB.dungeonRecipes==false)
+      local showRecipes = not (type(OneForAllRetailDB)=="table" and OneForAllRetailDB.dungeonRecipes==false)
       local recipes = (not isTrash) and boss and showRecipes and FLT.GetBossRecipes and FLT.GetBossRecipes(boss.npcID)
       if recipes and #recipes>0 then
         local sk=d.key..":"..newIdx
@@ -1323,7 +1323,7 @@ local function createDungeonPanel(parent)
 
     -- quests of other classes are hidden unless the eye is open (6.2.4, user 10.11.: "quests die ich als priester gar nicht
     -- annehmen kann ... ausblenden"; a quest in the log always shows); the choice is kept per character
-    local showAll=type(OneForAllCharDB)=="table" and OneForAllCharDB.dqShowAll or false
+    local showAll=type(OneForAllRetailCharDB)=="table" and OneForAllRetailCharDB.dqShowAll or false
     local myClass=select(2,UnitClass("player"))
     local viewKey="quests:"..d.key..":"..filter..(showAll and ":all" or "")
     local view=showView(viewKey)
@@ -1386,7 +1386,7 @@ local function createDungeonPanel(parent)
       eye:SetActive(showAll)
       do local m=UI.NewMark(eye,L["New in this version."]); m:SetPoint("CENTER",eye,"TOPRIGHT",-2,-2) end -- 6.2.x (TODO.md "Neu-Markierungen")
       eye:SetScript("OnClick",function()
-        if type(OneForAllCharDB)=="table" then OneForAllCharDB.dqShowAll=not showAll or nil end
+        if type(OneForAllRetailCharDB)=="table" then OneForAllRetailCharDB.dqShowAll=not showAll or nil end
         questSelection[d.key]=1; GameTooltip:Hide(); renderQuests(d)
       end)
       eye:SetScript("OnEnter",function(self)

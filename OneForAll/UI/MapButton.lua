@@ -29,9 +29,9 @@ local ROWS = {
   { key = "mapFog", label = N"Remove Fog" },
   { key = "mapZoneLevel", label = N"Zone level range" },
   { key = "dungeonMapKey", label = N"Dungeon map on M",
-    get = function() return type(OneForAllDB) == "table" and OneForAllDB.dungeonMapKey ~= false end,
+    get = function() return type(OneForAllRetailDB) == "table" and OneForAllRetailDB.dungeonMapKey ~= false end,
     set = function(v)
-      if type(OneForAllDB) == "table" then OneForAllDB.dungeonMapKey = v and true or false end
+      if type(OneForAllRetailDB) == "table" then OneForAllRetailDB.dungeonMapKey = v and true or false end
       if FLT.ApplyDungeonMapKey then FLT.ApplyDungeonMapKey() end
     end },
 }

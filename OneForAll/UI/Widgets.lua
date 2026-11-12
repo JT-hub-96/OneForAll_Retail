@@ -1126,7 +1126,7 @@ function UI.Confirm(text, onYes, yesLabel, secureMacro)
 end
 
 -- Bug report window: where to report (Discord #bug-reports) in a box that can be copied (WoW cannot open a
--- browser), version / class / level and the last caught errors (OneForAllDB.errors, see FLT.SafeCall) to paste along.
+-- browser), version / class / level and the last caught errors (OneForAllRetailDB.errors, see FLT.SafeCall) to paste along.
 -- GitHub issues are switched off (user 07.11.2026); CurseForge comments too (user 07.11.2026), so Discord only.
 UI.DISCORD_URL = "https://discord.gg/bQhjSpdA3S" -- the invite does not expire (user 24.10.)
 local bugFrame
@@ -1186,7 +1186,7 @@ function UI.ShowBugReport()
   local level = UnitLevel and UnitLevel("player")
   local lines = { string.format("OneForAll %s | %s | Level %s | %s", tostring(ver or "?"), tostring(class or "?"),
     tostring(level or "?"), GetLocale and GetLocale() or "?") }
-  local errs = type(OneForAllDB) == "table" and OneForAllDB.errors
+  local errs = type(OneForAllRetailDB) == "table" and OneForAllRetailDB.errors
   if type(errs) == "table" and #errs > 0 then
     lines[#lines + 1] = L["Last caught errors:"]
     for i = 1, math.min(5, #errs) do lines[#lines + 1] = tostring(errs[i]) end
